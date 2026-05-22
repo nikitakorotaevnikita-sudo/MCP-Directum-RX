@@ -52,7 +52,7 @@ class ActionItemCreateResult(BaseModel):
 class ToolCallRecord(BaseModel):
     name: str
     arguments: dict[str, Any]
-    result: dict[str, Any] | list[dict[str, Any]] | None = None
+    result: dict[str, Any] | list[Any] | None = None
     duration_ms: int | None = None
     success: bool = True
 
