@@ -1,4 +1,5 @@
 from typing import Any
+from types import TracebackType
 from urllib.parse import urlencode
 
 import httpx
@@ -23,6 +24,20 @@ class DirectumClient:
         self.auth_token = auth_token
         self.client = httpx.Client(timeout=timeout, transport=transport)
 
+    def __enter__(self) -> "DirectumClient":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self.client.close()
+
     def build_url(self, entity_set: str) -> str:
         return f"{self.base_url}/{entity_set.lstrip('/')}"
 
@@ -46,7 +61,7 @@ class DirectumClient:
             top=top,
             count=count,
         )
-        return data.get("value", [])
+        return data["value"]
 
     def get_collection(self, entity_set: str, **kwargs: Any) -> dict[str, Any]:
         url = self.build_url(entity_set)
@@ -57,7 +72,8 @@ class DirectumClient:
             url,
             headers=self._headers(),
         )
-        return self._json_or_error(response)
+        data = self._json_or_error(response)
+        return self._collection_or_error(data, response.status_code)
 
     def get_one(self, entity_path: str) -> dict[str, Any]:
         response = self.client.get(self.build_url(entity_path), headers=self._headers())
@@ -98,10 +114,15 @@ class DirectumClient:
     def _json_or_error(self, response: httpx.Response) -> dict[str, Any]:
         if response.status_code >= 400:
             raise DirectumError(
-                safe_message=f"Directum OData request failed: {response.status_code} {response.text[:200]}",
+                safe_message=f"Directum OData request failed with status {response.status_code}",
                 status_code=response.status_code,
             )
         try:
             return response.json()
         except ValueError as exc:
             raise DirectumError("Directum returned a non-JSON response", response.status_code) from exc
+
+    def _collection_or_error(self, data: Any, status_code: int) -> dict[str, Any]:
+        if not isinstance(data, dict) or not isinstance(data.get("value"), list):
+            raise DirectumError("Directum returned an unexpected collection response", status_code)
+        return data
