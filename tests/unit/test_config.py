@@ -3,10 +3,6 @@ from src.config import Settings
 
 def test_ollama_profile_uses_openai_compatible_defaults():
     settings = Settings(
-        LLM_PROVIDER="ollama",
-        OPENAI_BASE_URL="http://localhost:11434/v1",
-        OPENAI_API_KEY="ollama",
-        OPENAI_MODEL="qwen3:8b",
         DIRECTUM_BASE_URL="https://rx.example/Integration/odata",
         DIRECTUM_AUTH_TOKEN="Basic secret-token",
     )
