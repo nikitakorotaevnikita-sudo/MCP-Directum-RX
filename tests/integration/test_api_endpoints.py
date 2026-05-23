@@ -51,6 +51,13 @@ def test_chat_endpoint_uses_fake_llm_in_testing(tmp_path):
     assert response.text == "Test LLM response"
 
 
+def test_testing_apps_without_explicit_metrics_path_use_unique_databases():
+    first_app = create_app(testing=True)
+    second_app = create_app(testing=True)
+
+    assert first_app.state.settings.METRICS_DB_PATH != second_app.state.settings.METRICS_DB_PATH
+
+
 def test_directum_errors_return_safe_json(tmp_path):
     client = make_test_client(tmp_path)
 

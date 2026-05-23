@@ -161,7 +161,11 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
 
 
 def _test_settings(metrics_db_path: str | None = None) -> Settings:
-    db_path = Path(metrics_db_path) if metrics_db_path else Path(tempfile.gettempdir()) / "mcp_directum_rx_test_metrics.db"
+    db_path = (
+        Path(metrics_db_path)
+        if metrics_db_path
+        else Path(tempfile.mkdtemp(prefix="mcp_directum_rx_test_")) / "metrics.db"
+    )
     return Settings(
         OPENAI_API_KEY="test-key",
         OPENAI_BASE_URL="http://localhost:11434/v1",
