@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import time
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,7 @@ class MetricsStorage:
 
     def initialize(self) -> None:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS events (
@@ -45,7 +46,7 @@ class MetricsStorage:
         self._insert("feedback", rating, True, None, {"rating": rating})
 
     def summary(self) -> dict[str, Any]:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn:
             rows = conn.execute(
                 "SELECT type, name, success, duration_ms, payload, ts FROM events ORDER BY id DESC"
             ).fetchall()
@@ -86,7 +87,7 @@ class MetricsStorage:
         duration_ms: int | None,
         payload: dict[str, Any],
     ) -> None:
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "INSERT INTO events (ts, type, name, success, duration_ms, payload) VALUES (?, ?, ?, ?, ?, ?)",
                 (time.time(), type_, name, int(success), duration_ms, json.dumps(payload, ensure_ascii=False)),

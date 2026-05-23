@@ -28,3 +28,15 @@ def test_metrics_storage_records_create_preview_and_confirm(tmp_path):
 
     assert summary["action_item_previews"] == 1
     assert summary["action_item_confirmed"] == 1
+
+
+def test_metrics_storage_closes_connections_after_summary(tmp_path):
+    db_path = tmp_path / "metrics.db"
+    storage = MetricsStorage(str(db_path))
+    storage.initialize()
+    storage.record_feedback("positive")
+
+    storage.summary()
+
+    db_path.unlink()
+    assert not db_path.exists()
