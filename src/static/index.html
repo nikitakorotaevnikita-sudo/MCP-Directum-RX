@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Directum RX Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <aside class="sidebar" aria-label="Directum RX">
+    <div class="brand">
+      <p class="eyebrow">Directum RX</p>
+      <h1>Directum RX</h1>
+    </div>
+    <div id="status" class="status">Проверка...</div>
+    <nav class="action-list" aria-label="Разделы Directum">
+      <button type="button" data-action="my">Мои задания</button>
+      <button type="button" data-action="overdue">Просроченные</button>
+      <button type="button" data-action="assigned">Поручения мне</button>
+      <button type="button" data-action="created">Поручения от меня</button>
+      <button type="button" data-action="create">Создать поручение</button>
+    </nav>
+    <section class="result-section" aria-label="Результаты Directum">
+      <h2>Результаты</h2>
+      <div id="results" class="result-list"></div>
+    </section>
+  </aside>
+  <main class="chat-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">LLM workspace</p>
+        <h2>Directum RX Assistant</h2>
+      </div>
+      <a class="link-button" href="/backoffice">Backoffice</a>
+    </header>
+    <section id="messages" class="messages" aria-live="polite"></section>
+    <form id="chat-form" class="chat-form">
+      <input id="chat-input" aria-label="Спросите про поручения" autocomplete="off">
+      <button type="submit">Отправить</button>
+    </form>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

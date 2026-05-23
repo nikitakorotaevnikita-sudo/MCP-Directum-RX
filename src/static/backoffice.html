@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backoffice</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="backoffice">
+    <header class="backoffice-header">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h1>Backoffice</h1>
+      </div>
+      <a class="link-button" href="/">Assistant</a>
+    </header>
+    <section class="metrics-grid" aria-label="Product metrics">
+      <article>
+        <h2>Chat requests</h2>
+        <p id="chat-requests">0</p>
+      </article>
+      <article>
+        <h2>Preview</h2>
+        <p id="previews">0</p>
+      </article>
+      <article>
+        <h2>Confirmed</h2>
+        <p id="confirmed">0</p>
+      </article>
+      <article>
+        <h2>Errors</h2>
+        <p id="errors">0</p>
+      </article>
+    </section>
+    <section class="tool-section">
+      <h2>Tool calls</h2>
+      <div id="tool-calls" class="result-list"></div>
+    </section>
+  </main>
+  <script src="/static/backoffice.js"></script>
+</body>
+</html>
