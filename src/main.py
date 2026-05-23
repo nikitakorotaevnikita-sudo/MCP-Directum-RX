@@ -1,19 +1,19 @@
 import tempfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import ValidationError
 
 from src.config import Settings, get_settings
 from src.models.schemas import ActionItemCreateRequest, ChatRequest
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
-from src.services.directum_client import DirectumClient
+from src.services.directum_client import DirectumClient, DirectumError
 from src.services.llm_service import LLMService
 from src.services.metrics_storage import MetricsStorage
 from src.services.tool_registry import ToolRegistry
@@ -22,15 +22,30 @@ from src.services.tool_registry import ToolRegistry
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-def create_app(testing: bool = False) -> FastAPI:
-    app = FastAPI(title="MCP Directum RX")
+def create_app(testing: bool = False, metrics_db_path: str | None = None) -> FastAPI:
+    settings = _test_settings(metrics_db_path) if testing else get_settings()
+    services = build_services(settings, testing=testing)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        directum = app.state.services.get("directum")
+        if directum is not None and hasattr(directum, "close"):
+            directum.close()
+
+    app = FastAPI(title="MCP Directum RX", lifespan=lifespan)
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-    settings = _test_settings() if testing else get_settings()
-    services = build_services(settings, testing=testing)
     app.state.settings = settings
     app.state.services = services
+
+    @app.exception_handler(DirectumError)
+    def directum_error_handler(request: Request, exc: DirectumError):
+        return JSONResponse(
+            status_code=exc.status_code or 502,
+            content={"detail": exc.safe_message},
+        )
 
     @app.get("/")
     def index():
@@ -123,14 +138,17 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     metrics = MetricsStorage(settings.METRICS_DB_PATH)
     metrics.initialize()
     registry = ToolRegistry(current_user, assignments, action_items)
-    llm = LLMService(
-        settings.LLM_PROVIDER,
-        settings.openai_base_url,
-        settings.openai_api_key,
-        settings.openai_model,
-        settings.LLM_TOOL_CALLING,
-        registry,
-    )
+    if testing:
+        llm = _FakeLLMService()
+    else:
+        llm = LLMService(
+            settings.LLM_PROVIDER,
+            settings.openai_base_url,
+            settings.openai_api_key,
+            settings.openai_model,
+            settings.LLM_TOOL_CALLING,
+            registry,
+        )
     return {
         "directum": client,
         "current_user": current_user,
@@ -142,8 +160,8 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     }
 
 
-def _test_settings() -> Settings:
-    db_path = Path(tempfile.gettempdir()) / "mcp_directum_rx_test_metrics.db"
+def _test_settings(metrics_db_path: str | None = None) -> Settings:
+    db_path = Path(metrics_db_path) if metrics_db_path else Path(tempfile.gettempdir()) / "mcp_directum_rx_test_metrics.db"
     return Settings(
         OPENAI_API_KEY="test-key",
         OPENAI_BASE_URL="http://localhost:11434/v1",
@@ -152,6 +170,19 @@ def _test_settings() -> Settings:
         DIRECTUM_AUTH_TOKEN="Basic bnRfd29ya1xcdXNlcjpwYXNz",
         METRICS_DB_PATH=str(db_path),
     )
+
+
+class _FakeLLMService:
+    def status(self) -> dict[str, str]:
+        return {
+            "provider": "test",
+            "base_url": "test://local",
+            "model": "test-model",
+            "tool_calling": "disabled",
+        }
+
+    def stream_chat(self, message: str, history: list[dict[str, str]]):
+        yield "Test LLM response"
 
 
 def _mock_transport() -> httpx.MockTransport:
@@ -168,7 +199,14 @@ def _mock_transport() -> httpx.MockTransport:
     return httpx.MockTransport(handler)
 
 
-try:
-    app = create_app()
-except ValidationError:
-    app = create_app(testing=True)
+class _ProductionApp:
+    def __init__(self):
+        self._app: FastAPI | None = None
+
+    async def __call__(self, scope, receive, send):
+        if self._app is None:
+            self._app = create_app()
+        await self._app(scope, receive, send)
+
+
+app = _ProductionApp()
