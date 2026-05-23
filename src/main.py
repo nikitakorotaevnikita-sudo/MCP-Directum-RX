@@ -9,10 +9,17 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from fastapi.staticfiles import StaticFiles
 
 from src.config import Settings, get_settings
-from src.models.schemas import ActionItemCreateRequest, ChatRequest
+from src.models.schemas import (
+    ActionItemCreateRequest,
+    ChatRequest,
+    DirectumConnectionRequest,
+    DirectumConnectionStatus,
+    DirectumUser,
+)
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
+from src.services.directum_connection import build_basic_auth_token
 from src.services.directum_client import DirectumClient, DirectumError
 from src.services.llm_service import LLMService
 from src.services.metrics_storage import MetricsStorage
@@ -39,6 +46,13 @@ def create_app(testing: bool = False, metrics_db_path: str | None = None) -> Fas
 
     app.state.settings = settings
     app.state.services = services
+    app.state.testing = testing
+
+    def current_settings() -> Settings:
+        return app.state.settings
+
+    def current_services() -> dict[str, Any]:
+        return app.state.services
 
     @app.exception_handler(DirectumError)
     def directum_error_handler(request: Request, exc: DirectumError):
@@ -63,64 +77,146 @@ def create_app(testing: bool = False, metrics_db_path: str | None = None) -> Fas
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "llm": services["llm"].status()}
+        return {"status": "ok", "llm": current_services()["llm"].status()}
 
     @app.get("/api/diagnostics/config")
     def config():
-        return settings.public_config()
+        return current_settings().public_config()
 
     @app.get("/api/diagnostics/current-user")
     def current_user():
-        return services["current_user"].get_current_user()
+        return current_services()["current_user"].get_current_user()
 
     @app.get("/api/diagnostics/odata")
     def odata():
-        return {"status": "configured", "base_url": settings.directum_base_url}
+        return {"status": "configured", "base_url": current_settings().directum_base_url}
+
+    @app.get("/api/directum/connection/status", response_model=DirectumConnectionStatus)
+    def directum_connection_status():
+        return _directum_connection_status(current_settings())
+
+    @app.post("/api/directum/connection/test", response_model=DirectumConnectionStatus)
+    def directum_connection_test(request: DirectumConnectionRequest):
+        return _test_directum_connection(current_settings(), request, app.state.testing)
+
+    @app.post("/api/directum/connection/apply", response_model=DirectumConnectionStatus)
+    def directum_connection_apply(request: DirectumConnectionRequest):
+        new_settings = _settings_with_directum_connection(current_settings(), request)
+        new_services = build_services(new_settings, testing=app.state.testing)
+        try:
+            current_user = new_services["current_user"].get_current_user()
+        except Exception:
+            new_services["directum"].close()
+            raise
+
+        old_directum = current_services().get("directum")
+        app.state.settings = new_settings
+        app.state.services = new_services
+        if old_directum is not None and hasattr(old_directum, "close"):
+            old_directum.close()
+        return _directum_connection_status(new_settings, current_user)
 
     @app.post("/api/chat")
     def chat(request: ChatRequest):
-        services["metrics"].record_chat_request("chat", 0)
+        current_services()["metrics"].record_chat_request("chat", 0)
         return StreamingResponse(
-            services["llm"].stream_chat(request.message, request.history),
+            current_services()["llm"].stream_chat(request.message, request.history),
             media_type="text/plain",
         )
 
     @app.get("/api/directum/assignments/my")
     def my_assignments():
-        return services["assignments"].get_my_assignments()
+        return current_services()["assignments"].get_my_assignments()
 
     @app.get("/api/directum/assignments/overdue")
     def overdue_assignments():
-        return services["assignments"].get_overdue_assignments()
+        return current_services()["assignments"].get_overdue_assignments()
 
     @app.get("/api/directum/action-items/assigned-to-me")
     def assigned_action_items():
-        return services["assignments"].get_action_items_assigned_to_me()
+        return current_services()["assignments"].get_action_items_assigned_to_me()
 
     @app.get("/api/directum/action-items/created-by-me")
     def created_action_items():
-        return services["assignments"].get_action_items_created_by_me()
+        return current_services()["assignments"].get_action_items_created_by_me()
 
     @app.get("/api/directum/employees/search")
     def employee_search(query: str):
-        return services["action_items"].search_employee(query)
+        return current_services()["action_items"].search_employee(query)
 
     @app.post("/api/directum/action-items")
     def create_action_item(request: ActionItemCreateRequest):
-        result = services["action_items"].create_action_item(request)
-        services["metrics"].record_action_item_create("confirmed" if request.confirm else "preview")
+        result = current_services()["action_items"].create_action_item(request)
+        current_services()["metrics"].record_action_item_create("confirmed" if request.confirm else "preview")
         return result
 
     @app.post("/api/feedback")
     def feedback(payload: dict[str, Any]):
-        services["metrics"].record_feedback(str(payload.get("rating", "unknown")))
+        current_services()["metrics"].record_feedback(str(payload.get("rating", "unknown")))
         return {"status": "ok"}
 
     @app.get("/api/metrics")
     def metrics():
-        return services["metrics"].summary()
+        return current_services()["metrics"].summary()
 
     return app
+
+
+def _directum_connection_status(
+    settings: Settings,
+    current_user: DirectumUser | None = None,
+) -> DirectumConnectionStatus:
+    return DirectumConnectionStatus(
+        base_url=settings.directum_base_url,
+        auth_configured=bool(settings.DIRECTUM_AUTH_TOKEN.get_secret_value()),
+        current_user=current_user,
+    )
+
+
+def _test_directum_connection(
+    settings: Settings,
+    request: DirectumConnectionRequest,
+    testing: bool = False,
+) -> DirectumConnectionStatus:
+    token = build_basic_auth_token(request.username, request.password.get_secret_value())
+    client = DirectumClient(
+        request.base_url,
+        token,
+        settings.DIRECTUM_REQUEST_TIMEOUT_SECONDS,
+        transport=_mock_transport() if testing else None,
+    )
+    try:
+        current_user = CurrentUserService(client, token).get_current_user()
+        return DirectumConnectionStatus(
+            base_url=request.base_url,
+            auth_configured=True,
+            current_user=current_user,
+        )
+    finally:
+        client.close()
+
+
+def _settings_with_directum_connection(
+    settings: Settings,
+    request: DirectumConnectionRequest,
+) -> Settings:
+    return Settings(
+        APP_HOST=settings.APP_HOST,
+        APP_PORT=settings.APP_PORT,
+        APP_ENV=settings.APP_ENV,
+        LLM_PROVIDER=settings.LLM_PROVIDER,
+        OPENAI_BASE_URL=settings.OPENAI_BASE_URL,
+        OPENAI_API_KEY=settings.OPENAI_API_KEY,
+        OPENAI_MODEL=settings.OPENAI_MODEL,
+        LLM_TOOL_CALLING=settings.LLM_TOOL_CALLING,
+        DIRECTUM_BASE_URL=request.base_url,
+        DIRECTUM_AUTH_MODE=settings.DIRECTUM_AUTH_MODE,
+        DIRECTUM_AUTH_TOKEN=build_basic_auth_token(request.username, request.password.get_secret_value()),
+        DIRECTUM_REQUEST_TIMEOUT_SECONDS=settings.DIRECTUM_REQUEST_TIMEOUT_SECONDS,
+        BACKOFFICE_USERNAME=settings.BACKOFFICE_USERNAME,
+        BACKOFFICE_PASSWORD=settings.BACKOFFICE_PASSWORD,
+        METRICS_DB_PATH=settings.METRICS_DB_PATH,
+    )
 
 
 def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:

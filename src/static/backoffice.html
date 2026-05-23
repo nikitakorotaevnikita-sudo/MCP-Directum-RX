@@ -15,6 +15,33 @@
       </div>
       <a class="link-button" href="/">Assistant</a>
     </header>
+    <section class="connection-panel" aria-label="Directum RX runtime connection">
+      <div class="section-heading">
+        <h2>Directum RX connection</h2>
+        <p id="rx-status">Loading current connection...</p>
+      </div>
+      <form id="connection-form" class="connection-form">
+        <div class="field">
+          <label for="rx-url">Server URL</label>
+          <input id="rx-url" name="base_url" type="url" autocomplete="url" required>
+        </div>
+
+        <div class="field">
+          <label for="rx-login">Login</label>
+          <input id="rx-login" name="username" autocomplete="username" required>
+        </div>
+
+        <div class="field">
+          <label for="rx-password">Password</label>
+          <input id="rx-password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+
+        <div class="button-row">
+          <button type="button" id="rx-test">Проверить</button>
+          <button type="submit">Применить</button>
+        </div>
+      </form>
+    </section>
     <section class="metrics-grid" aria-label="Product metrics">
       <article>
         <h2>Chat requests</h2>

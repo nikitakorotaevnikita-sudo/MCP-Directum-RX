@@ -25,6 +25,83 @@ def test_config_diagnostics_masks_secrets(tmp_path):
     assert "secret" not in str(data).lower()
 
 
+def test_directum_connection_status_masks_credentials(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.get("/api/directum/connection/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "base_url": "https://rx.example/Integration/odata",
+        "auth_configured": True,
+        "current_user": None,
+    }
+    assert "bnRfd29ya" not in str(data)
+    assert "pass" not in str(data).lower()
+
+
+def test_directum_connection_test_checks_current_user_without_leaking_password(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.post(
+        "/api/directum/connection/test",
+        json={
+            "base_url": "https://custom.example/Integration/odata",
+            "username": "nt_work\\user",
+            "password": "new-secret",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["base_url"] == "https://custom.example/Integration/odata"
+    assert data["auth_configured"] is True
+    assert data["current_user"]["id"] == 1165
+    assert "new-secret" not in response.text
+    assert "Authorization" not in response.text
+
+
+def test_directum_connection_apply_updates_runtime_settings_only(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.post(
+        "/api/directum/connection/apply",
+        json={
+            "base_url": "https://runtime.example/Integration/odata/",
+            "username": "nt_work\\runtime",
+            "password": "runtime-secret",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["base_url"] == "https://runtime.example/Integration/odata"
+    assert data["auth_configured"] is True
+    assert data["current_user"]["name"] == "Test User"
+    assert client.app.state.settings.directum_base_url == "https://runtime.example/Integration/odata"
+    assert "runtime-secret" not in response.text
+    assert "Authorization" not in response.text
+
+
+def test_directum_connection_apply_rewires_directum_endpoints(tmp_path):
+    client = make_test_client(tmp_path)
+
+    apply_response = client.post(
+        "/api/directum/connection/apply",
+        json={
+            "base_url": "https://rewired.example/Integration/odata",
+            "username": "nt_work\\runtime",
+            "password": "runtime-secret",
+        },
+    )
+    assignments_response = client.get("/api/directum/assignments/my")
+
+    assert apply_response.status_code == 200
+    assert assignments_response.status_code == 200
+    assert assignments_response.json()[0]["id"] == 1
+
+
 def test_action_item_preview_endpoint_does_not_create(tmp_path):
     client = make_test_client(tmp_path)
 
