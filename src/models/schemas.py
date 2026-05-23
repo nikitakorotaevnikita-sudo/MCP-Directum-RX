@@ -32,6 +32,39 @@ class DirectumConnectionStatus(BaseModel):
     current_user: DirectumUser | None = None
 
 
+class LLMConnectionRequest(BaseModel):
+    provider: Literal["ario", "openai-compatible", "ollama"]
+    base_url: str = Field(min_length=1)
+    api_key: SecretStr | None = Field(default=None, repr=False)
+    model: str = Field(min_length=1)
+    tool_calling: Literal["auto", "enabled", "disabled"] = "auto"
+
+    @field_validator("base_url", "model")
+    @classmethod
+    def strip_non_empty(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("value must not be empty")
+        if cleaned.startswith("http"):
+            cleaned = cleaned.rstrip("/")
+        return cleaned
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def empty_api_key_keeps_existing(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+
+class LLMConnectionStatus(BaseModel):
+    provider: str
+    base_url: str
+    model: str
+    tool_calling: str
+    api_key_configured: bool
+
+
 class AssignmentSummary(BaseModel):
     id: int
     subject: str

@@ -7,6 +7,8 @@ from .schemas import (
     DirectumConnectionStatus,
     DirectumUser,
     EmployeeSummary,
+    LLMConnectionRequest,
+    LLMConnectionStatus,
     ToolCallRecord,
 )
 
@@ -19,5 +21,7 @@ __all__ = [
     "DirectumConnectionStatus",
     "DirectumUser",
     "EmployeeSummary",
+    "LLMConnectionRequest",
+    "LLMConnectionStatus",
     "ToolCallRecord",
 ]

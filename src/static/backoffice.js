@@ -1,47 +1,98 @@
-const statusEl = document.querySelector("#rx-status");
-const form = document.querySelector("#connection-form");
-const urlInput = document.querySelector("#rx-url");
-const loginInput = document.querySelector("#rx-login");
-const passwordInput = document.querySelector("#rx-password");
-const testButton = document.querySelector("#rx-test");
+const rxStatusEl = document.querySelector("#rx-status");
+const rxForm = document.querySelector("#connection-form");
+const rxUrlInput = document.querySelector("#rx-url");
+const rxLoginInput = document.querySelector("#rx-login");
+const rxPasswordInput = document.querySelector("#rx-password");
+const rxTestButton = document.querySelector("#rx-test");
 
-function connectionPayload() {
+const llmStatusEl = document.querySelector("#llm-status");
+const llmForm = document.querySelector("#llm-form");
+const llmProviderInput = document.querySelector("#llm-provider");
+const llmBaseUrlInput = document.querySelector("#llm-base-url");
+const llmApiKeyInput = document.querySelector("#llm-api-key");
+const llmModelInput = document.querySelector("#llm-model");
+const llmToolCallingInput = document.querySelector("#llm-tool-calling");
+const llmTestButton = document.querySelector("#llm-test");
+
+function rxConnectionPayload() {
   return {
-    base_url: urlInput.value.trim(),
-    username: loginInput.value.trim(),
-    password: passwordInput.value,
+    base_url: rxUrlInput.value.trim(),
+    username: rxLoginInput.value.trim(),
+    password: rxPasswordInput.value,
   };
 }
 
-function describeConnection(data, prefix) {
-  const user = data.current_user ? ` User: ${data.current_user.name}.` : "";
-  statusEl.textContent = `${prefix}: ${data.base_url}.${user}`;
+function llmConnectionPayload() {
+  return {
+    provider: llmProviderInput.value,
+    base_url: llmBaseUrlInput.value.trim(),
+    api_key: llmApiKeyInput.value,
+    model: llmModelInput.value.trim(),
+    tool_calling: llmToolCallingInput.value,
+  };
 }
 
-async function loadConnectionStatus() {
+function describeRxConnection(data, prefix) {
+  const user = data.current_user ? ` User: ${data.current_user.name}.` : "";
+  rxStatusEl.textContent = `${prefix}: ${data.base_url}.${user}`;
+}
+
+function describeLlmConnection(data, prefix) {
+  llmStatusEl.textContent = `${prefix}: ${data.provider} / ${data.model} / ${data.base_url}.`;
+}
+
+async function loadRxConnectionStatus() {
   const response = await fetch("/api/directum/connection/status");
   const data = await response.json();
-  urlInput.value = data.base_url || "";
-  statusEl.textContent = data.auth_configured
+  rxUrlInput.value = data.base_url || "";
+  rxStatusEl.textContent = data.auth_configured
     ? `Configured: ${data.base_url}.`
     : "Directum RX connection is not configured.";
 }
 
-async function postConnection(url, prefix) {
-  statusEl.textContent = "Checking Directum RX connection...";
+async function loadLlmConnectionStatus() {
+  const response = await fetch("/api/llm/connection/status");
+  const data = await response.json();
+  llmProviderInput.value = data.provider;
+  llmBaseUrlInput.value = data.base_url || "";
+  llmModelInput.value = data.model || "";
+  llmToolCallingInput.value = data.tool_calling || "auto";
+  describeLlmConnection(data, data.api_key_configured ? "Configured" : "Configured without API key");
+}
+
+async function postRxConnection(url, prefix) {
+  rxStatusEl.textContent = "Checking Directum RX connection...";
   const response = await fetch(url, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(connectionPayload()),
+    body: JSON.stringify(rxConnectionPayload()),
   });
   const data = await response.json();
   if (!response.ok) {
-    statusEl.textContent = data.detail || "Connection check failed.";
+    rxStatusEl.textContent = data.detail || "Connection check failed.";
     return;
   }
-  describeConnection(data, prefix);
+  describeRxConnection(data, prefix);
   if (url.endsWith("/apply")) {
-    passwordInput.value = "";
+    rxPasswordInput.value = "";
+  }
+}
+
+async function postLlmConnection(url, prefix) {
+  llmStatusEl.textContent = "Checking LLM connection...";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(llmConnectionPayload()),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    llmStatusEl.textContent = data.detail || "LLM check failed.";
+    return;
+  }
+  describeLlmConnection(data, prefix);
+  if (url.endsWith("/apply")) {
+    llmApiKeyInput.value = "";
   }
 }
 
@@ -63,14 +114,24 @@ async function loadMetrics() {
   });
 }
 
-testButton.addEventListener("click", () => {
-  postConnection("/api/directum/connection/test", "Connection ok");
+rxTestButton.addEventListener("click", () => {
+  postRxConnection("/api/directum/connection/test", "Connection ok");
 });
 
-form.addEventListener("submit", (event) => {
+rxForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  postConnection("/api/directum/connection/apply", "Applied");
+  postRxConnection("/api/directum/connection/apply", "Applied");
 });
 
-loadConnectionStatus();
+llmTestButton.addEventListener("click", () => {
+  postLlmConnection("/api/llm/connection/test", "Connection ok");
+});
+
+llmForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  postLlmConnection("/api/llm/connection/apply", "Applied");
+});
+
+loadLlmConnectionStatus();
+loadRxConnectionStatus();
 loadMetrics();

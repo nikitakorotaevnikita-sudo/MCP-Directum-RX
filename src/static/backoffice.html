@@ -15,6 +15,51 @@
       </div>
       <a class="link-button" href="/">Assistant</a>
     </header>
+    <section class="connection-panel" aria-label="LLM runtime connection">
+      <div class="section-heading">
+        <h2>LLM connection</h2>
+        <p id="llm-status">Loading current model...</p>
+      </div>
+      <form id="llm-form" class="connection-form llm-form">
+        <div class="field">
+          <label for="llm-provider">LLM provider</label>
+          <select id="llm-provider" name="provider" required>
+            <option value="ollama">Ollama</option>
+            <option value="openai-compatible">OpenAI compatible</option>
+            <option value="ario">Ario</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="llm-base-url">LLM base URL</label>
+          <input id="llm-base-url" name="base_url" type="url" autocomplete="url" required>
+        </div>
+
+        <div class="field">
+          <label for="llm-api-key">LLM API key</label>
+          <input id="llm-api-key" name="api_key" type="password" autocomplete="off" placeholder="Keep current">
+        </div>
+
+        <div class="field">
+          <label for="llm-model">LLM model</label>
+          <input id="llm-model" name="model" required>
+        </div>
+
+        <div class="field">
+          <label for="llm-tool-calling">Tool calling</label>
+          <select id="llm-tool-calling" name="tool_calling" required>
+            <option value="auto">Auto</option>
+            <option value="enabled">Enabled</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </div>
+
+        <div class="button-row">
+          <button type="button" id="llm-test">Проверить</button>
+          <button type="submit">Применить</button>
+        </div>
+      </form>
+    </section>
     <section class="connection-panel" aria-label="Directum RX runtime connection">
       <div class="section-heading">
         <h2>Directum RX connection</h2>

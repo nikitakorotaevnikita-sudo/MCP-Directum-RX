@@ -235,6 +235,10 @@ body {
   align-items: end;
 }
 
+.llm-form {
+  grid-template-columns: minmax(125px, .55fr) minmax(190px, 1fr) minmax(150px, .7fr) minmax(150px, .7fr) minmax(135px, .65fr) auto;
+}
+
 .field {
   display: grid;
   gap: 5px;
@@ -246,13 +250,15 @@ body {
   font-weight: 650;
 }
 
-.connection-form input {
+.connection-form input,
+.connection-form select {
   width: 100%;
   min-width: 0;
   min-height: 40px;
   padding: 9px 10px;
   border: 1px solid #c8d2df;
   border-radius: 7px;
+  background: #ffffff;
   font: inherit;
 }
 

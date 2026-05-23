@@ -15,6 +15,8 @@ from src.models.schemas import (
     DirectumConnectionRequest,
     DirectumConnectionStatus,
     DirectumUser,
+    LLMConnectionRequest,
+    LLMConnectionStatus,
 )
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
@@ -115,6 +117,26 @@ def create_app(testing: bool = False, metrics_db_path: str | None = None) -> Fas
         if old_directum is not None and hasattr(old_directum, "close"):
             old_directum.close()
         return _directum_connection_status(new_settings, current_user)
+
+    @app.get("/api/llm/connection/status", response_model=LLMConnectionStatus)
+    def llm_connection_status():
+        return _llm_connection_status(current_settings())
+
+    @app.post("/api/llm/connection/test", response_model=LLMConnectionStatus)
+    def llm_connection_test(request: LLMConnectionRequest):
+        new_settings = _settings_with_llm_connection(current_settings(), request)
+        return _llm_connection_status(new_settings)
+
+    @app.post("/api/llm/connection/apply", response_model=LLMConnectionStatus)
+    def llm_connection_apply(request: LLMConnectionRequest):
+        new_settings = _settings_with_llm_connection(current_settings(), request)
+        current_services()["llm"] = build_llm_service(
+            new_settings,
+            current_services()["registry"],
+            testing=app.state.testing,
+        )
+        app.state.settings = new_settings
+        return _llm_connection_status(new_settings)
 
     @app.post("/api/chat")
     def chat(request: ChatRequest):
@@ -219,6 +241,58 @@ def _settings_with_directum_connection(
     )
 
 
+def _llm_connection_status(settings: Settings) -> LLMConnectionStatus:
+    return LLMConnectionStatus(
+        provider=settings.LLM_PROVIDER,
+        base_url=settings.openai_base_url,
+        model=settings.OPENAI_MODEL,
+        tool_calling=settings.LLM_TOOL_CALLING,
+        api_key_configured=bool(settings.OPENAI_API_KEY.get_secret_value()),
+    )
+
+
+def _settings_with_llm_connection(
+    settings: Settings,
+    request: LLMConnectionRequest,
+) -> Settings:
+    api_key = request.api_key.get_secret_value() if request.api_key else settings.OPENAI_API_KEY
+    return Settings(
+        APP_HOST=settings.APP_HOST,
+        APP_PORT=settings.APP_PORT,
+        APP_ENV=settings.APP_ENV,
+        LLM_PROVIDER=request.provider,
+        OPENAI_BASE_URL=request.base_url,
+        OPENAI_API_KEY=api_key,
+        OPENAI_MODEL=request.model,
+        LLM_TOOL_CALLING=request.tool_calling,
+        DIRECTUM_BASE_URL=settings.DIRECTUM_BASE_URL,
+        DIRECTUM_AUTH_MODE=settings.DIRECTUM_AUTH_MODE,
+        DIRECTUM_AUTH_TOKEN=settings.DIRECTUM_AUTH_TOKEN,
+        DIRECTUM_REQUEST_TIMEOUT_SECONDS=settings.DIRECTUM_REQUEST_TIMEOUT_SECONDS,
+        BACKOFFICE_USERNAME=settings.BACKOFFICE_USERNAME,
+        BACKOFFICE_PASSWORD=settings.BACKOFFICE_PASSWORD,
+        METRICS_DB_PATH=settings.METRICS_DB_PATH,
+    )
+
+
+def build_llm_service(settings: Settings, registry: ToolRegistry, testing: bool = False) -> Any:
+    if testing:
+        return _FakeLLMService(
+            settings.LLM_PROVIDER,
+            settings.openai_base_url,
+            settings.openai_model,
+            settings.LLM_TOOL_CALLING,
+        )
+    return LLMService(
+        settings.LLM_PROVIDER,
+        settings.openai_base_url,
+        settings.openai_api_key,
+        settings.openai_model,
+        settings.LLM_TOOL_CALLING,
+        registry,
+    )
+
+
 def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     transport = _mock_transport() if testing else None
     auth_token = settings.directum_headers()["Authorization"]
@@ -234,17 +308,7 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     metrics = MetricsStorage(settings.METRICS_DB_PATH)
     metrics.initialize()
     registry = ToolRegistry(current_user, assignments, action_items)
-    if testing:
-        llm = _FakeLLMService()
-    else:
-        llm = LLMService(
-            settings.LLM_PROVIDER,
-            settings.openai_base_url,
-            settings.openai_api_key,
-            settings.openai_model,
-            settings.LLM_TOOL_CALLING,
-            registry,
-        )
+    llm = build_llm_service(settings, registry, testing=testing)
     return {
         "directum": client,
         "current_user": current_user,
@@ -273,12 +337,18 @@ def _test_settings(metrics_db_path: str | None = None) -> Settings:
 
 
 class _FakeLLMService:
+    def __init__(self, provider: str, base_url: str, model: str, tool_calling: str):
+        self.provider = provider
+        self.base_url = base_url
+        self.model = model
+        self.tool_calling = tool_calling
+
     def status(self) -> dict[str, str]:
         return {
-            "provider": "test",
-            "base_url": "test://local",
-            "model": "test-model",
-            "tool_calling": "disabled",
+            "provider": self.provider,
+            "base_url": self.base_url,
+            "model": self.model,
+            "tool_calling": self.tool_calling,
         }
 
     def stream_chat(self, message: str, history: list[dict[str, str]]):

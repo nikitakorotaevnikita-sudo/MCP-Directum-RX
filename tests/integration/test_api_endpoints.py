@@ -102,6 +102,72 @@ def test_directum_connection_apply_rewires_directum_endpoints(tmp_path):
     assert assignments_response.json()[0]["id"] == 1
 
 
+def test_llm_connection_status_masks_api_key(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.get("/api/llm/connection/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {
+        "provider": "ollama",
+        "base_url": "http://localhost:11434/v1",
+        "model": "qwen3:8b",
+        "tool_calling": "auto",
+        "api_key_configured": True,
+    }
+    assert "test-key" not in response.text
+
+
+def test_llm_connection_test_does_not_update_runtime_settings_or_leak_key(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.post(
+        "/api/llm/connection/test",
+        json={
+            "provider": "ollama",
+            "base_url": "http://localhost:11434/v1",
+            "api_key": "new-secret",
+            "model": "llama3.1:8b",
+            "tool_calling": "disabled",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "llama3.1:8b"
+    assert data["api_key_configured"] is True
+    assert client.app.state.settings.OPENAI_MODEL == "qwen3:8b"
+    assert "new-secret" not in response.text
+
+
+def test_llm_connection_apply_updates_health_and_chat_runtime(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.post(
+        "/api/llm/connection/apply",
+        json={
+            "provider": "ollama",
+            "base_url": "http://localhost:11434/v1/",
+            "api_key": "runtime-secret",
+            "model": "phi3:mini",
+            "tool_calling": "disabled",
+        },
+    )
+    health_response = client.get("/health")
+    chat_response = client.post("/api/chat", json={"message": "Hello", "history": []})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["base_url"] == "http://localhost:11434/v1"
+    assert data["model"] == "phi3:mini"
+    assert data["tool_calling"] == "disabled"
+    assert client.app.state.settings.OPENAI_MODEL == "phi3:mini"
+    assert health_response.json()["llm"]["model"] == "phi3:mini"
+    assert chat_response.text == "Test LLM response"
+    assert "runtime-secret" not in response.text
+
+
 def test_action_item_preview_endpoint_does_not_create(tmp_path):
     client = make_test_client(tmp_path)
 
