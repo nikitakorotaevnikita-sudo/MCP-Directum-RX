@@ -1,7 +1,7 @@
 from typing import Any
 
 from src.models.schemas import ActionItemCreateRequest, ActionItemCreateResult, EmployeeSummary
-from src.services.directum_client import DirectumClient
+from src.services.directum_client import DirectumClient, DirectumError
 
 
 class ActionItemService:
@@ -9,7 +9,11 @@ class ActionItemService:
         self.client = client
 
     def search_employee(self, query: str, top: int = 10) -> list[EmployeeSummary]:
-        escaped_query = query.strip().replace("'", "''")
+        cleaned = query.strip()
+        if not cleaned:
+            return []
+
+        escaped_query = cleaned.replace("'", "''")
         rows = self.client.query(
             "IEmployees",
             filter_=f"contains(Name,'{escaped_query}') and Status eq 'Active'",
@@ -37,11 +41,12 @@ class ActionItemService:
             )
 
         response = self.client.post("IActionItemExecutionTasks", payload)
+        directum_id = self._directum_id(response)
         return ActionItemCreateResult(
             mode="created",
             payload=payload,
             success=True,
-            directum_id=int(response["Id"]) if response.get("Id") is not None else None,
+            directum_id=directum_id,
             message="Action item created.",
         )
 
@@ -53,5 +58,15 @@ class ActionItemService:
             "ExecutionState": "OnExecution",
         }
         if request.deadline is not None:
+            if request.deadline.tzinfo is None or request.deadline.utcoffset() is None:
+                raise DirectumError("Action item deadline must include timezone")
             payload["Deadline"] = request.deadline.isoformat()
         return payload
+
+    def _directum_id(self, response: dict[str, Any]) -> int:
+        raw_id = response.get("Id")
+        if isinstance(raw_id, int):
+            return raw_id
+        if isinstance(raw_id, str) and raw_id.isdecimal():
+            return int(raw_id)
+        raise DirectumError("Directum returned an invalid action item id")

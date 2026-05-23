@@ -2,12 +2,13 @@ from datetime import datetime, timezone
 
 from src.models.schemas import ActionItemCreateRequest, ToolCallRecord
 from src.services.action_items import ActionItemService
+from src.services.directum_client import DirectumError
 
 
 class FakeClient:
     def __init__(self, query_rows=None, post_response=None):
-        self.query_rows = query_rows or []
-        self.post_response = post_response or {"Id": 123}
+        self.query_rows = [] if query_rows is None else query_rows
+        self.post_response = {"Id": 123} if post_response is None else post_response
         self.query_calls = []
         self.post_calls = []
 
@@ -133,6 +134,94 @@ def test_create_action_item_confirm_posts_to_directum():
     assert result.directum_id == 987
 
 
+def test_create_action_item_confirm_accepts_numeric_string_id():
+    client = FakeClient(post_response={"Id": "987"})
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        confirm=True,
+    )
+
+    result = service.create_action_item(request)
+
+    assert result.directum_id == 987
+
+
+def test_create_action_item_confirm_rejects_missing_id():
+    client = FakeClient(post_response={})
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        confirm=True,
+    )
+
+    try:
+        service.create_action_item(request)
+    except DirectumError as exc:
+        assert exc.safe_message == "Directum returned an invalid action item id"
+    else:
+        raise AssertionError("missing action item id was accepted")
+
+
+def test_create_action_item_confirm_rejects_invalid_id():
+    client = FakeClient(post_response={"Id": "abc"})
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        confirm=True,
+    )
+
+    try:
+        service.create_action_item(request)
+    except DirectumError as exc:
+        assert exc.safe_message == "Directum returned an invalid action item id"
+    else:
+        raise AssertionError("invalid action item id was accepted")
+
+
+def test_create_action_item_includes_aware_utc_deadline_in_payload():
+    client = FakeClient()
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        deadline=datetime(2026, 6, 1, 12, 30, tzinfo=timezone.utc),
+        confirm=True,
+    )
+
+    service.create_action_item(request)
+
+    assert client.post_calls[0][1]["Deadline"] == "2026-06-01T12:30:00+00:00"
+
+
+def test_create_action_item_rejects_naive_deadline_before_post():
+    client = FakeClient()
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        deadline=datetime(2026, 6, 1, 12, 30),
+        confirm=True,
+    )
+
+    try:
+        service.create_action_item(request)
+    except DirectumError as exc:
+        assert exc.safe_message == "Action item deadline must include timezone"
+    else:
+        raise AssertionError("naive deadline was accepted")
+
+    assert client.post_calls == []
+
+
 def test_search_employee_uses_contains_name_filter():
     client = FakeClient(
         query_rows=[
@@ -156,3 +245,13 @@ def test_search_employee_uses_contains_name_filter():
     ]
     assert [employee.id for employee in result] == [42, 43]
     assert [employee.name for employee in result] == ["O'Connor Alice", "Connor Bob"]
+
+
+def test_search_employee_returns_empty_without_query_for_whitespace():
+    client = FakeClient(query_rows=[{"Id": 42, "Name": "Alice", "Status": "Active"}])
+    service = ActionItemService(client)
+
+    result = service.search_employee("   ")
+
+    assert result == []
+    assert client.query_calls == []
