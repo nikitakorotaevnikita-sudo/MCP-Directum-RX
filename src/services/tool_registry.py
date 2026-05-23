@@ -1,5 +1,7 @@
 from typing import Any, Callable
 
+from pydantic import ValidationError
+
 from src.models.schemas import ActionItemCreateRequest
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
@@ -23,7 +25,11 @@ class ToolRegistry:
             "get_action_items_assigned_to_me": lambda args: self.assignments_service.get_action_items_assigned_to_me(),
             "get_action_items_created_by_me": lambda args: self.assignments_service.get_action_items_created_by_me(),
             "search_employee": lambda args: self.action_item_service.search_employee(args["query"]),
-            "create_action_item": lambda args: self.action_item_service.create_action_item(ActionItemCreateRequest(**args)),
+            "create_action_item": self._create_action_item,
+        }
+        self._required_arguments: dict[str, list[str]] = {
+            "search_employee": ["query"],
+            "create_action_item": ["subject", "performer_id", "action_text"],
         }
 
     def openai_tools(self) -> list[dict[str, Any]]:
@@ -47,7 +53,6 @@ class ToolRegistry:
                     "performer_id": {"type": "integer"},
                     "action_text": {"type": "string"},
                     "deadline": {"type": "string"},
-                    "confirm": {"type": "boolean"},
                 },
                 required=["subject", "performer_id", "action_text"],
             ),
@@ -55,13 +60,31 @@ class ToolRegistry:
 
     def call(self, name: str, arguments: dict[str, Any]) -> Any:
         if name not in self._handlers:
-            raise KeyError(f"Unknown tool: {name}")
+            raise ValueError(f"Unknown tool: {name}")
+        if not isinstance(arguments, dict):
+            raise ValueError(f"Tool '{name}' arguments must be an object")
+        self._validate_required_arguments(name, arguments)
         result = self._handlers[name](arguments)
         if hasattr(result, "model_dump"):
             return result.model_dump(mode="json")
         if isinstance(result, list):
             return [item.model_dump(mode="json") if hasattr(item, "model_dump") else item for item in result]
         return result
+
+    def _create_action_item(self, arguments: dict[str, Any]) -> Any:
+        if arguments.get("confirm") is True:
+            raise ValueError("Tool 'create_action_item' cannot confirm creation directly; use preview mode first")
+        safe_arguments = {**arguments, "confirm": False}
+        try:
+            request = ActionItemCreateRequest(**safe_arguments)
+        except ValidationError as exc:
+            raise ValueError(f"Tool 'create_action_item' invalid arguments: {exc}") from exc
+        return self.action_item_service.create_action_item(request)
+
+    def _validate_required_arguments(self, name: str, arguments: dict[str, Any]) -> None:
+        for field in self._required_arguments.get(name, []):
+            if field not in arguments:
+                raise ValueError(f"Tool '{name}' missing required argument: {field}")
 
     def _tool(
         self,
