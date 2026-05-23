@@ -1,0 +1,10 @@
+.env
+.coverage
+.pytest_cache/
+.uv-cache/
+.venv/
+__pycache__/
+*.pyc
+data/
+output/
+uv.lock
