@@ -55,6 +55,10 @@ class LLMService:
         )
 
         for chunk in stream:
-            content = chunk.choices[0].delta.content
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            content = getattr(delta, "content", None)
             if content:
                 yield content
