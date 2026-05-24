@@ -14,13 +14,33 @@ async function loadStatus() {
   }
 }
 
-function addMessage(text, role = "assistant") {
+function addMessage(text, role = "assistant", isMarkdown = false) {
   const div = document.createElement("div");
   div.className = `message ${role}`;
-  div.textContent = text;
+  if (role === "assistant" && isMarkdown) {
+    div.innerHTML = marked.parse(text);
+  } else {
+    div.textContent = text;
+  }
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
   return div;
+}
+
+function looksLikeMarkdown(text) {
+  const mdPatterns = [
+    /\*\*.+?\*\*/,    // **bold**
+    /__.+?__/,        // __bold__
+    /\*.+?\*/,        // *italic*
+    /_.+?_/,          // _italic_
+    /^#+\s/m,         // # headings
+    /^[-*]\s/m,       // - or * bullet lists
+    /^\d+\.\s/m,      // 1. numbered lists
+    /```[\s\S]*?```/, // ```code blocks```
+    /`[^`]+`/,        // `inline code`
+    /\[.+?\]\(.+?\)/, // [text](url) links
+  ];
+  return mdPatterns.some((p) => p.test(text));
 }
 
 function parseAssistantResponse(text) {
@@ -196,7 +216,8 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
   });
   const answer = await response.text();
   const parsedAnswer = parseAssistantResponse(answer);
-  const assistantMessage = addMessage(parsedAnswer.text, "assistant");
+  const isMd = looksLikeMarkdown(parsedAnswer.text);
+  const assistantMessage = addMessage(parsedAnswer.text, "assistant", isMd);
   if (parsedAnswer.preview?.type === "action_item" || parsedAnswer.preview?.type === "task") {
     renderActionItemPreview(parsedAnswer.preview, assistantMessage);
   }

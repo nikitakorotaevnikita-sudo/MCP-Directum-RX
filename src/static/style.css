@@ -161,6 +161,78 @@ body {
   overflow-wrap: anywhere;
 }
 
+.message.assistant {
+  background: #f8fafb;
+}
+
+.message.assistant h1,
+.message.assistant h2,
+.message.assistant h3,
+.message.assistant h4 {
+  margin: 0.5em 0 0.3em;
+  font-weight: 600;
+}
+
+.message.assistant h1 { font-size: 1.4em; }
+.message.assistant h2 { font-size: 1.25em; }
+.message.assistant h3 { font-size: 1.1em; }
+
+.message.assistant p {
+  margin: 0.4em 0;
+}
+
+.message.assistant ul,
+.message.assistant ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+
+.message.assistant li {
+  margin: 0.2em 0;
+}
+
+.message.assistant code {
+  background: #e8edf2;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.message.assistant pre {
+  background: #2d3748;
+  color: #e2e8f0;
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.message.assistant pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: 0.9em;
+}
+
+.message.assistant blockquote {
+  border-left: 3px solid #cbd5e1;
+  margin: 0.5em 0;
+  padding: 0.25em 0.75em;
+  color: #64748b;
+}
+
+.message.assistant a {
+  color: #3b82f6;
+}
+
+.message.assistant strong {
+  font-weight: 600;
+}
+
+.message.assistant em {
+  font-style: italic;
+}
+
 .message.user {
   margin-left: auto;
   background: #e9f4f1;
