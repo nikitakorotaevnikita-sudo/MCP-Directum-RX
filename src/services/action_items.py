@@ -4,22 +4,24 @@ from src.models.schemas import ActionItemCreateRequest, ActionItemCreateResult, 
 from src.services.directum_client import DirectumClient, DirectumError
 
 
+EMPLOYEE_QUERY_STRIP_CHARS = " \t\r\n.,;:!?\"'\u00ab\u00bb"
+
+
 class ActionItemService:
     def __init__(self, client: DirectumClient):
         self.client = client
 
     def search_employee(self, query: str, top: int = 10) -> list[EmployeeSummary]:
-        cleaned = query.strip()
+        cleaned = self._clean_employee_query(query)
         if not cleaned:
             return []
 
-        escaped_query = cleaned.replace("'", "''")
-        rows = self.client.query(
-            "IEmployees",
-            filter_=f"contains(Name,'{escaped_query}') and Status eq 'Active'",
-            select="Id,Name,Status",
-            top=top,
-        )
+        rows = self._query_employees(cleaned, top)
+        if not rows:
+            for token in self._fallback_name_tokens(cleaned):
+                rows = self._query_employees(token, top)
+                if rows:
+                    break
         return [
             EmployeeSummary(
                 id=int(row["Id"]),
@@ -28,6 +30,22 @@ class ActionItemService:
             )
             for row in rows
         ]
+
+    def _query_employees(self, query: str, top: int) -> list[dict[str, Any]]:
+        escaped_query = query.replace("'", "''")
+        return self.client.query(
+            "IEmployees",
+            filter_=f"contains(Name,'{escaped_query}') and Status eq 'Active'",
+            select="Id,Name,Status",
+            top=top,
+        )
+
+    def _clean_employee_query(self, query: str) -> str:
+        return query.strip(EMPLOYEE_QUERY_STRIP_CHARS)
+
+    def _fallback_name_tokens(self, query: str) -> list[str]:
+        tokens = [token.strip(EMPLOYEE_QUERY_STRIP_CHARS) for token in query.split()]
+        return [token for token in reversed(tokens) if len(token) > 1 and token != query]
 
     def create_action_item(self, request: ActionItemCreateRequest) -> ActionItemCreateResult:
         payload = self._payload(request)

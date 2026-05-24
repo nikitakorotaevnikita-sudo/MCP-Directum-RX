@@ -16,6 +16,7 @@ SYSTEM_PROMPT = (
 )
 
 ACTION_ITEM_PREVIEW_MARKER = "DIRECTUM_ACTION_ITEM_PREVIEW"
+EMPLOYEE_QUERY_STRIP_CHARS = " \t\r\n.,;:!?\"'\u00ab\u00bb"
 
 
 class LLMService:
@@ -242,6 +243,9 @@ class LLMService:
         }
         return f"[[{ACTION_ITEM_PREVIEW_MARKER}:{json.dumps(preview, ensure_ascii=False, default=str)}]]"
 
+    def _clean_employee_query(self, value: str) -> str:
+        return value.strip(EMPLOYEE_QUERY_STRIP_CHARS)
+
     def _latest_action_item_draft(self, history: Iterable[dict[str, str]] | None) -> dict[str, str] | None:
         for item in reversed(list(history or [])):
             if item.get("role") != "user":
@@ -265,7 +269,7 @@ class LLMService:
         if quoted_match is not None:
             subject = quoted_match.group(2).strip()
             return {
-                "employee_query": quoted_match.group(1).strip(),
+                "employee_query": self._clean_employee_query(quoted_match.group(1)),
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": (quoted_match.group(3) or "").strip(),
@@ -286,7 +290,7 @@ class LLMService:
         if natural_match is not None:
             subject = natural_match.group(2).strip(" .")
             return {
-                "employee_query": natural_match.group(1).strip(),
+                "employee_query": self._clean_employee_query(natural_match.group(1)),
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": natural_match.group(3).strip(),
@@ -305,7 +309,7 @@ class LLMService:
         )
         if theme_match is not None:
             return {
-                "employee_query": theme_match.group(1).strip(),
+                "employee_query": self._clean_employee_query(theme_match.group(1)),
                 "subject": theme_match.group(2).strip(),
                 "deadline_text": (theme_match.group(3) or "").strip(),
             }
@@ -323,7 +327,7 @@ class LLMService:
         if create_match is not None:
             subject = create_match.group(2).strip()
             return {
-                "employee_query": create_match.group(1).strip(),
+                "employee_query": self._clean_employee_query(create_match.group(1)),
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": (create_match.group(3) or "").strip(),
@@ -337,7 +341,7 @@ class LLMService:
         if performer_match is not None:
             action_text = performer_match.group(1).strip()
             return {
-                "employee_query": performer_match.group(2).strip(),
+                "employee_query": self._clean_employee_query(performer_match.group(2)),
                 "subject": action_text,
                 "action_text": action_text,
                 "deadline_text": "",

@@ -298,6 +298,26 @@ def test_search_employee_uses_contains_name_filter():
     assert [employee.name for employee in result] == ["O'Connor Alice", "Connor Bob"]
 
 
+def test_search_employee_falls_back_to_name_tokens_when_full_query_has_no_matches():
+    class TokenFallbackClient(FakeClient):
+        def query(self, entity_set, **kwargs):
+            self.query_calls.append((entity_set, kwargs))
+            if kwargs["filter_"] == "contains(Name,'Ардо') and Status eq 'Active'":
+                return [{"Id": 42, "Name": "Ардо Наталья Алексеевна", "Status": "Active"}]
+            return []
+
+    client = TokenFallbackClient()
+    service = ActionItemService(client)
+
+    result = service.search_employee("Натальи Ардо.", top=5)
+
+    assert [call[1]["filter_"] for call in client.query_calls] == [
+        "contains(Name,'Натальи Ардо') and Status eq 'Active'",
+        "contains(Name,'Ардо') and Status eq 'Active'",
+    ]
+    assert [employee.name for employee in result] == ["Ардо Наталья Алексеевна"]
+
+
 def test_search_employee_returns_empty_without_query_for_whitespace():
     client = FakeClient(query_rows=[{"Id": 42, "Name": "Alice", "Status": "Active"}])
     service = ActionItemService(client)
