@@ -246,6 +246,23 @@ class LLMService:
     def _clean_employee_query(self, value: str) -> str:
         return value.strip(EMPLOYEE_QUERY_STRIP_CHARS)
 
+    def _split_trailing_deadline(self, text: str, deadline_text: str = "") -> tuple[str, str]:
+        cleaned_text = text.strip()
+        cleaned_deadline = deadline_text.strip()
+        if cleaned_deadline:
+            return cleaned_text.strip(" ."), cleaned_deadline
+        match = re.search(
+            (
+                r"^(.+?)(?:[.,;]\s+|\s+)"
+                r"\u0441\u0440\u043e\u043a(?:\u043e\u043c)?\s*[-\u2013\u2014:]?\s*(.+?)\s*$"
+            ),
+            cleaned_text,
+            flags=re.IGNORECASE,
+        )
+        if match is None:
+            return cleaned_text.strip(" ."), ""
+        return match.group(1).strip(" ."), match.group(2).strip()
+
     def _latest_action_item_draft(self, history: Iterable[dict[str, str]] | None) -> dict[str, str] | None:
         for item in reversed(list(history or [])):
             if item.get("role") != "user":
@@ -267,12 +284,15 @@ class LLMService:
             flags=re.IGNORECASE,
         )
         if quoted_match is not None:
-            subject = quoted_match.group(2).strip()
+            subject, deadline_text = self._split_trailing_deadline(
+                quoted_match.group(2),
+                quoted_match.group(3) or "",
+            )
             return {
                 "employee_query": self._clean_employee_query(quoted_match.group(1)),
                 "subject": subject,
                 "action_text": subject,
-                "deadline_text": (quoted_match.group(3) or "").strip(),
+                "deadline_text": deadline_text,
             }
 
         natural_match = re.search(
@@ -288,12 +308,12 @@ class LLMService:
             flags=re.IGNORECASE,
         )
         if natural_match is not None:
-            subject = natural_match.group(2).strip(" .")
+            subject, deadline_text = self._split_trailing_deadline(natural_match.group(2), natural_match.group(3))
             return {
                 "employee_query": self._clean_employee_query(natural_match.group(1)),
                 "subject": subject,
                 "action_text": subject,
-                "deadline_text": natural_match.group(3).strip(),
+                "deadline_text": deadline_text,
             }
 
         theme_match = re.search(
@@ -308,10 +328,14 @@ class LLMService:
             flags=re.IGNORECASE,
         )
         if theme_match is not None:
+            subject, deadline_text = self._split_trailing_deadline(
+                theme_match.group(2),
+                theme_match.group(3) or "",
+            )
             return {
                 "employee_query": self._clean_employee_query(theme_match.group(1)),
-                "subject": theme_match.group(2).strip(),
-                "deadline_text": (theme_match.group(3) or "").strip(),
+                "subject": subject,
+                "deadline_text": deadline_text,
             }
 
         create_match = re.search(
@@ -325,12 +349,15 @@ class LLMService:
             flags=re.IGNORECASE,
         )
         if create_match is not None:
-            subject = create_match.group(2).strip()
+            subject, deadline_text = self._split_trailing_deadline(
+                create_match.group(2),
+                create_match.group(3) or "",
+            )
             return {
                 "employee_query": self._clean_employee_query(create_match.group(1)),
                 "subject": subject,
                 "action_text": subject,
-                "deadline_text": (create_match.group(3) or "").strip(),
+                "deadline_text": deadline_text,
             }
 
         performer_match = re.search(
