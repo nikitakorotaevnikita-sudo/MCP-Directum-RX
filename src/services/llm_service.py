@@ -3,7 +3,9 @@ from datetime import datetime, timedelta, timezone
 import json
 import re
 from typing import Any
+from urllib.parse import urlparse
 
+import httpx
 from openai import OpenAI
 
 
@@ -30,7 +32,15 @@ class LLMService:
         self.tool_calling = tool_calling
         self.tool_registry = tool_registry
         self._api_key = api_key
-        self.client = OpenAI(api_key=api_key, base_url=self.base_url)
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=self.base_url,
+            http_client=httpx.Client(trust_env=not self._uses_local_base_url()),
+        )
+
+    def _uses_local_base_url(self) -> bool:
+        host = urlparse(self.base_url).hostname
+        return host in {"localhost", "127.0.0.1", "::1"}
 
     def status(self) -> dict[str, str]:
         return {

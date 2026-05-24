@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import src.services.llm_service as llm_service_module
 from src.services.llm_service import LLMService
 
 
@@ -203,6 +204,48 @@ def test_llm_service_reports_provider_status_without_secret():
     assert status["base_url"] == "http://localhost:11434/v1"
     assert status["model"] == "qwen3:8b"
     assert "api_key" not in status
+
+
+def test_llm_service_disables_env_proxy_for_local_ollama(monkeypatch):
+    created_clients = []
+
+    class CapturingOpenAI:
+        def __init__(self, **kwargs):
+            created_clients.append(kwargs)
+
+    monkeypatch.setattr(llm_service_module, "OpenAI", CapturingOpenAI)
+
+    LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+
+    assert created_clients[0]["http_client"].trust_env is False
+
+
+def test_llm_service_keeps_env_proxy_for_remote_provider(monkeypatch):
+    created_clients = []
+
+    class CapturingOpenAI:
+        def __init__(self, **kwargs):
+            created_clients.append(kwargs)
+
+    monkeypatch.setattr(llm_service_module, "OpenAI", CapturingOpenAI)
+
+    LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+
+    assert created_clients[0]["http_client"].trust_env is True
 
 
 @pytest.mark.parametrize("tool_calling", ["auto", "enabled"])
