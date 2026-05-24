@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 import json
 import re
 from typing import Any
@@ -59,28 +60,34 @@ class LLMService:
         except Exception as exc:
             yield self._safe_error_message(exc)
 
-    def _stream_chat_with_tools(self, messages: list[dict[str, Any]]) -> Iterable[str]:
+    def _stream_chat_with_tools(self, messages: list[dict[str, Any]], max_tool_rounds: int = 4) -> Iterable[str]:
         tools = self.tools_for_request()
-        chunks, tool_calls = self._collect_stream(messages, tools)
-        if chunks:
-            yield from chunks
-        if not tool_calls:
-            return
+        for _ in range(max_tool_rounds):
+            chunks, tool_calls = self._collect_stream(messages, tools)
+            if chunks:
+                yield from chunks
+            if not tool_calls:
+                return
 
-        messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
-        for tool_call in tool_calls:
-            function = tool_call["function"]
-            result = self.tool_registry.call(function["name"], json.loads(function["arguments"] or "{}"))
             messages.append(
                 {
-                    "role": "tool",
-                    "tool_call_id": tool_call["id"],
-                    "content": json.dumps(result, ensure_ascii=False, default=str),
+                    "role": "assistant",
+                    "content": "".join(chunks) or None,
+                    "tool_calls": tool_calls,
                 }
             )
+            for tool_call in tool_calls:
+                function = tool_call["function"]
+                result = self.tool_registry.call(function["name"], json.loads(function["arguments"] or "{}"))
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call["id"],
+                        "content": json.dumps(result, ensure_ascii=False, default=str),
+                    }
+                )
 
-        final_chunks, _ = self._collect_stream(messages, tools)
-        yield from final_chunks
+        yield "Tool processing stopped after too many steps."
 
     def _collect_stream(
         self,
@@ -127,6 +134,10 @@ class LLMService:
         return f"LLM request failed: {message}"
 
     def _direct_rx_response(self, message: str) -> str | None:
+        create_response = self._direct_action_item_create_response(message)
+        if create_response is not None:
+            return create_response
+
         normalized = message.lower()
         direct_tool: str | None = None
         if "\u043f\u0440\u043e\u0441\u0440\u043e\u0447" in normalized:
@@ -147,6 +158,58 @@ class LLMService:
         try:
             result = self.tool_registry.call(direct_tool, {})
             return self._format_tool_result(result)
+        except Exception as exc:
+            return self._safe_directum_error_message(exc)
+
+    def _direct_action_item_create_response(self, message: str) -> str | None:
+        match = re.search(
+            (
+                r"\u0441\u043e\u0437\u0434\u0430\u0439\s+"
+                r"(?:\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"\u0434\u043b\u044f\s+([^,]+),\s*(.+?)"
+                r"(?:,\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
+            ),
+            message,
+            flags=re.IGNORECASE,
+        )
+        if match is None:
+            return None
+
+        employee_query = match.group(1).strip()
+        subject = match.group(2).strip()
+        deadline_text = (match.group(3) or "").strip().lower()
+        if not employee_query or not subject:
+            return None
+
+        try:
+            employees = self.tool_registry.call("search_employee", {"query": employee_query})
+            if not employees:
+                return f"\u0421\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a '{employee_query}' \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d."
+            employee = employees[0]
+            performer_id = employee["id"] if isinstance(employee, dict) else employee.id
+            performer_name = employee["name"] if isinstance(employee, dict) else employee.name
+            arguments: dict[str, Any] = {
+                "subject": subject,
+                "performer_id": performer_id,
+                "action_text": subject,
+            }
+            if "\u0437\u0430\u0432\u0442\u0440\u0430" in deadline_text:
+                deadline = (datetime.now(timezone.utc) + timedelta(days=1)).replace(
+                    hour=23,
+                    minute=59,
+                    second=0,
+                    microsecond=0,
+                )
+                arguments["deadline"] = deadline.isoformat()
+
+            self.tool_registry.call("create_action_item", arguments)
+            return (
+                f"\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview "
+                f"\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u0434\u043b\u044f {performer_name}: {subject}. "
+                f"\u0414\u043b\u044f \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e "
+                f"\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
+                f"\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
+            )
         except Exception as exc:
             return self._safe_directum_error_message(exc)
 

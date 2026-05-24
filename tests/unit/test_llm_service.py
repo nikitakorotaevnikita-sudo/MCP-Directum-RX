@@ -16,6 +16,19 @@ class RecordingToolRegistry(FakeToolRegistry):
 
     def call(self, name, arguments):
         self.calls.append((name, arguments))
+        if name == "search_employee":
+            return [{"id": 42, "name": "Ардо Наталья Алексеевна", "status": "Active"}]
+        if name == "create_action_item":
+            return {
+                "mode": "preview",
+                "payload": {
+                    "Subject": arguments["subject"],
+                    "PerformersGD": str(arguments["performer_id"]),
+                    "ActionItem": arguments["action_text"],
+                },
+                "success": True,
+                "message": "Preview generated; confirm to create the action item.",
+            }
         return [{"id": 1, "subject": "Task", "status": "InProcess", "entity_type": "assignment"}]
 
 
@@ -81,6 +94,77 @@ class ToolCallCompletions:
         )
 
 
+class MultiStepCreateCompletions:
+    def __init__(self):
+        self.requests = []
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        if len(self.requests) == 1:
+            return iter(
+                [
+                    SimpleNamespace(
+                        choices=[
+                            SimpleNamespace(
+                                delta=SimpleNamespace(
+                                    tool_calls=[
+                                        SimpleNamespace(
+                                            index=0,
+                                            id="call_search",
+                                            type="function",
+                                            function=SimpleNamespace(name="search_employee", arguments='{"query":"Ардо"}'),
+                                        )
+                                    ]
+                                )
+                            )
+                        ]
+                    )
+                ]
+            )
+        if len(self.requests) == 2:
+            return iter(
+                [
+                    SimpleNamespace(
+                        choices=[
+                            SimpleNamespace(
+                                delta=SimpleNamespace(
+                                    content="I found Ардо Наталья Алексеевна. ",
+                                    tool_calls=[
+                                        SimpleNamespace(
+                                            index=0,
+                                            id="call_create",
+                                            type="function",
+                                            function=SimpleNamespace(
+                                                name="create_action_item",
+                                                arguments=(
+                                                    '{"subject":"Проверить документы по Минцифре",'
+                                                    '"performer_id":42,'
+                                                    '"action_text":"Проверить документы по Минцифре"}'
+                                                ),
+                                            ),
+                                        )
+                                    ],
+                                )
+                            )
+                        ]
+                    )
+                ]
+            )
+        return iter(
+            [
+                SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            delta=SimpleNamespace(
+                                content="Preview generated for Ардо Наталья Алексеевна; confirmation is required."
+                            )
+                        )
+                    ]
+                )
+            ]
+        )
+
+
 class FakeClient:
     def __init__(self):
         self.chat = SimpleNamespace(completions=FakeCompletions())
@@ -94,6 +178,12 @@ class FailingClient:
 class ToolCallClient:
     def __init__(self):
         self.completions = ToolCallCompletions()
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+class MultiStepCreateClient:
+    def __init__(self):
+        self.completions = MultiStepCreateCompletions()
         self.chat = SimpleNamespace(completions=self.completions)
 
 
@@ -218,3 +308,66 @@ def test_stream_chat_reports_directum_error_for_direct_rx_intent():
     chunks = list(service.stream_chat("Посмотри мои задания", []))
 
     assert chunks == ["Directum RX request failed: DIRECTUM_AUTH_TOKEN must be a valid Basic token"]
+
+
+def test_stream_chat_handles_search_then_create_tool_calls():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = MultiStepCreateClient()
+    service.client = client
+
+    chunks = list(service.stream_chat("Use tools to prepare an action item", []))
+
+    assert chunks == [
+        "I found Ардо Наталья Алексеевна. ",
+        "Preview generated for Ардо Наталья Алексеевна; confirmation is required.",
+    ]
+    assert registry.calls == [
+        ("search_employee", {"query": "Ардо"}),
+        (
+            "create_action_item",
+            {
+                "subject": "Проверить документы по Минцифре",
+                "performer_id": 42,
+                "action_text": "Проверить документы по Минцифре",
+            },
+        ),
+    ]
+    assert len(client.completions.requests) == 3
+
+
+def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = MultiStepCreateClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat("Создай задание для Ардо, Проверить документы по Минцифре, срок - завтра", [])
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["subject"] == "Проверить документы по Минцифре"
+    assert registry.calls[1][1]["performer_id"] == 42
+    assert registry.calls[1][1]["action_text"] == "Проверить документы по Минцифре"
+    assert "deadline" in registry.calls[1][1]
+    assert chunks == [
+        "Подготовлен preview поручения для Ардо Наталья Алексеевна: Проверить документы по Минцифре. "
+        "Для фактического создания нужно подтверждение."
+    ]
+    assert client.completions.requests == []
