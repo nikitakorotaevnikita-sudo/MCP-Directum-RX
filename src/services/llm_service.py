@@ -252,26 +252,33 @@ class LLMService:
     def _action_item_text_to_imperative(self, payload: dict[str, Any]) -> dict[str, Any]:
         subject = payload.get("subject", "")
         action_text = payload.get("action_text", "")
+        deadline = payload.get("deadline")
 
-        corrected = self._correct_text_via_llm(subject, action_text)
+        corrected = self._correct_text_via_llm(subject, action_text, deadline)
+
+        final_deadline = corrected.get("deadline") or deadline
 
         return {
             **payload,
             "subject": corrected["subject"],
             "action_text": corrected["action_text"],
+            "deadline": final_deadline,
         }
 
-    def _correct_text_via_llm(self, subject: str, action_text: str) -> dict[str, str]:
+    def _correct_text_via_llm(self, subject: str, action_text: str, deadline: str | None = None) -> dict[str, str]:
+        deadline_hint = f"\nСрок (ISO 8601 с timezone, например '2026-06-26T23:59:00+00:00'): {deadline}" if deadline else ""
         correction_prompt = (
             "Ты — эксперт по деловой переписке на русском языке. Преобразуй текст поручения в правильную форму.\n"
             "Правила:\n"
-            "- Тема: существительное (отглагольное) с большой буквы, без точки в конце, максимум 100 символов. "
+            "- Тема: существительное (отглагольное) с большой буквы, без точки в конце, БЕЗ даты в тексте темы, максимум 100 символов. "
             "Пример: 'Подготовка документов для Аппарата правительства'\n"
-            "- Текст поручения: глагол в повелительном наклонении (множественное число) с большой буквы, с точкой в конце, максимум 500 символов. "
+            "- Текст поручения: глагол в повелительном наклонении (множественное число) с большой буквы, с точкой в конце, БЕЗ даты в тексте, максимум 500 символов. "
             "Пример: 'Подготовьте документы для Аппарата правительства.'\n"
+            "- Срок: если в тексте есть конкретная дата (например '26.06' или '26.06.2026'), извлеки её в формат ISO 8601 с timezone (например '2026-06-26T23:59:00+00:00'). Если срок указан словами ('завтра', 'послезавтра', 'через неделю') или отсутствует — верни null.\n"
             f"Исходная тема: {subject}\n"
             f"Исходный текст: {action_text}\n"
-            "Верни ТОЛЬКО JSON: {\"subject\": \"...\", \"action_text\": \"...\"}"
+            f"{deadline_hint}\n"
+            "Верни ТОЛЬКО JSON: {\"subject\": \"...\", \"action_text\": \"...\", \"deadline\": \"...\"}"
         )
         try:
             response = self.client.chat.completions.create(
@@ -292,9 +299,10 @@ class LLMService:
             return {
                 "subject": str(result.get("subject", subject)),
                 "action_text": str(result.get("action_text", action_text)),
+                "deadline": result.get("deadline"),
             }
         except Exception:
-            return {"subject": subject, "action_text": action_text}
+            return {"subject": subject, "action_text": action_text, "deadline": deadline}
 
     def _clean_employee_query(self, value: str) -> str:
         return value.strip(EMPLOYEE_QUERY_STRIP_CHARS)
