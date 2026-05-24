@@ -260,6 +260,27 @@ class LLMService:
                 "deadline_text": (quoted_match.group(3) or "").strip(),
             }
 
+        natural_match = re.search(
+            (
+                r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
+                r"(?:\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"\u0434\u043b\u044f\s+([^,]+?)\s+"
+                r"\u0447\u0442\u043e\u0431\u044b\s+(?:\u043e\u043d|"
+                r"\u043e\u043d\u0430)\s+(.+?)\s+"
+                r"(?:\u0441\u043e\s+)?\u0441\u0440\u043e\u043a(?:\u043e\u043c)?\s*[-\u2013\u2014:]?\s*(.+)$"
+            ),
+            message,
+            flags=re.IGNORECASE,
+        )
+        if natural_match is not None:
+            subject = natural_match.group(2).strip(" .")
+            return {
+                "employee_query": natural_match.group(1).strip(),
+                "subject": subject,
+                "action_text": subject,
+                "deadline_text": natural_match.group(3).strip(),
+            }
+
         theme_match = re.search(
             (
                 r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"

@@ -553,3 +553,42 @@ def test_stream_chat_routes_quoted_action_item_with_short_date_without_model():
         "\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
     ]
     assert client.completions.requests == []
+
+
+def test_stream_chat_routes_natural_action_item_request_with_short_date_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = MultiStepCreateClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat(
+            "\u0421\u043e\u0437\u0434\u0430\u0439 "
+            "\u0437\u0430\u0434\u0430\u0447\u0443 "
+            "\u0434\u043b\u044f \u0410\u0440\u0434\u043e "
+            "\u0447\u0442\u043e\u0431\u044b \u043e\u043d\u0430 "
+            "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b\u0430 "
+            "\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+            "\u043e\u0442 \u041c\u0438\u043d\u0446\u0438\u0444\u0440\u044b "
+            "\u0441\u043e \u0441\u0440\u043e\u043a\u043e\u043c 26.05.26",
+            [],
+        )
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "\u0410\u0440\u0434\u043e"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["subject"] == (
+        "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b\u0430 "
+        "\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+        "\u043e\u0442 \u041c\u0438\u043d\u0446\u0438\u0444\u0440\u044b"
+    )
+    assert registry.calls[1][1]["deadline"].startswith("2026-05-26T23:59:00")
+    assert chunks[0].startswith("\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview")
+    assert client.completions.requests == []

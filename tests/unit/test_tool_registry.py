@@ -94,6 +94,23 @@ def test_tool_registry_normalizes_short_deadline_before_validation():
     assert action_items.created_requests[0].deadline.isoformat().startswith("2026-05-26T23:59:00")
 
 
+def test_tool_registry_adds_timezone_to_naive_iso_deadline_before_payload():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+
+    registry.call(
+        "create_action_item",
+        {
+            "subject": "Prepare response",
+            "performer_id": 42,
+            "action_text": "Prepare a short response",
+            "deadline": "2026-05-26T23:59:00",
+        },
+    )
+
+    assert action_items.created_requests[0].deadline.isoformat() == "2026-05-26T23:59:00+00:00"
+
+
 def test_tool_registry_rejects_direct_create_confirmation():
     registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
 

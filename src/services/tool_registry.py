@@ -86,11 +86,31 @@ class ToolRegistry:
     def _normalize_create_action_item_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
         safe_arguments = {**arguments, "confirm": False}
         deadline = safe_arguments.get("deadline")
+        if isinstance(deadline, datetime) and (deadline.tzinfo is None or deadline.utcoffset() is None):
+            safe_arguments["deadline"] = deadline.replace(tzinfo=timezone.utc)
         if isinstance(deadline, str):
-            parsed_deadline = self._parse_short_deadline(deadline)
+            parsed_deadline = self._parse_deadline(deadline)
             if parsed_deadline is not None:
                 safe_arguments["deadline"] = parsed_deadline
         return safe_arguments
+
+    def _parse_deadline(self, value: str) -> datetime | None:
+        parsed_iso = self._parse_iso_deadline(value)
+        if parsed_iso is not None:
+            return parsed_iso
+        return self._parse_short_deadline(value)
+
+    def _parse_iso_deadline(self, value: str) -> datetime | None:
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        try:
+            parsed = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
 
     def _parse_short_deadline(self, value: str) -> datetime | None:
         match = re.search(r"\b(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?\b", value.strip())
