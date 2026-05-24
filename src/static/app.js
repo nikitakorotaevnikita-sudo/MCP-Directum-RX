@@ -1,6 +1,7 @@
 const messages = document.querySelector("#messages");
 const results = document.querySelector("#results");
 const statusBox = document.querySelector("#status");
+const chatHistory = [];
 
 async function loadStatus() {
   try {
@@ -67,9 +68,12 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: {"content-type": "application/json"},
-    body: JSON.stringify({message: text, history: []}),
+    body: JSON.stringify({message: text, history: chatHistory.slice(-12)}),
   });
-  addMessage(await response.text(), "assistant");
+  const answer = await response.text();
+  addMessage(answer, "assistant");
+  chatHistory.push({role: "user", content: text});
+  chatHistory.push({role: "assistant", content: answer});
 });
 
 loadStatus();

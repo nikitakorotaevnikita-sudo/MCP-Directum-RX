@@ -440,3 +440,66 @@ def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
         "Для фактического создания нужно подтверждение."
     ]
     assert client.completions.requests == []
+
+
+def test_stream_chat_completes_action_item_draft_from_history_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = MultiStepCreateClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat(
+            "\u0422\u0435\u043a\u0441\u0442 \u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f - "
+            "\u041f\u0440\u043e\u0432\u0435\u0440\u044c \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+            "\u043e\u0442 \u041c\u0426.",
+            [
+                {
+                    "role": "user",
+                    "content": (
+                        "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c "
+                        "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435 "
+                        "\u0434\u043b\u044f \u0410\u0440\u0434\u043e \u041d, "
+                        "\u0442\u0435\u043c\u0430 - \u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+                        "\u041c\u0426, \u0441\u0440\u043e\u043a - 25.05"
+                    ),
+                },
+                {
+                    "role": "assistant",
+                    "content": (
+                        "\u0414\u043b\u044f \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f "
+                        "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u043c\u043d\u0435 "
+                        "\u043d\u0443\u0436\u0435\u043d \u0442\u0435\u043a\u0441\u0442."
+                    ),
+                },
+            ],
+        )
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "\u0410\u0440\u0434\u043e \u041d"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["subject"] == "\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u041c\u0426"
+    assert registry.calls[1][1]["action_text"] == (
+        "\u041f\u0440\u043e\u0432\u0435\u0440\u044c \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+        "\u043e\u0442 \u041c\u0426."
+    )
+    assert registry.calls[1][1]["performer_id"] == 42
+    assert "deadline" in registry.calls[1][1]
+    assert chunks == [
+        "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview "
+        "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u0434\u043b\u044f "
+        "\u0410\u0440\u0434\u043e \u041d\u0430\u0442\u0430\u043b\u044c\u044f "
+        "\u0410\u043b\u0435\u043a\u0441\u0435\u0435\u0432\u043d\u0430: "
+        "\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u041c\u0426. "
+        "\u0414\u043b\u044f \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e "
+        "\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
+        "\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
+    ]
+    assert client.completions.requests == []
