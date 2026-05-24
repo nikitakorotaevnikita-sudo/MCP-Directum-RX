@@ -102,6 +102,30 @@ def test_query_error_message_does_not_include_response_body_secrets():
         raise AssertionError("DirectumError was not raised")
 
 
+def test_post_400_includes_sanitized_odata_error_detail():
+    leaked_secret = "Basic leaked-secret"
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                400,
+                json={"error": {"message": {"value": f"Property PerformersGD is invalid. {leaked_secret}"}}},
+            )
+        ),
+    )
+
+    try:
+        client.post("IActionItemExecutionTasks", {"Subject": "Task"})
+    except DirectumError as exc:
+        assert exc.status_code == 400
+        assert "Property PerformersGD is invalid" in exc.safe_message
+        assert leaked_secret not in exc.safe_message
+        assert "Basic [redacted]" in exc.safe_message
+    else:
+        raise AssertionError("DirectumError was not raised")
+
+
 def test_query_raises_error_on_non_object_collection_response():
     client = DirectumClient(
         base_url="https://rx.example/Integration/odata",

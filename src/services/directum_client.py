@@ -1,5 +1,6 @@
 from typing import Any
 from types import TracebackType
+import re
 from urllib.parse import urlencode
 
 import httpx
@@ -115,8 +116,10 @@ class DirectumClient:
 
     def _json_or_error(self, response: httpx.Response) -> dict[str, Any]:
         if response.status_code >= 400:
+            detail = self._safe_error_detail(response) if response.status_code == 400 else ""
+            suffix = f": {detail}" if detail else ""
             raise DirectumError(
-                safe_message=f"Directum OData request failed with status {response.status_code}",
+                safe_message=f"Directum OData request failed with status {response.status_code}{suffix}",
                 status_code=response.status_code,
             )
         try:
@@ -128,3 +131,34 @@ class DirectumClient:
         if not isinstance(data, dict) or not isinstance(data.get("value"), list):
             raise DirectumError("Directum returned an unexpected collection response", status_code)
         return data
+
+    def _safe_error_detail(self, response: httpx.Response) -> str:
+        detail = ""
+        try:
+            data = response.json()
+        except ValueError:
+            detail = response.text
+        else:
+            detail = self._odata_error_message(data)
+        detail = self._sanitize_error_detail(detail)
+        return detail[:500]
+
+    def _odata_error_message(self, data: Any) -> str:
+        if not isinstance(data, dict):
+            return ""
+        error = data.get("error")
+        if isinstance(error, dict):
+            message = error.get("message")
+            if isinstance(message, dict):
+                value = message.get("value")
+                return value if isinstance(value, str) else ""
+            if isinstance(message, str):
+                return message
+        message = data.get("message")
+        return message if isinstance(message, str) else ""
+
+    def _sanitize_error_detail(self, detail: str) -> str:
+        detail = re.sub(r"Basic\s+[A-Za-z0-9+/=_-]{4,}", "Basic [redacted]", detail)
+        detail = re.sub(r"sk-or-v1-[A-Za-z0-9]+", "[redacted]", detail)
+        detail = re.sub(r"\s+", " ", detail).strip()
+        return detail
