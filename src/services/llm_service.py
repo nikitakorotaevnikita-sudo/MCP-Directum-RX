@@ -241,6 +241,25 @@ class LLMService:
         return None
 
     def _parse_action_item_draft(self, message: str) -> dict[str, str] | None:
+        quoted_match = re.search(
+            (
+                r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
+                r"(?:\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"\u0434\u043b\u044f\s+(.+?)\s+[\u0022\u00ab](.+?)[\u0022\u00bb]\s*"
+                r"(?:,?\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
+            ),
+            message,
+            flags=re.IGNORECASE,
+        )
+        if quoted_match is not None:
+            subject = quoted_match.group(2).strip()
+            return {
+                "employee_query": quoted_match.group(1).strip(),
+                "subject": subject,
+                "action_text": subject,
+                "deadline_text": (quoted_match.group(3) or "").strip(),
+            }
+
         theme_match = re.search(
             (
                 r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"

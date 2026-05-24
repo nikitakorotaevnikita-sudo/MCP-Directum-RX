@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+import re
 from typing import Any, Callable
 
 from pydantic import ValidationError
@@ -74,12 +76,32 @@ class ToolRegistry:
     def _create_action_item(self, arguments: dict[str, Any]) -> Any:
         if arguments.get("confirm") is True:
             raise ValueError("Tool 'create_action_item' cannot confirm creation directly; use preview mode first")
-        safe_arguments = {**arguments, "confirm": False}
+        safe_arguments = self._normalize_create_action_item_arguments(arguments)
         try:
             request = ActionItemCreateRequest(**safe_arguments)
         except ValidationError as exc:
             raise ValueError(f"Tool 'create_action_item' invalid arguments: {exc}") from exc
         return self.action_item_service.create_action_item(request)
+
+    def _normalize_create_action_item_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        safe_arguments = {**arguments, "confirm": False}
+        deadline = safe_arguments.get("deadline")
+        if isinstance(deadline, str):
+            parsed_deadline = self._parse_short_deadline(deadline)
+            if parsed_deadline is not None:
+                safe_arguments["deadline"] = parsed_deadline
+        return safe_arguments
+
+    def _parse_short_deadline(self, value: str) -> datetime | None:
+        match = re.search(r"\b(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?\b", value.strip())
+        if match is None:
+            return None
+        day = int(match.group(1))
+        month = int(match.group(2))
+        year = int(match.group(3) or datetime.now(timezone.utc).year)
+        if year < 100:
+            year += 2000
+        return datetime(year, month, day, 23, 59, tzinfo=timezone.utc)
 
     def _validate_required_arguments(self, name: str, arguments: dict[str, Any]) -> None:
         for field in self._required_arguments.get(name, []):

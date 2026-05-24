@@ -77,6 +77,23 @@ def test_tool_registry_create_action_item_forces_preview_mode():
     assert action_items.created_requests[0].confirm is False
 
 
+def test_tool_registry_normalizes_short_deadline_before_validation():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+
+    registry.call(
+        "create_action_item",
+        {
+            "subject": "Prepare response",
+            "performer_id": 42,
+            "action_text": "Prepare a short response",
+            "deadline": "26.05.26",
+        },
+    )
+
+    assert action_items.created_requests[0].deadline.isoformat().startswith("2026-05-26T23:59:00")
+
+
 def test_tool_registry_rejects_direct_create_confirmation():
     registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
 
