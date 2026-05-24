@@ -167,6 +167,75 @@ body {
   border-color: #bbdcd3;
 }
 
+.preview-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #c8d2df;
+  border-radius: 8px;
+  background: #f9fbfd;
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.preview-rows {
+  display: grid;
+  gap: 7px;
+}
+
+.preview-row {
+  display: grid;
+  grid-template-columns: 115px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 14px;
+}
+
+.preview-label {
+  color: #526276;
+  font-weight: 650;
+}
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preview-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.preview-actions button:disabled {
+  cursor: default;
+  opacity: .65;
+}
+
+.preview-confirm {
+  background: #1f7a68;
+  color: #ffffff;
+}
+
+.preview-cancel {
+  background: #e6edf5;
+  color: #182231;
+}
+
+.preview-status {
+  min-height: 20px;
+  color: #526276;
+  font-size: 14px;
+}
+
 .chat-form {
   display: flex;
   gap: 10px;
@@ -341,5 +410,10 @@ body {
 
   .connection-form {
     display: flex;
+  }
+
+  .preview-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 }

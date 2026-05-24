@@ -15,6 +15,8 @@ SYSTEM_PROMPT = (
     "create action items yourself."
 )
 
+ACTION_ITEM_PREVIEW_MARKER = "DIRECTUM_ACTION_ITEM_PREVIEW"
+
 
 class LLMService:
     def __init__(
@@ -220,7 +222,7 @@ class LLMService:
                 arguments["deadline"] = deadline.isoformat()
 
             self.tool_registry.call("create_action_item", arguments)
-            return (
+            visible_response = (
                 f"\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview "
                 f"\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u0434\u043b\u044f {performer_name}: "
                 f"{draft['subject']}. "
@@ -228,8 +230,17 @@ class LLMService:
                 f"\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
                 f"\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
             )
+            return visible_response + "\n" + self._action_item_preview_marker(arguments, performer_name)
         except Exception as exc:
             return self._safe_directum_error_message(exc)
+
+    def _action_item_preview_marker(self, payload: dict[str, Any], performer_name: str) -> str:
+        preview = {
+            "type": "action_item",
+            "payload": payload,
+            "display": {"performer_name": performer_name},
+        }
+        return f"[[{ACTION_ITEM_PREVIEW_MARKER}:{json.dumps(preview, ensure_ascii=False, default=str)}]]"
 
     def _latest_action_item_draft(self, history: Iterable[dict[str, str]] | None) -> dict[str, str] | None:
         for item in reversed(list(history or [])):

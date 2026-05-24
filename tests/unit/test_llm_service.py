@@ -1,9 +1,18 @@
 from types import SimpleNamespace
+import json
 
 import pytest
 
 import src.services.llm_service as llm_service_module
 from src.services.llm_service import LLMService
+
+
+PREVIEW_MARKER = "[[DIRECTUM_ACTION_ITEM_PREVIEW:"
+
+
+def _split_action_item_preview_marker(text):
+    visible, marker = text.split(PREVIEW_MARKER, 1)
+    return visible.rstrip(), json.loads(marker.removesuffix("]]"))
 
 
 class FakeToolRegistry:
@@ -435,10 +444,13 @@ def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
     assert registry.calls[1][1]["performer_id"] == 42
     assert registry.calls[1][1]["action_text"] == "Проверить документы по Минцифре"
     assert "deadline" in registry.calls[1][1]
-    assert chunks == [
-        "Подготовлен preview поручения для Ардо Наталья Алексеевна: Проверить документы по Минцифре. "
-        "Для фактического создания нужно подтверждение."
-    ]
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview")
+    assert preview["type"] == "action_item"
+    assert preview["payload"]["subject"] == registry.calls[1][1]["subject"]
+    assert preview["payload"]["performer_id"] == 42
+    assert preview["payload"]["action_text"] == registry.calls[1][1]["action_text"]
+    assert preview["payload"]["deadline"].endswith("+00:00")
     assert client.completions.requests == []
 
 
@@ -492,7 +504,8 @@ def test_stream_chat_completes_action_item_draft_from_history_without_model():
     )
     assert registry.calls[1][1]["performer_id"] == 42
     assert "deadline" in registry.calls[1][1]
-    assert chunks == [
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible == (
         "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview "
         "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u0434\u043b\u044f "
         "\u0410\u0440\u0434\u043e \u041d\u0430\u0442\u0430\u043b\u044c\u044f "
@@ -501,7 +514,14 @@ def test_stream_chat_completes_action_item_draft_from_history_without_model():
         "\u0414\u043b\u044f \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e "
         "\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
         "\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
-    ]
+    )
+    assert preview["type"] == "action_item"
+    assert preview["payload"]["subject"] == "\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u041c\u0426"
+    assert preview["payload"]["performer_id"] == 42
+    assert preview["payload"]["action_text"] == (
+        "\u041f\u0440\u043e\u0432\u0435\u0440\u044c \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+        "\u043e\u0442 \u041c\u0426."
+    )
     assert client.completions.requests == []
 
 
@@ -540,7 +560,8 @@ def test_stream_chat_routes_quoted_action_item_with_short_date_without_model():
     )
     assert registry.calls[1][1]["action_text"] == registry.calls[1][1]["subject"]
     assert registry.calls[1][1]["deadline"].startswith("2026-05-26T23:59:00")
-    assert chunks == [
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible == (
         "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview "
         "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u0434\u043b\u044f "
         "\u0410\u0440\u0434\u043e \u041d\u0430\u0442\u0430\u043b\u044c\u044f "
@@ -551,7 +572,9 @@ def test_stream_chat_routes_quoted_action_item_with_short_date_without_model():
         "\u0414\u043b\u044f \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e "
         "\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
         "\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
-    ]
+    )
+    assert preview["type"] == "action_item"
+    assert preview["payload"]["deadline"].startswith("2026-05-26T23:59:00")
     assert client.completions.requests == []
 
 
