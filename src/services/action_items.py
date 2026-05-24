@@ -42,11 +42,13 @@ class ActionItemService:
 
         response = self.client.post("IActionItemExecutionTasks", payload)
         directum_id = self._directum_id(response)
+        url = self._action_item_url(directum_id)
         return ActionItemCreateResult(
             mode="created",
             payload=payload,
             success=True,
             directum_id=directum_id,
+            url=url,
             message="Action item created.",
         )
 
@@ -70,3 +72,16 @@ class ActionItemService:
         if isinstance(raw_id, str) and raw_id.isdecimal():
             return int(raw_id)
         raise DirectumError("Directum returned an invalid action item id")
+
+    def _action_item_url(self, directum_id: int) -> str | None:
+        entity_path = f"IActionItemExecutionTasks({directum_id})"
+        try:
+            item = self.client.get_one(entity_path)
+            hyperlink = item.get("ClientHyperlink") or item.get("EntityHyperlink")
+            if isinstance(hyperlink, str) and hyperlink.strip():
+                return hyperlink.strip()
+        except DirectumError:
+            pass
+        if hasattr(self.client, "build_url"):
+            return self.client.build_url(entity_path)
+        return None

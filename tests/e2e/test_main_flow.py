@@ -51,7 +51,13 @@ def test_chat_action_item_preview_requires_confirm_button(page, live_server_url)
         confirm_requests.append(post_data_json() if callable(post_data_json) else post_data_json)
         route.fulfill(
             status=200,
-            json={"mode": "created", "success": True, "directum_id": 777, "message": "Created"},
+            json={
+                "mode": "created",
+                "success": True,
+                "directum_id": 777,
+                "url": "https://rx.example/action-item/777",
+                "message": "Created",
+            },
         )
 
     page.route("**/api/chat", handle_chat)
@@ -66,6 +72,10 @@ def test_chat_action_item_preview_requires_confirm_button(page, live_server_url)
     page.locator("#messages").get_by_role("button", name="Создать поручение").click()
 
     expect(page.locator(".preview-status", has_text="777")).to_be_visible()
+    expect(page.get_by_role("link", name="Открыть поручение")).to_have_attribute(
+        "href",
+        "https://rx.example/action-item/777",
+    )
     assert confirm_requests == [
         {
             "subject": "Docs",

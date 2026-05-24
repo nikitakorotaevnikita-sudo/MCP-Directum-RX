@@ -125,6 +125,16 @@ async function confirmActionItemPreview(preview, card, status) {
 
     const idText = result.directum_id ? ` ID: ${result.directum_id}` : "";
     status.textContent = `Поручение создано.${idText}`;
+    if (result.url) {
+      const link = document.createElement("a");
+      link.className = "preview-link";
+      link.href = result.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Открыть поручение";
+      status.append(" ");
+      status.appendChild(link);
+    }
   } catch (error) {
     status.textContent = "Не удалось создать поручение. Проверьте подключение к Directum RX.";
     setPreviewButtonsEnabled(card, true);

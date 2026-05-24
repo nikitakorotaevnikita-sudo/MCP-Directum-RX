@@ -101,6 +101,7 @@ class ActionItemCreateResult(BaseModel):
     payload: dict[str, Any]
     success: bool
     directum_id: int | None = None
+    url: str | None = None
     message: str
 
 

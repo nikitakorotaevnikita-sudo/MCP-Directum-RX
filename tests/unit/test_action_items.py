@@ -6,11 +6,14 @@ from src.services.directum_client import DirectumError
 
 
 class FakeClient:
-    def __init__(self, query_rows=None, post_response=None):
+    def __init__(self, query_rows=None, post_response=None, get_one_response=None, get_one_error=None):
         self.query_rows = [] if query_rows is None else query_rows
         self.post_response = {"Id": 123} if post_response is None else post_response
+        self.get_one_response = {} if get_one_response is None else get_one_response
+        self.get_one_error = get_one_error
         self.query_calls = []
         self.post_calls = []
+        self.get_one_calls = []
 
     def query(self, entity_set, **kwargs):
         self.query_calls.append((entity_set, kwargs))
@@ -19,6 +22,15 @@ class FakeClient:
     def post(self, entity_set, payload):
         self.post_calls.append((entity_set, payload))
         return self.post_response
+
+    def get_one(self, entity_path):
+        self.get_one_calls.append(entity_path)
+        if self.get_one_error is not None:
+            raise self.get_one_error
+        return self.get_one_response
+
+    def build_url(self, entity_path):
+        return f"https://rx.example/Integration/odata/{entity_path}"
 
 
 def test_action_item_create_defaults_to_preview_mode():
@@ -132,6 +144,45 @@ def test_create_action_item_confirm_posts_to_directum():
     assert result.mode == "created"
     assert result.success is True
     assert result.directum_id == 987
+
+
+def test_create_action_item_confirm_returns_directum_hyperlink():
+    client = FakeClient(
+        post_response={"Id": 987},
+        get_one_response={"Id": 987, "ClientHyperlink": "https://rx.example/action-item/987"},
+    )
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        confirm=True,
+    )
+
+    result = service.create_action_item(request)
+
+    assert client.get_one_calls == ["IActionItemExecutionTasks(987)"]
+    assert result.url == "https://rx.example/action-item/987"
+
+
+def test_create_action_item_confirm_falls_back_to_entity_url_when_hyperlink_lookup_fails():
+    client = FakeClient(
+        post_response={"Id": 987},
+        get_one_error=DirectumError("Directum OData request failed with status 404", 404),
+    )
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        confirm=True,
+    )
+
+    result = service.create_action_item(request)
+
+    assert result.mode == "created"
+    assert result.directum_id == 987
+    assert result.url == "https://rx.example/Integration/odata/IActionItemExecutionTasks(987)"
 
 
 def test_create_action_item_confirm_accepts_numeric_string_id():

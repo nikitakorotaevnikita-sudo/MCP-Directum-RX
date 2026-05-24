@@ -236,6 +236,11 @@ body {
   font-size: 14px;
 }
 
+.preview-link {
+  color: #1f5f9e;
+  font-weight: 650;
+}
+
 .chat-form {
   display: flex;
   gap: 10px;
