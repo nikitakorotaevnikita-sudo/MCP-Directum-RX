@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+import re
 from typing import Any
 
 from openai import OpenAI
@@ -26,6 +27,7 @@ class LLMService:
         self.model = model
         self.tool_calling = tool_calling
         self.tool_registry = tool_registry
+        self._api_key = api_key
         self.client = OpenAI(api_key=api_key, base_url=self.base_url)
 
     def status(self) -> dict[str, str]:
@@ -46,19 +48,29 @@ class LLMService:
         messages.extend(history or [])
         messages.append({"role": "user", "content": message})
 
-        tools = self.tools_for_request()
-        stream = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            tools=tools or None,
-            stream=True,
-        )
+        try:
+            tools = self.tools_for_request()
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=tools or None,
+                stream=True,
+            )
 
-        for chunk in stream:
-            choices = getattr(chunk, "choices", None) or []
-            if not choices:
-                continue
-            delta = getattr(choices[0], "delta", None)
-            content = getattr(delta, "content", None)
-            if content:
-                yield content
+            for chunk in stream:
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                content = getattr(delta, "content", None)
+                if content:
+                    yield content
+        except Exception as exc:
+            yield self._safe_error_message(exc)
+
+    def _safe_error_message(self, exc: Exception) -> str:
+        message = str(exc)
+        if self._api_key:
+            message = message.replace(self._api_key, "[redacted]")
+        message = re.sub(r"sk-or-v1-[A-Za-z0-9]+", "[redacted]", message)
+        return f"LLM request failed: {message}"

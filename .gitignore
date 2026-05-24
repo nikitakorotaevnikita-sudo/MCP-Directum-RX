@@ -5,6 +5,7 @@
 .venv/
 __pycache__/
 *.pyc
+.run-server*.log
 data/
 output/
 uv.lock

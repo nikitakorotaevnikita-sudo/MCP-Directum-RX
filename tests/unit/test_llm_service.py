@@ -24,9 +24,19 @@ class FakeCompletions:
         )
 
 
+class FailingCompletions:
+    def create(self, **kwargs):
+        raise RuntimeError("Provider returned error 429 for sk-or-v1-secret")
+
+
 class FakeClient:
     def __init__(self):
         self.chat = SimpleNamespace(completions=FakeCompletions())
+
+
+class FailingClient:
+    def __init__(self):
+        self.chat = SimpleNamespace(completions=FailingCompletions())
 
 
 def test_llm_service_reports_provider_status_without_secret():
@@ -73,3 +83,22 @@ def test_stream_chat_skips_empty_or_tool_only_chunks():
     service.client = FakeClient()
 
     assert list(service.stream_chat("Hi", [])) == ["Hello", " world"]
+
+
+def test_stream_chat_returns_safe_error_when_provider_fails():
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="sk-or-v1-secret",
+        model="google/gemma-4-26b-a4b-it:free",
+        tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+    service.client = FailingClient()
+
+    chunks = list(service.stream_chat("Hi", []))
+
+    assert len(chunks) == 1
+    assert "LLM request failed" in chunks[0]
+    assert "429" in chunks[0]
+    assert "sk-or-v1-secret" not in chunks[0]
