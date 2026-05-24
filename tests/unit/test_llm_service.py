@@ -421,41 +421,31 @@ def test_stream_chat_handles_search_then_create_tool_calls():
     assert len(client.completions.requests) == 3
 
 
-def test_action_item_preview_corrects_verb_phrases_to_imperative():
-    registry = RecordingToolRegistry()
-    service = LLMService(
-        provider="ollama",
-        base_url="http://localhost:11434/v1",
-        api_key="ollama",
-        model="gemma4",
-        tool_calling="disabled",
-        tool_registry=registry,
-    )
-
-    chunks = list(
-        service.stream_chat(
-            "Создай "
-            "поручение "
-            "для Наташи Ардо., "
-            "чтобы она подготовила "
-            "документы для Аппарата "
-            "правительства. "
-            "Срок - 26.05.26",
-            [],
-        )
-    )
-
-    assert registry.calls[0] == ("search_employee", {"query": "Наташи Ардо"})
-    assert registry.calls[1][0] == "create_action_item"
-
-    visible, preview = _split_action_item_preview_marker(chunks[0])
-
-    assert preview["payload"]["subject"] == "Подготовила документы для Аппарата правительства"
-    assert preview["payload"]["action_text"] == "Подготовила документы для Аппарата правительства"
-    assert preview["payload"]["deadline"].startswith("2026-05-26T23:59:00")
-
-
 def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
+    class CreateCompletions:
+        def __init__(self):
+            self.call_count = 0
+
+        def create(self, **kwargs):
+            self.call_count += 1
+            if self.call_count == 1:
+                return SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            message=SimpleNamespace(
+                                content='{"subject": "Проверка документов по Минцифре", '
+                                '"action_text": "Проверьте документы по Минцифре."}'
+                            )
+                        )
+                    ]
+                )
+            return iter([])
+
+    class CreateClient:
+        def __init__(self):
+            self.completions = CreateCompletions()
+            self.chat = SimpleNamespace(completions=self.completions)
+
     registry = RecordingToolRegistry()
     service = LLMService(
         provider="openrouter",
@@ -465,8 +455,7 @@ def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
         tool_calling="auto",
         tool_registry=registry,
     )
-    client = MultiStepCreateClient()
-    service.client = client
+    service.client = CreateClient()
 
     chunks = list(
         service.stream_chat("Создай задание для Ардо, Проверить документы по Минцифре, срок - завтра", [])
@@ -474,18 +463,15 @@ def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
 
     assert registry.calls[0] == ("search_employee", {"query": "Ардо"})
     assert registry.calls[1][0] == "create_action_item"
-    assert registry.calls[1][1]["subject"] == "Проверить документы по Минцифре"
     assert registry.calls[1][1]["performer_id"] == 42
-    assert registry.calls[1][1]["action_text"] == "Проверить документы по Минцифре"
     assert "deadline" in registry.calls[1][1]
     visible, preview = _split_action_item_preview_marker(chunks[0])
     assert visible.startswith("Подготовлен preview")
     assert preview["type"] == "action_item"
-    assert preview["payload"]["subject"] == registry.calls[1][1]["subject"]
+    assert preview["payload"]["subject"] == "Проверка документов по Минцифре"
     assert preview["payload"]["performer_id"] == 42
-    assert preview["payload"]["action_text"] == registry.calls[1][1]["action_text"]
+    assert preview["payload"]["action_text"] == "Проверьте документы по Минцифре."
     assert preview["payload"]["deadline"].endswith("+00:00")
-    assert client.completions.requests == []
 
 
 def test_stream_chat_completes_action_item_draft_from_history_without_model():
@@ -556,7 +542,6 @@ def test_stream_chat_completes_action_item_draft_from_history_without_model():
         "\u041f\u0440\u043e\u0432\u0435\u0440\u044c \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
         "\u043e\u0442 \u041c\u0426."
     )
-    assert client.completions.requests == []
 
 
 def test_stream_chat_routes_quoted_action_item_with_short_date_without_model():
@@ -609,7 +594,6 @@ def test_stream_chat_routes_quoted_action_item_with_short_date_without_model():
     )
     assert preview["type"] == "action_item"
     assert preview["payload"]["deadline"].startswith("2026-05-26T23:59:00")
-    assert client.completions.requests == []
 
 
 def test_stream_chat_routes_natural_action_item_request_with_short_date_without_model():
@@ -648,7 +632,6 @@ def test_stream_chat_routes_natural_action_item_request_with_short_date_without_
     )
     assert registry.calls[1][1]["deadline"].startswith("2026-05-26T23:59:00")
     assert chunks[0].startswith("\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview")
-    assert client.completions.requests == []
 
 
 def test_stream_chat_strips_sentence_punctuation_from_employee_query_without_model():

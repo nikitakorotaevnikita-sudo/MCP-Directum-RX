@@ -253,42 +253,48 @@ class LLMService:
         subject = payload.get("subject", "")
         action_text = payload.get("action_text", "")
 
-        infinitive_subject = self._verb_phrase_to_infinitive_noun(subject)
-        imperative_action = self._verb_phrase_to_imperative(action_text)
+        corrected = self._correct_text_via_llm(subject, action_text)
 
         return {
             **payload,
-            "subject": infinitive_subject,
-            "action_text": imperative_action,
+            "subject": corrected["subject"],
+            "action_text": corrected["action_text"],
         }
 
-    def _verb_phrase_to_infinitive_noun(self, text: str) -> str:
-        text = text.strip()
-        if not text:
-            return text
-
-        text = re.sub(r"\bчтобы\s+она\s+", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"\bчтобы\s+он\s+", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"\bона\s+", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"\bон\b", "", text, flags=re.IGNORECASE).strip()
-
-        text = text[0].upper() + text[1:] if text else text
-
-        return text
-
-    def _verb_phrase_to_imperative(self, text: str) -> str:
-        text = text.strip()
-        if not text:
-            return text
-
-        text = re.sub(r"\bчтобы\s+она\s+", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"\bчтобы\s+он\s+", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"\bона\s+", "", text, flags=re.IGNORECASE).strip()
-        text = re.sub(r"\bон\b", "", text, flags=re.IGNORECASE).strip()
-
-        text = text[0].upper() + text[1:] if text else text
-
-        return text
+    def _correct_text_via_llm(self, subject: str, action_text: str) -> dict[str, str]:
+        correction_prompt = (
+            "Ты — эксперт по деловой переписке на русском языке. Преобразуй текст поручения в правильную форму.\n"
+            "Правила:\n"
+            "- Тема: существительное (отглагольное) с большой буквы, без точки в конце, максимум 100 символов. "
+            "Пример: 'Подготовка документов для Аппарата правительства'\n"
+            "- Текст поручения: глагол в повелительном наклонении (множественное число) с большой буквы, с точкой в конце, максимум 500 символов. "
+            "Пример: 'Подготовьте документы для Аппарата правительства.'\n"
+            f"Исходная тема: {subject}\n"
+            f"Исходный текст: {action_text}\n"
+            "Верни ТОЛЬКО JSON: {\"subject\": \"...\", \"action_text\": \"...\"}"
+        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Ты возвращаешь только валидный JSON без markdown-разметки."},
+                    {"role": "user", "content": correction_prompt},
+                ],
+                temperature=0.1,
+                max_tokens=300,
+            )
+            raw = response.choices[0].message.content or "{}"
+            raw = raw.strip()
+            if raw.startswith("```"):
+                raw = re.sub(r"```json\s*", "", raw)
+                raw = re.sub(r"\s*```", "", raw)
+            result = json.loads(raw)
+            return {
+                "subject": str(result.get("subject", subject)),
+                "action_text": str(result.get("action_text", action_text)),
+            }
+        except Exception:
+            return {"subject": subject, "action_text": action_text}
 
     def _clean_employee_query(self, value: str) -> str:
         return value.strip(EMPLOYEE_QUERY_STRIP_CHARS)
