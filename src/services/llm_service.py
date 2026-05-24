@@ -155,6 +155,11 @@ class LLMService:
         elif (
             "\u043c\u043e\u0438 \u0437\u0430\u0434\u0430\u043d\u0438\u044f" in normalized
             or "\u043c\u043e\u0438 \u0437\u0430\u0434\u0430\u0447\u0438" in normalized
+            or (
+                "\u0443 \u043c\u0435\u043d\u044f" in normalized
+                and "\u0437\u0430\u0434\u0430\u0447" in normalized
+                and "\u0432 \u0440\u0430\u0431\u043e\u0442\u0435" in normalized
+            )
             or "my assignments" in normalized
         ):
             direct_tool = "get_my_assignments"

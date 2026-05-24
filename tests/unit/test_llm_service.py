@@ -338,6 +338,32 @@ def test_stream_chat_routes_my_assignments_intent_without_model_tool_call():
     assert client.completions.requests == []
 
 
+def test_stream_chat_routes_in_progress_tasks_question_without_model_tool_call():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = ToolCallClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat(
+            "\u041a\u0430\u043a\u0438\u0435 \u0443 \u043c\u0435\u043d\u044f \u0435\u0441\u0442\u044c "
+            "\u0437\u0430\u0434\u0430\u0447\u0438 \u0432 \u0440\u0430\u0431\u043e\u0442\u0435?",
+            [],
+        )
+    )
+
+    assert registry.calls == [("get_my_assignments", {})]
+    assert chunks == ["\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1: Task (InProcess)."]
+    assert client.completions.requests == []
+
+
 def test_stream_chat_reports_directum_error_for_direct_rx_intent():
     service = LLMService(
         provider="openrouter",

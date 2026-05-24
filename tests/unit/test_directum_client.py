@@ -41,6 +41,16 @@ def test_query_sends_odata_params_and_returns_value():
     assert seen["auth"] == "Basic token"
 
 
+def test_query_treats_no_content_as_empty_collection():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(204)),
+    )
+
+    assert client.query("IActionItemExecutionAssignments") == []
+
+
 def test_context_manager_allows_requests_and_closes_client():
     client_ref = {}
 

@@ -72,6 +72,8 @@ class DirectumClient:
             url,
             headers=self._headers(),
         )
+        if response.status_code == 204:
+            return {"value": []}
         data = self._json_or_error(response)
         return self._collection_or_error(data, response.status_code)
 
