@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 
-from src.models.schemas import ActionItemCreateRequest
+from src.models.schemas import ActionItemCreateRequest, TaskCreateRequest
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
@@ -29,11 +29,15 @@ class ToolRegistry:
             "search_employee": lambda args: self.action_item_service.search_employee(
                 self._normalize_search_query(args.get("query", ""))
             ),
+            "search_documents": lambda args: self.action_item_service.search_documents(args.get("query", "")),
             "create_action_item": self._create_action_item,
+            "create_task": self._create_task,
         }
         self._required_arguments: dict[str, list[str]] = {
             "search_employee": ["query"],
+            "search_documents": ["query"],
             "create_action_item": ["subject", "performer_id", "action_text"],
+            "create_task": ["subject", "performer_id", "action_text"],
         }
 
     def openai_tools(self) -> list[dict[str, Any]]:
@@ -50,8 +54,26 @@ class ToolRegistry:
                 required=["query"],
             ),
             self._tool(
+                "search_documents",
+                "Search Directum official documents by name or subject.",
+                {"query": {"type": "string", "description": "Document name, subject, number, or keyword"}},
+                required=["query"],
+            ),
+            self._tool(
                 "create_action_item",
-                "Preview or create an action item. Use confirm=false first.",
+                "Preview or create a document-bound Directum RX action item. Use confirm=false first.",
+                {
+                    "subject": {"type": "string"},
+                    "performer_id": {"type": "integer"},
+                    "action_text": {"type": "string"},
+                    "deadline": {"type": "string"},
+                    "document_id": {"type": "integer"},
+                },
+                required=["subject", "performer_id", "action_text"],
+            ),
+            self._tool(
+                "create_task",
+                "Preview or create a Directum RX simple task without a document. Use confirm=false first.",
                 {
                     "subject": {"type": "string"},
                     "performer_id": {"type": "integer"},
@@ -67,7 +89,8 @@ class ToolRegistry:
             raise ValueError(f"Unknown tool: {name}")
         if not isinstance(arguments, dict):
             raise ValueError(f"Tool '{name}' arguments must be an object")
-        self._validate_required_arguments(name, arguments)
+        if name not in {"create_action_item", "create_task"}:
+            self._validate_required_arguments(name, arguments)
         result = self._handlers[name](arguments)
         if hasattr(result, "model_dump"):
             return result.model_dump(mode="json")
@@ -76,17 +99,34 @@ class ToolRegistry:
         return result
 
     def _create_action_item(self, arguments: dict[str, Any]) -> Any:
-        if arguments.get("confirm") is True:
+        safe_arguments = self._unwrap_tool_arguments(arguments)
+        if safe_arguments.get("confirm") is True:
             raise ValueError("Tool 'create_action_item' cannot confirm creation directly; use preview mode first")
-        safe_arguments = self._normalize_create_action_item_arguments(arguments)
+        safe_arguments = self._normalize_create_action_item_arguments(safe_arguments)
+        self._validate_required_arguments("create_action_item", safe_arguments)
         try:
             request = ActionItemCreateRequest(**safe_arguments)
         except ValidationError as exc:
             raise ValueError(f"Tool 'create_action_item' invalid arguments: {exc}") from exc
         return self.action_item_service.create_action_item(request)
 
+    def _create_task(self, arguments: dict[str, Any]) -> Any:
+        safe_arguments = self._unwrap_tool_arguments(arguments)
+        if safe_arguments.get("confirm") is True:
+            raise ValueError("Tool 'create_task' cannot confirm creation directly; use preview mode first")
+        safe_arguments = self._normalize_create_task_arguments(safe_arguments)
+        self._validate_required_arguments("create_task", safe_arguments)
+        try:
+            request = TaskCreateRequest(**safe_arguments)
+        except ValidationError as exc:
+            raise ValueError(f"Tool 'create_task' invalid arguments: {exc}") from exc
+        return self.action_item_service.create_task(request)
+
     def _normalize_create_action_item_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        safe_arguments = {**arguments, "confirm": False}
+        safe_arguments = {**self._unwrap_tool_arguments(arguments), "confirm": False}
+        self._normalize_action_item_text_fields(safe_arguments)
+        self._normalize_action_item_performer(safe_arguments)
+        self._normalize_action_item_document(safe_arguments)
         deadline = safe_arguments.get("deadline")
         if isinstance(deadline, datetime) and (deadline.tzinfo is None or deadline.utcoffset() is None):
             safe_arguments["deadline"] = deadline.replace(tzinfo=timezone.utc)
@@ -95,6 +135,59 @@ class ToolRegistry:
             if parsed_deadline is not None:
                 safe_arguments["deadline"] = parsed_deadline
         return safe_arguments
+
+    def _normalize_create_task_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        safe_arguments = {**self._unwrap_tool_arguments(arguments), "confirm": False}
+        self._normalize_action_item_text_fields(safe_arguments)
+        self._normalize_action_item_performer(safe_arguments)
+        safe_arguments.pop("document_id", None)
+        deadline = safe_arguments.get("deadline")
+        if isinstance(deadline, datetime) and (deadline.tzinfo is None or deadline.utcoffset() is None):
+            safe_arguments["deadline"] = deadline.replace(tzinfo=timezone.utc)
+        if isinstance(deadline, str):
+            parsed_deadline = self._parse_deadline(deadline)
+            if parsed_deadline is not None:
+                safe_arguments["deadline"] = parsed_deadline
+        return safe_arguments
+
+    def _unwrap_tool_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        parameters = arguments.get("parameters")
+        if isinstance(parameters, dict):
+            return parameters
+        return arguments
+
+    def _normalize_action_item_text_fields(self, arguments: dict[str, Any]) -> None:
+        subject = arguments.get("subject")
+        action_text = arguments.get("action_text")
+        if not action_text and isinstance(subject, str) and subject.strip():
+            arguments["action_text"] = subject
+        if not subject and isinstance(action_text, str) and action_text.strip():
+            arguments["subject"] = action_text
+
+    def _normalize_action_item_performer(self, arguments: dict[str, Any]) -> None:
+        performer = arguments.get("performer_id")
+        if isinstance(performer, str):
+            cleaned = self._normalize_search_query(performer)
+            if cleaned.isdecimal():
+                arguments["performer_id"] = int(cleaned)
+                return
+            employees = self.action_item_service.search_employee(cleaned)
+            if employees:
+                first = employees[0]
+                arguments["performer_id"] = first["id"] if isinstance(first, dict) else first.id
+
+    def _normalize_action_item_document(self, arguments: dict[str, Any]) -> None:
+        document_id = arguments.get("document_id")
+        if document_id is None:
+            return
+        if isinstance(document_id, int):
+            return
+        if isinstance(document_id, str):
+            cleaned = document_id.strip()
+            if cleaned.isdecimal():
+                arguments["document_id"] = int(cleaned)
+                return
+        arguments.pop("document_id", None)
 
     def _parse_deadline(self, value: str) -> datetime | None:
         parsed_iso = self._parse_iso_deadline(value)

@@ -17,6 +17,7 @@ from src.models.schemas import (
     DirectumUser,
     LLMConnectionRequest,
     LLMConnectionStatus,
+    TaskCreateRequest,
 )
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
@@ -166,11 +167,19 @@ def create_app(testing: bool = False, metrics_db_path: str | None = None) -> Fas
     def employee_search(query: str):
         return current_services()["action_items"].search_employee(query)
 
+    @app.get("/api/directum/documents/search")
+    def document_search(query: str):
+        return current_services()["action_items"].search_documents(query)
+
     @app.post("/api/directum/action-items")
     def create_action_item(request: ActionItemCreateRequest):
         result = current_services()["action_items"].create_action_item(request)
         current_services()["metrics"].record_action_item_create("confirmed" if request.confirm else "preview")
         return result
+
+    @app.post("/api/directum/tasks")
+    def create_task(request: TaskCreateRequest):
+        return current_services()["action_items"].create_task(request)
 
     @app.post("/api/feedback")
     def feedback(payload: dict[str, Any]):

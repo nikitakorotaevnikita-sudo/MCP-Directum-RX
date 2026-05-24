@@ -80,7 +80,41 @@ class EmployeeSummary(BaseModel):
     status: str | None = None
 
 
+class DocumentSummary(BaseModel):
+    id: int
+    name: str
+    subject: str | None = None
+    registration_number: str | None = None
+    registration_date: datetime | None = None
+
+
 class ActionItemCreateRequest(BaseModel):
+    subject: str = Field(min_length=1)
+    performer_id: int = Field(gt=0)
+    action_text: str = Field(min_length=1)
+    deadline: datetime | None = None
+    document_id: int | None = Field(default=None, gt=0)
+    confirm: bool = False
+
+    @field_validator("subject", "action_text")
+    @classmethod
+    def strip_non_empty(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("value must not be empty")
+        return cleaned
+
+
+class ActionItemCreateResult(BaseModel):
+    mode: Literal["preview", "created"]
+    payload: dict[str, Any]
+    success: bool
+    directum_id: int | None = None
+    url: str | None = None
+    message: str
+
+
+class TaskCreateRequest(BaseModel):
     subject: str = Field(min_length=1)
     performer_id: int = Field(gt=0)
     action_text: str = Field(min_length=1)
@@ -96,7 +130,7 @@ class ActionItemCreateRequest(BaseModel):
         return cleaned
 
 
-class ActionItemCreateResult(BaseModel):
+class TaskCreateResult(BaseModel):
     mode: Literal["preview", "created"]
     payload: dict[str, Any]
     success: bool

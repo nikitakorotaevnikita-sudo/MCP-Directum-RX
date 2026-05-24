@@ -39,6 +39,17 @@ class RecordingToolRegistry(FakeToolRegistry):
                 "success": True,
                 "message": "Preview generated; confirm to create the action item.",
             }
+        if name == "create_task":
+            return {
+                "mode": "preview",
+                "payload": {
+                    "subject": arguments["subject"],
+                    "performer_id": arguments["performer_id"],
+                    "action_text": arguments["action_text"],
+                },
+                "success": True,
+                "message": "Preview generated; confirm to create the task.",
+            }
         return [{"id": 1, "subject": "Task", "status": "InProcess", "entity_type": "assignment"}]
 
 
@@ -596,7 +607,7 @@ def test_stream_chat_routes_quoted_action_item_with_short_date_without_model():
     assert preview["payload"]["deadline"].startswith("2026-05-26T23:59:00")
 
 
-def test_stream_chat_routes_natural_action_item_request_with_short_date_without_model():
+def test_stream_chat_routes_natural_task_request_with_short_date_without_model():
     registry = RecordingToolRegistry()
     service = LLMService(
         provider="ollama",
@@ -624,14 +635,100 @@ def test_stream_chat_routes_natural_action_item_request_with_short_date_without_
     )
 
     assert registry.calls[0] == ("search_employee", {"query": "\u0410\u0440\u0434\u043e"})
-    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][0] == "create_task"
     assert registry.calls[1][1]["subject"] == (
         "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u043b\u0430 "
         "\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
         "\u043e\u0442 \u041c\u0438\u043d\u0446\u0438\u0444\u0440\u044b"
     )
     assert registry.calls[1][1]["deadline"].startswith("2026-05-26T23:59:00")
-    assert chunks[0].startswith("\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview")
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview \u0437\u0430\u0434\u0430\u0447\u0438")
+    assert preview["type"] == "task"
+
+
+def test_stream_chat_routes_comma_task_request_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = MultiStepCreateClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat(
+            "\u041f\u0420\u0438\u0432\u0435\u0442, "
+            "\u0441\u043e\u0437\u0434\u0430\u0439 "
+            "\u0437\u0430\u0434\u0430\u0447\u0443 "
+            "\u0434\u043b\u044f \u041d\u0430\u0442\u0430\u043b\u044c\u0438 "
+            "\u0410\u0440\u0434\u043e, "
+            "\u043f\u043e\u043c\u044b\u0442\u044c "
+            "\u043f\u043e\u043b\u044b, "
+            "\u0441\u0440\u043e\u043a 27.06.2026",
+            [],
+        )
+    )
+
+    assert registry.calls[0] == (
+        "search_employee",
+        {"query": "\u041d\u0430\u0442\u0430\u043b\u044c\u0438 \u0410\u0440\u0434\u043e"},
+    )
+    assert registry.calls[1][0] == "create_task"
+    assert registry.calls[1][1]["subject"] == "\u043f\u043e\u043c\u044b\u0442\u044c \u043f\u043e\u043b\u044b"
+    assert registry.calls[1][1]["action_text"] == "\u043f\u043e\u043c\u044b\u0442\u044c \u043f\u043e\u043b\u044b"
+    assert registry.calls[1][1]["deadline"].startswith("2026-06-27T23:59:00")
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview \u0437\u0430\u0434\u0430\u0447\u0438")
+    assert preview["type"] == "task"
+
+
+def test_stream_chat_routes_natural_task_with_comma_and_due_by_date_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = MultiStepCreateClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat(
+            "\u0421\u043e\u0437\u0434\u0430\u0439 "
+            "\u0437\u0430\u0434\u0430\u0447\u0443 "
+            "\u0434\u043b\u044f \u0410\u0440\u0434\u043e "
+            "\u041d\u0430\u0442\u0430\u0448\u0438, "
+            "\u0447\u0442\u043e\u0431\u044b \u043e\u043d\u0430 "
+            "\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u043b\u0430 "
+            "\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+            "\u0434\u043b\u044f \u041c\u0426 \u0420\u0424 "
+            "\u043a 27.06.2026",
+            [],
+        )
+    )
+
+    assert registry.calls[0] == (
+        "search_employee",
+        {"query": "\u0410\u0440\u0434\u043e \u041d\u0430\u0442\u0430\u0448\u0438"},
+    )
+    assert registry.calls[1][0] == "create_task"
+    assert registry.calls[1][1]["subject"] == (
+        "\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u043b\u0430 "
+        "\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b "
+        "\u0434\u043b\u044f \u041c\u0426 \u0420\u0424"
+    )
+    assert registry.calls[1][1]["deadline"].startswith("2026-06-27T23:59:00")
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview \u0437\u0430\u0434\u0430\u0447\u0438")
+    assert preview["type"] == "task"
 
 
 def test_stream_chat_strips_sentence_punctuation_from_employee_query_without_model():

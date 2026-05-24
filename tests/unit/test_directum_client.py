@@ -126,6 +126,16 @@ def test_post_400_includes_sanitized_odata_error_detail():
         raise AssertionError("DirectumError was not raised")
 
 
+def test_post_returns_empty_dict_on_no_content_response():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(204)),
+    )
+
+    assert client.post("Docflow/StartTask", {"taskId": 987}) == {}
+
+
 def test_query_raises_error_on_non_object_collection_response():
     client = DirectumClient(
         base_url="https://rx.example/Integration/odata",

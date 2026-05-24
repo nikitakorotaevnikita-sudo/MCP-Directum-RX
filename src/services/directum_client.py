@@ -95,6 +95,8 @@ class DirectumClient:
                 ),
                 status_code=response.status_code,
             )
+        if response.status_code == 204:
+            return {}
         return self._json_or_error(response)
 
     def _headers(self) -> dict[str, str]:

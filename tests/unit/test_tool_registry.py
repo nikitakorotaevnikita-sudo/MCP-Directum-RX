@@ -1,4 +1,4 @@
-from src.models.schemas import ActionItemCreateRequest, AssignmentSummary, DirectumUser
+from src.models.schemas import ActionItemCreateRequest, AssignmentSummary, DirectumUser, EmployeeSummary, TaskCreateRequest
 from src.services.tool_registry import ToolRegistry
 
 
@@ -24,11 +24,22 @@ class FakeAssignments:
 class FakeActionItems:
     def __init__(self):
         self.created_requests = []
+        self.employee_queries = []
 
     def search_employee(self, query):
+        self.employee_queries.append(query)
+        if query == "Ардо Наташи":
+            return [EmployeeSummary(id=75, name="Ардо Наталья Алексеевна", status="Active")]
+        return []
+
+    def search_documents(self, query):
         return []
 
     def create_action_item(self, request: ActionItemCreateRequest):
+        self.created_requests.append(request)
+        return {"mode": "preview", "payload": request.model_dump(), "success": True}
+
+    def create_task(self, request: TaskCreateRequest):
         self.created_requests.append(request)
         return {"mode": "preview", "payload": request.model_dump(), "success": True}
 
@@ -41,6 +52,7 @@ def test_tool_registry_lists_core_tools():
     assert "get_current_user" in names
     assert "get_my_assignments" in names
     assert "create_action_item" in names
+    assert "create_task" in names
 
 
 def test_tool_registry_dispatches_assignment_tool():
@@ -109,6 +121,33 @@ def test_tool_registry_adds_timezone_to_naive_iso_deadline_before_payload():
     )
 
     assert action_items.created_requests[0].deadline.isoformat() == "2026-05-26T23:59:00+00:00"
+
+
+def test_tool_registry_normalizes_model_style_create_action_item_arguments():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+
+    registry.call(
+        "create_action_item",
+        {
+            "parameters": {
+                "confirm": False,
+                "document_id": "<Integer>",
+                "performer_id": "Ардо Наташи",
+                "subject": "подготовка документов для МЦ РФ",
+                "deadline": "27.06.2026",
+            }
+        },
+    )
+
+    request = action_items.created_requests[0]
+    assert action_items.employee_queries == ["Ардо Наташи"]
+    assert request.confirm is False
+    assert request.document_id is None
+    assert request.performer_id == 75
+    assert request.subject == "подготовка документов для МЦ РФ"
+    assert request.action_text == "подготовка документов для МЦ РФ"
+    assert request.deadline.isoformat().startswith("2026-06-27T23:59:00")
 
 
 def test_tool_registry_rejects_direct_create_confirmation():

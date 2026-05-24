@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from src.models.schemas import ActionItemCreateRequest, ToolCallRecord
+from src.models.schemas import ActionItemCreateRequest, TaskCreateRequest, ToolCallRecord
 from src.services.action_items import ActionItemService
 from src.services.directum_client import DirectumError
 
@@ -109,22 +109,25 @@ def test_create_action_item_preview_never_posts():
     assert result.success is True
     assert result.directum_id is None
     assert result.payload == {
-        "Subject": "Prepare response",
-        "PerformersGD": "42",
-        "ActionItem": "Prepare a short response for the incoming letter",
-        "ExecutionState": "OnExecution",
-        "Deadline": "2026-06-01T12:30:00+00:00",
+        "documentId": None,
+        "assigneeId": 42,
+        "isUnderControl": False,
+        "supervisorId": None,
+        "coassigneeId": None,
+        "deadline": "2026-06-01T12:30:00+00:00",
+        "activeText": "Prepare a short response for the incoming letter",
     }
     assert client.post_calls == []
 
 
 def test_create_action_item_confirm_posts_to_directum():
-    client = FakeClient(post_response={"Id": 987})
+    client = FakeClient(post_response={"value": 987})
     service = ActionItemService(client)
     request = ActionItemCreateRequest(
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
+        document_id=555,
         confirm=True,
     )
 
@@ -132,14 +135,21 @@ def test_create_action_item_confirm_posts_to_directum():
 
     assert client.post_calls == [
         (
-            "IActionItemExecutionTasks",
+            "RecordManagement/CreateActionItemExecution",
             {
-                "Subject": "Prepare response",
-                "PerformersGD": "42",
-                "ActionItem": "Prepare a short response for the incoming letter",
-                "ExecutionState": "OnExecution",
+                "documentId": 555,
+                "assigneeId": 42,
+                "isUnderControl": False,
+                "supervisorId": None,
+                "coassigneeId": None,
+                "deadline": None,
+                "activeText": "Prepare a short response for the incoming letter",
             },
-        )
+        ),
+        (
+            "Docflow/StartTask",
+            {"taskId": 987},
+        ),
     ]
     assert result.mode == "created"
     assert result.success is True
@@ -148,7 +158,7 @@ def test_create_action_item_confirm_posts_to_directum():
 
 def test_create_action_item_confirm_returns_directum_hyperlink():
     client = FakeClient(
-        post_response={"Id": 987},
+        post_response={"value": 987},
         get_one_response={"Id": 987, "ClientHyperlink": "https://rx.example/action-item/987"},
     )
     service = ActionItemService(client)
@@ -156,6 +166,7 @@ def test_create_action_item_confirm_returns_directum_hyperlink():
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
+        document_id=555,
         confirm=True,
     )
 
@@ -167,7 +178,7 @@ def test_create_action_item_confirm_returns_directum_hyperlink():
 
 def test_create_action_item_confirm_falls_back_to_entity_url_when_hyperlink_lookup_fails():
     client = FakeClient(
-        post_response={"Id": 987},
+        post_response={"value": 987},
         get_one_error=DirectumError("Directum OData request failed with status 404", 404),
     )
     service = ActionItemService(client)
@@ -175,6 +186,7 @@ def test_create_action_item_confirm_falls_back_to_entity_url_when_hyperlink_look
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
+        document_id=555,
         confirm=True,
     )
 
@@ -186,12 +198,13 @@ def test_create_action_item_confirm_falls_back_to_entity_url_when_hyperlink_look
 
 
 def test_create_action_item_confirm_accepts_numeric_string_id():
-    client = FakeClient(post_response={"Id": "987"})
+    client = FakeClient(post_response={"value": "987"})
     service = ActionItemService(client)
     request = ActionItemCreateRequest(
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
+        document_id=555,
         confirm=True,
     )
 
@@ -207,6 +220,7 @@ def test_create_action_item_confirm_rejects_missing_id():
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
+        document_id=555,
         confirm=True,
     )
 
@@ -219,12 +233,13 @@ def test_create_action_item_confirm_rejects_missing_id():
 
 
 def test_create_action_item_confirm_rejects_invalid_id():
-    client = FakeClient(post_response={"Id": "abc"})
+    client = FakeClient(post_response={"value": "abc"})
     service = ActionItemService(client)
     request = ActionItemCreateRequest(
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
+        document_id=555,
         confirm=True,
     )
 
@@ -237,19 +252,40 @@ def test_create_action_item_confirm_rejects_invalid_id():
 
 
 def test_create_action_item_includes_aware_utc_deadline_in_payload():
-    client = FakeClient()
+    client = FakeClient(post_response={"value": 987})
     service = ActionItemService(client)
     request = ActionItemCreateRequest(
         subject="Prepare response",
         performer_id=42,
         action_text="Prepare a short response for the incoming letter",
         deadline=datetime(2026, 6, 1, 12, 30, tzinfo=timezone.utc),
+        document_id=555,
         confirm=True,
     )
 
     service.create_action_item(request)
 
-    assert client.post_calls[0][1]["Deadline"] == "2026-06-01T12:30:00+00:00"
+    assert client.post_calls[0][1]["deadline"] == "2026-06-01T12:30:00+00:00"
+
+
+def test_create_action_item_confirm_requires_document_id():
+    client = FakeClient()
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Prepare response",
+        performer_id=42,
+        action_text="Prepare a short response for the incoming letter",
+        confirm=True,
+    )
+
+    try:
+        service.create_action_item(request)
+    except DirectumError as exc:
+        assert "document_id" in exc.safe_message
+    else:
+        raise AssertionError("action item without document_id was accepted")
+
+    assert client.post_calls == []
 
 
 def test_create_action_item_rejects_naive_deadline_before_post():
@@ -326,3 +362,141 @@ def test_search_employee_returns_empty_without_query_for_whitespace():
 
     assert result == []
     assert client.query_calls == []
+
+
+def test_search_documents_falls_back_to_keyword_stem_for_inflected_query():
+    class DocumentFallbackClient(FakeClient):
+        def query(self, entity_set, **kwargs):
+            self.query_calls.append((entity_set, kwargs))
+            if kwargs["filter_"] == "(contains(Name,'Минцифр') or contains(Subject,'Минцифр')) and RegistrationDate ne null":
+                return [
+                    {
+                        "Id": 576,
+                        "Name": "Вх. письмо от Минцифры Алтайского Края",
+                        "Subject": "Договор",
+                        "RegistrationNumber": "1-0008/26",
+                        "RegistrationDate": "2026-05-21T00:00:00+04:00",
+                    }
+                ]
+            return []
+
+    client = DocumentFallbackClient()
+    service = ActionItemService(client)
+
+    result = service.search_documents("Проверь документы по Минцифре", top=5)
+
+    assert [call[1]["filter_"] for call in client.query_calls] == [
+        "(contains(Name,'Проверь документы по Минцифре') or contains(Subject,'Проверь документы по Минцифре')) and RegistrationDate ne null",
+        "(contains(Name,'Минцифре') or contains(Subject,'Минцифре')) and RegistrationDate ne null",
+        "(contains(Name,'Минцифр') or contains(Subject,'Минцифр')) and RegistrationDate ne null",
+    ]
+    assert result[0].id == 576
+
+
+def test_search_documents_expands_mc_abbreviation_to_mincifry_stem():
+    class DocumentFallbackClient(FakeClient):
+        def query(self, entity_set, **kwargs):
+            self.query_calls.append((entity_set, kwargs))
+            if kwargs["filter_"] == "(contains(Name,'Минцифр') or contains(Subject,'Минцифр')) and RegistrationDate ne null":
+                return [{"Id": 576, "Name": "Вх. письмо от Минцифры", "Subject": "Договор"}]
+            return []
+
+    client = DocumentFallbackClient()
+    service = ActionItemService(client)
+
+    result = service.search_documents("Подготовьте документы для МЦ РФ", top=5)
+
+    assert [call[1]["filter_"] for call in client.query_calls] == [
+        "(contains(Name,'Подготовьте документы для МЦ РФ') or contains(Subject,'Подготовьте документы для МЦ РФ')) and RegistrationDate ne null",
+        "(contains(Name,'Минцифр') or contains(Subject,'Минцифр')) and RegistrationDate ne null",
+    ]
+    assert result[0].id == 576
+
+
+def test_create_action_item_confirm_auto_resolves_document_from_text():
+    class DocumentResolvingClient(FakeClient):
+        def query(self, entity_set, **kwargs):
+            self.query_calls.append((entity_set, kwargs))
+            return [{"Id": 576, "Name": "Вх. письмо от Минцифры", "Subject": "Договор"}]
+
+    client = DocumentResolvingClient(post_response={"value": 987})
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Проверь документы по Минцифре",
+        performer_id=42,
+        action_text="Проверь документы по Минцифре",
+        confirm=True,
+    )
+
+    service.create_action_item(request)
+
+    assert client.post_calls[0] == (
+        "RecordManagement/CreateActionItemExecution",
+        {
+            "documentId": 576,
+            "assigneeId": 42,
+            "isUnderControl": False,
+            "supervisorId": None,
+            "coassigneeId": None,
+            "deadline": None,
+            "activeText": "Проверь документы по Минцифре",
+        },
+    )
+
+
+def test_create_task_preview_never_posts():
+    client = FakeClient()
+    service = ActionItemService(client)
+    request = TaskCreateRequest(
+        subject="Помыть полы",
+        performer_id=75,
+        action_text="Помыть полы",
+        deadline=datetime(2026, 6, 27, 23, 59, tzinfo=timezone.utc),
+    )
+
+    result = service.create_task(request)
+
+    assert result.mode == "preview"
+    assert result.payload == {
+        "assignmentType": "Assignment",
+        "subject": "Помыть полы",
+        "deadline": "2026-06-27T23:59:00+00:00",
+        "importance": "Normal",
+        "text": "Помыть полы",
+        "performerIds": [75],
+        "observerIds": [],
+        "documentIds": [],
+    }
+    assert client.post_calls == []
+
+
+def test_create_task_confirm_uses_simple_task_actions():
+    client = FakeClient(post_response={"value": 901})
+    service = ActionItemService(client)
+    request = TaskCreateRequest(
+        subject="Помыть полы",
+        performer_id=75,
+        action_text="Помыть полы",
+        confirm=True,
+    )
+
+    result = service.create_task(request)
+
+    assert client.post_calls == [
+        (
+            "Docflow/CreateSimpleTask",
+            {
+                "assignmentType": "Assignment",
+                "subject": "Помыть полы",
+                "deadline": None,
+                "importance": "Normal",
+                "text": "Помыть полы",
+                "performerIds": [75],
+                "observerIds": [],
+                "documentIds": [],
+            },
+        ),
+        ("Docflow/StartTask", {"taskId": 901}),
+    ]
+    assert result.mode == "created"
+    assert result.directum_id == 901

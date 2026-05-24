@@ -227,23 +227,32 @@ class LLMService:
             if deadline is not None:
                 arguments["deadline"] = deadline.isoformat()
 
-            self.tool_registry.call("create_action_item", arguments)
+            preview_type = draft.get("type", "action_item")
+            is_task = preview_type == "task"
+            tool_name = "create_task" if is_task else "create_action_item"
+            self.tool_registry.call(tool_name, arguments)
+            entity_label = "задачи" if is_task else "поручения"
             visible_response = (
                 f"\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d preview "
-                f"\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u0434\u043b\u044f {performer_name}: "
+                f"{entity_label} \u0434\u043b\u044f {performer_name}: "
                 f"{draft['subject']}. "
                 f"\u0414\u043b\u044f \u0444\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u043e\u0433\u043e "
                 f"\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
                 f"\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
             )
-            return visible_response + "\n" + self._action_item_preview_marker(arguments, performer_name)
+            return visible_response + "\n" + self._action_item_preview_marker(arguments, performer_name, preview_type)
         except Exception as exc:
             return self._safe_directum_error_message(exc)
 
-    def _action_item_preview_marker(self, payload: dict[str, Any], performer_name: str) -> str:
+    def _action_item_preview_marker(
+        self,
+        payload: dict[str, Any],
+        performer_name: str,
+        preview_type: str = "action_item",
+    ) -> str:
         corrected = self._action_item_text_to_imperative(payload)
         preview = {
-            "type": "action_item",
+            "type": preview_type,
             "payload": corrected,
             "display": {"performer_name": performer_name},
         }
@@ -337,7 +346,7 @@ class LLMService:
         quoted_match = re.search(
             (
                 r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(?:\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
                 r"\u0434\u043b\u044f\s+(.+?)\s+[\u0022\u00ab](.+?)[\u0022\u00bb]\s*"
                 r"(?:,?\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
             ),
@@ -346,11 +355,12 @@ class LLMService:
         )
         if quoted_match is not None:
             subject, deadline_text = self._split_trailing_deadline(
-                quoted_match.group(2),
-                quoted_match.group(3) or "",
+                quoted_match.group(3),
+                quoted_match.group(4) or "",
             )
             return {
-                "employee_query": self._clean_employee_query(quoted_match.group(1)),
+                "type": self._draft_type(quoted_match.group(1)),
+                "employee_query": self._clean_employee_query(quoted_match.group(2)),
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": deadline_text,
@@ -359,19 +369,20 @@ class LLMService:
         natural_match = re.search(
             (
                 r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(?:\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
-                r"\u0434\u043b\u044f\s+([^,]+?)\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"\u0434\u043b\u044f\s+([^,]+?),?\s+"
                 r"\u0447\u0442\u043e\u0431\u044b\s+(?:\u043e\u043d|"
                 r"\u043e\u043d\u0430)\s+(.+?)\s+"
-                r"(?:\u0441\u043e\s+)?\u0441\u0440\u043e\u043a(?:\u043e\u043c)?\s*[-\u2013\u2014:]?\s*(.+)$"
+                r"(?:(?:\u0441\u043e\s+)?\u0441\u0440\u043e\u043a(?:\u043e\u043c)?\s*[-\u2013\u2014:]?|\u043a)\s*(.+)$"
             ),
             message,
             flags=re.IGNORECASE,
         )
         if natural_match is not None:
-            subject, deadline_text = self._split_trailing_deadline(natural_match.group(2), natural_match.group(3))
+            subject, deadline_text = self._split_trailing_deadline(natural_match.group(3), natural_match.group(4))
             return {
-                "employee_query": self._clean_employee_query(natural_match.group(1)),
+                "type": self._draft_type(natural_match.group(1)),
+                "employee_query": self._clean_employee_query(natural_match.group(2)),
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": deadline_text,
@@ -380,7 +391,7 @@ class LLMService:
         theme_match = re.search(
             (
                 r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(?:\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
                 r"\u0434\u043b\u044f\s+([^,]+),\s*"
                 r"\u0442\u0435\u043c\u0430\s*[-\u2013\u2014:]?\s*(.+?)"
                 r"(?:,\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
@@ -390,11 +401,12 @@ class LLMService:
         )
         if theme_match is not None:
             subject, deadline_text = self._split_trailing_deadline(
-                theme_match.group(2),
-                theme_match.group(3) or "",
+                theme_match.group(3),
+                theme_match.group(4) or "",
             )
             return {
-                "employee_query": self._clean_employee_query(theme_match.group(1)),
+                "type": self._draft_type(theme_match.group(1)),
+                "employee_query": self._clean_employee_query(theme_match.group(2)),
                 "subject": subject,
                 "deadline_text": deadline_text,
             }
@@ -402,7 +414,7 @@ class LLMService:
         create_match = re.search(
             (
                 r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(?:\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
                 r"\u0434\u043b\u044f\s+([^,]+),\s*(.+?)"
                 r"(?:,\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
             ),
@@ -411,11 +423,12 @@ class LLMService:
         )
         if create_match is not None:
             subject, deadline_text = self._split_trailing_deadline(
-                create_match.group(2),
-                create_match.group(3) or "",
+                create_match.group(3),
+                create_match.group(4) or "",
             )
             return {
-                "employee_query": self._clean_employee_query(create_match.group(1)),
+                "type": self._draft_type(create_match.group(1)),
+                "employee_query": self._clean_employee_query(create_match.group(2)),
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": deadline_text,
@@ -429,6 +442,7 @@ class LLMService:
         if performer_match is not None:
             action_text = performer_match.group(1).strip()
             return {
+                "type": "task",
                 "employee_query": self._clean_employee_query(performer_match.group(2)),
                 "subject": action_text,
                 "action_text": action_text,
@@ -436,6 +450,9 @@ class LLMService:
             }
 
         return None
+
+    def _draft_type(self, entity_word: str) -> str:
+        return "task" if "\u0437\u0430\u0434\u0430\u0447" in entity_word.lower() else "action_item"
 
     def _parse_action_text_update(self, message: str) -> str | None:
         match = re.search(

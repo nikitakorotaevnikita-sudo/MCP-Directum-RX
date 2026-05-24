@@ -63,12 +63,13 @@ function previewRow(label, value) {
 function renderActionItemPreview(preview, messageElement) {
   const payload = preview.payload || {};
   const display = preview.display || {};
+  const isTask = preview.type === "task";
   const card = document.createElement("div");
   card.className = "preview-card";
 
   const title = document.createElement("div");
   title.className = "preview-title";
-  title.textContent = "Черновик поручения";
+  title.textContent = isTask ? "Черновик задачи" : "Черновик поручения";
 
   const rows = document.createElement("div");
   rows.className = "preview-rows";
@@ -85,7 +86,7 @@ function renderActionItemPreview(preview, messageElement) {
   const confirmButton = document.createElement("button");
   confirmButton.type = "button";
   confirmButton.className = "preview-confirm";
-  confirmButton.textContent = "Создать поручение";
+  confirmButton.textContent = isTask ? "Создать задачу" : "Создать поручение";
 
   const cancelButton = document.createElement("button");
   cancelButton.type = "button";
@@ -107,36 +108,39 @@ function renderActionItemPreview(preview, messageElement) {
 }
 
 async function confirmActionItemPreview(preview, card, status) {
+  const isTask = preview.type === "task";
   setPreviewButtonsEnabled(card, false);
-  status.textContent = "Создаю поручение...";
+  status.textContent = isTask ? "Создаю задачу..." : "Создаю поручение...";
 
   try {
-    const response = await fetch("/api/directum/action-items", {
+    const response = await fetch(isTask ? "/api/directum/tasks" : "/api/directum/action-items", {
       method: "POST",
       headers: {"content-type": "application/json"},
       body: JSON.stringify({...preview.payload, confirm: true}),
     });
     const result = await response.json();
     if (!response.ok || result.success === false) {
-      status.textContent = result.detail || result.message || "Не удалось создать поручение.";
+      status.textContent = result.detail || result.message || (isTask ? "Не удалось создать задачу." : "Не удалось создать поручение.");
       setPreviewButtonsEnabled(card, true);
       return;
     }
 
     const idText = result.directum_id ? ` ID: ${result.directum_id}` : "";
-    status.textContent = `Поручение создано.${idText}`;
+    status.textContent = `${isTask ? "Задача" : "Поручение"} создано.${idText}`;
     if (result.url) {
       const link = document.createElement("a");
       link.className = "preview-link";
       link.href = result.url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = "Открыть поручение";
+      link.textContent = isTask ? "Открыть задачу" : "Открыть поручение";
       status.append(" ");
       status.appendChild(link);
     }
   } catch (error) {
-    status.textContent = "Не удалось создать поручение. Проверьте подключение к Directum RX.";
+    status.textContent = isTask
+      ? "Не удалось создать задачу. Проверьте подключение к Directum RX."
+      : "Не удалось создать поручение. Проверьте подключение к Directum RX.";
     setPreviewButtonsEnabled(card, true);
   }
 }
@@ -193,7 +197,7 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
   const answer = await response.text();
   const parsedAnswer = parseAssistantResponse(answer);
   const assistantMessage = addMessage(parsedAnswer.text, "assistant");
-  if (parsedAnswer.preview?.type === "action_item") {
+  if (parsedAnswer.preview?.type === "action_item" || parsedAnswer.preview?.type === "task") {
     renderActionItemPreview(parsedAnswer.preview, assistantMessage);
   }
   chatHistory.push({role: "user", content: text});
