@@ -83,7 +83,18 @@ class DirectumClient:
         return self._json_or_error(response)
 
     def post(self, entity_set: str, payload: dict[str, Any]) -> dict[str, Any]:
-        response = self.client.post(self.build_url(entity_set), headers=self._headers(), json=payload)
+        url = self.build_url(entity_set)
+        response = self.client.post(url, headers=self._headers(), json=payload)
+        if response.status_code >= 400:
+            error_data = self._safe_error_detail(response)
+            raise DirectumError(
+                safe_message=(
+                    f"POST {entity_set} failed with {response.status_code}. "
+                    f"Payload had {len(payload)} fields: {list(payload.keys())}. "
+                    f"Response detail: {error_data}"
+                ),
+                status_code=response.status_code,
+            )
         return self._json_or_error(response)
 
     def _headers(self) -> dict[str, str]:
