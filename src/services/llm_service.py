@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+import json
 import re
 from typing import Any
 
@@ -44,29 +45,79 @@ class LLMService:
         return self.tool_registry.openai_tools()
 
     def stream_chat(self, message: str, history: Iterable[dict[str, str]] | None = None) -> Iterable[str]:
+        direct_response = self._direct_rx_response(message)
+        if direct_response is not None:
+            yield direct_response
+            return
+
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         messages.extend(history or [])
         messages.append({"role": "user", "content": message})
 
         try:
-            tools = self.tools_for_request()
-            stream = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=tools or None,
-                stream=True,
-            )
-
-            for chunk in stream:
-                choices = getattr(chunk, "choices", None) or []
-                if not choices:
-                    continue
-                delta = getattr(choices[0], "delta", None)
-                content = getattr(delta, "content", None)
-                if content:
-                    yield content
+            yield from self._stream_chat_with_tools(messages)
         except Exception as exc:
             yield self._safe_error_message(exc)
+
+    def _stream_chat_with_tools(self, messages: list[dict[str, Any]]) -> Iterable[str]:
+        tools = self.tools_for_request()
+        chunks, tool_calls = self._collect_stream(messages, tools)
+        if chunks:
+            yield from chunks
+        if not tool_calls:
+            return
+
+        messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
+        for tool_call in tool_calls:
+            function = tool_call["function"]
+            result = self.tool_registry.call(function["name"], json.loads(function["arguments"] or "{}"))
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "content": json.dumps(result, ensure_ascii=False, default=str),
+                }
+            )
+
+        final_chunks, _ = self._collect_stream(messages, tools)
+        yield from final_chunks
+
+    def _collect_stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> tuple[list[str], list[dict[str, Any]]]:
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools or None,
+            stream=True,
+        )
+        chunks: list[str] = []
+        tool_calls_by_index: dict[int, dict[str, Any]] = {}
+
+        for chunk in stream:
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            content = getattr(delta, "content", None)
+            if content:
+                chunks.append(content)
+            for tool_call_delta in getattr(delta, "tool_calls", None) or []:
+                index = getattr(tool_call_delta, "index", 0)
+                tool_call = tool_calls_by_index.setdefault(
+                    index,
+                    {"id": "", "type": "function", "function": {"name": "", "arguments": ""}},
+                )
+                tool_call["id"] += getattr(tool_call_delta, "id", None) or ""
+                tool_call["type"] = getattr(tool_call_delta, "type", None) or tool_call["type"]
+                function = getattr(tool_call_delta, "function", None)
+                if function is not None:
+                    tool_call["function"]["name"] += getattr(function, "name", None) or ""
+                    tool_call["function"]["arguments"] += getattr(function, "arguments", None) or ""
+
+        return chunks, [tool_calls_by_index[index] for index in sorted(tool_calls_by_index)]
 
     def _safe_error_message(self, exc: Exception) -> str:
         message = str(exc)
@@ -74,3 +125,49 @@ class LLMService:
             message = message.replace(self._api_key, "[redacted]")
         message = re.sub(r"sk-or-v1-[A-Za-z0-9]+", "[redacted]", message)
         return f"LLM request failed: {message}"
+
+    def _direct_rx_response(self, message: str) -> str | None:
+        normalized = message.lower()
+        direct_tool: str | None = None
+        if "\u043f\u0440\u043e\u0441\u0440\u043e\u0447" in normalized:
+            direct_tool = "get_overdue_assignments"
+        elif (
+            "\u043c\u043e\u0438 \u0437\u0430\u0434\u0430\u043d\u0438\u044f" in normalized
+            or "\u043c\u043e\u0438 \u0437\u0430\u0434\u0430\u0447\u0438" in normalized
+            or "my assignments" in normalized
+        ):
+            direct_tool = "get_my_assignments"
+        elif "\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u044b\u0435 \u043c\u043d\u0435" in normalized or "assigned to me" in normalized:
+            direct_tool = "get_action_items_assigned_to_me"
+        elif "\u0441\u043e\u0437\u0434\u0430\u043d\u043d\u044b\u0435 \u043c\u043d\u043e\u0439" in normalized or "created by me" in normalized:
+            direct_tool = "get_action_items_created_by_me"
+        if direct_tool is None:
+            return None
+
+        try:
+            result = self.tool_registry.call(direct_tool, {})
+            return self._format_tool_result(result)
+        except Exception as exc:
+            return self._safe_directum_error_message(exc)
+
+    def _format_tool_result(self, result: Any) -> str:
+        items = result if isinstance(result, list) else [result]
+        if not items:
+            return "\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e."
+
+        lines = []
+        for item in items:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump(mode="json")
+            if isinstance(item, dict):
+                title = item.get("subject") or item.get("name") or item.get("message") or str(item)
+                status = item.get("status") or item.get("mode") or item.get("entity_type")
+                lines.append(f"{title} ({status})" if status else str(title))
+            else:
+                lines.append(str(item))
+        return f"\u041d\u0430\u0439\u0434\u0435\u043d\u043e {len(lines)}: " + "; ".join(lines) + "."
+
+    def _safe_directum_error_message(self, exc: Exception) -> str:
+        message = str(exc)
+        message = re.sub(r"Basic [A-Za-z0-9+/=]{8,}", "Basic [redacted]", message)
+        return f"Directum RX request failed: {message}"
