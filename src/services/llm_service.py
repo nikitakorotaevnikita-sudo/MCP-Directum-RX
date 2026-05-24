@@ -12,7 +12,12 @@ from openai import OpenAI
 SYSTEM_PROMPT = (
     "You are an assistant for Directum RX assignments. You may use tools to inspect assignments and preview action item "
     "creation. Final action item confirmation requires an explicit external, user-confirmed endpoint; do not confirm or "
-    "create action items yourself."
+    "create action items yourself.\n"
+    "When calling search_employee, normalize the query first: remove punctuation (.,;:!?\"'), strip extra spaces, "
+    "and pass only the most stable part of the name — usually last name + first name. "
+    "Do not include words like 'для', 'исполнитель', 'срок', or grammatical suffixes. "
+    "If a full name search returns nothing, the tool will automatically try shorter tokens; "
+    "if that also returns nothing, tell the user the employee was not found and suggest a shorter name variant."
 )
 
 ACTION_ITEM_PREVIEW_MARKER = "DIRECTUM_ACTION_ITEM_PREVIEW"

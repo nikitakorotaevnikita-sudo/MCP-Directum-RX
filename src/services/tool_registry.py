@@ -26,7 +26,9 @@ class ToolRegistry:
             "get_overdue_assignments": lambda args: self.assignments_service.get_overdue_assignments(),
             "get_action_items_assigned_to_me": lambda args: self.assignments_service.get_action_items_assigned_to_me(),
             "get_action_items_created_by_me": lambda args: self.assignments_service.get_action_items_created_by_me(),
-            "search_employee": lambda args: self.action_item_service.search_employee(args["query"]),
+            "search_employee": lambda args: self.action_item_service.search_employee(
+                self._normalize_search_query(args.get("query", ""))
+            ),
             "create_action_item": self._create_action_item,
         }
         self._required_arguments: dict[str, list[str]] = {
@@ -127,6 +129,10 @@ class ToolRegistry:
         for field in self._required_arguments.get(name, []):
             if field not in arguments:
                 raise ValueError(f"Tool '{name}' missing required argument: {field}")
+
+    def _normalize_search_query(self, query: str) -> str:
+        stripped = query.strip(" \t\r\n.,;:!?\"'«»")
+        return stripped
 
     def _tool(
         self,
