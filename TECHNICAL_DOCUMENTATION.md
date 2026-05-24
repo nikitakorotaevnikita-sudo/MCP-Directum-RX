@@ -33,6 +33,10 @@ FastAPI serves a Vanilla JS chat UI and backoffice. Python services implement Di
 
 LLM tool calls are preview-only: the tool registry does not expose `confirm` to the model and rejects direct confirmation attempts.
 
+## LLM Profiles
+
+The app uses the OpenAI-compatible client for Ollama, OpenRouter, Ario, and generic OpenAI-compatible endpoints. The built-in OpenRouter profile uses `https://openrouter.ai/api/v1` with `google/gemma-4-26b-a4b-it:free`; the API key must stay in local `.env` or runtime backoffice settings.
+
 ## Configuration
 
 Secrets are loaded from `.env` and must not be logged or rendered in UI. Runtime diagnostics expose boolean `*_set` fields instead of secret values.

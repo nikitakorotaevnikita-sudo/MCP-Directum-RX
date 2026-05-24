@@ -14,12 +14,32 @@ const llmModelInput = document.querySelector("#llm-model");
 const llmToolCallingInput = document.querySelector("#llm-tool-calling");
 const llmTestButton = document.querySelector("#llm-test");
 
+const providerDefaults = {
+  openrouter: {
+    base_url: "https://openrouter.ai/api/v1",
+    model: "google/gemma-4-26b-a4b-it:free",
+  },
+  ollama: {
+    base_url: "http://localhost:11434/v1",
+    model: "qwen3:8b",
+  },
+};
+
 function rxConnectionPayload() {
   return {
     base_url: rxUrlInput.value.trim(),
     username: rxLoginInput.value.trim(),
     password: rxPasswordInput.value,
   };
+}
+
+function applyProviderDefaults() {
+  const defaults = providerDefaults[llmProviderInput.value];
+  if (!defaults) {
+    return;
+  }
+  llmBaseUrlInput.value = defaults.base_url;
+  llmModelInput.value = defaults.model;
 }
 
 function llmConnectionPayload() {
@@ -131,6 +151,8 @@ llmForm.addEventListener("submit", (event) => {
   event.preventDefault();
   postLlmConnection("/api/llm/connection/apply", "Applied");
 });
+
+llmProviderInput.addEventListener("change", applyProviderDefaults);
 
 loadLlmConnectionStatus();
 loadRxConnectionStatus();

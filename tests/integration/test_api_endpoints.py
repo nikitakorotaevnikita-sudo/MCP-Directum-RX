@@ -168,6 +168,30 @@ def test_llm_connection_apply_updates_health_and_chat_runtime(tmp_path):
     assert "runtime-secret" not in response.text
 
 
+def test_llm_connection_apply_accepts_openrouter_provider(tmp_path):
+    client = make_test_client(tmp_path)
+
+    response = client.post(
+        "/api/llm/connection/apply",
+        json={
+            "provider": "openrouter",
+            "base_url": "https://openrouter.ai/api/v1/",
+            "api_key": "openrouter-secret",
+            "model": "google/gemma-4-26b-a4b-it:free",
+            "tool_calling": "auto",
+        },
+    )
+    health_response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "openrouter"
+    assert data["base_url"] == "https://openrouter.ai/api/v1"
+    assert data["model"] == "google/gemma-4-26b-a4b-it:free"
+    assert health_response.json()["llm"]["provider"] == "openrouter"
+    assert "openrouter-secret" not in response.text
+
+
 def test_action_item_preview_endpoint_does_not_create(tmp_path):
     client = make_test_client(tmp_path)
 

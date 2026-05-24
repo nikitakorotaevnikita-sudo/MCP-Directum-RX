@@ -327,12 +327,14 @@ def _test_settings(metrics_db_path: str | None = None) -> Settings:
         else Path(tempfile.mkdtemp(prefix="mcp_directum_rx_test_")) / "metrics.db"
     )
     return Settings(
+        LLM_PROVIDER="ollama",
         OPENAI_API_KEY="test-key",
         OPENAI_BASE_URL="http://localhost:11434/v1",
         OPENAI_MODEL="qwen3:8b",
         DIRECTUM_BASE_URL="https://rx.example/Integration/odata",
         DIRECTUM_AUTH_TOKEN="Basic bnRfd29ya1xcdXNlcjpwYXNz",
         METRICS_DB_PATH=str(db_path),
+        _env_file=None,
     )
 
 

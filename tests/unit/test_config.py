@@ -22,6 +22,19 @@ def test_ollama_profile_uses_openai_compatible_defaults():
     assert settings.openai_model == "qwen3:8b"
 
 
+def test_openrouter_profile_uses_gemma_defaults_when_selected():
+    settings = Settings(
+        LLM_PROVIDER="openrouter",
+        DIRECTUM_BASE_URL="https://rx.example/Integration/odata",
+        DIRECTUM_AUTH_TOKEN="Basic secret-token",
+        _env_file=None,
+    )
+
+    assert settings.llm_provider == "openrouter"
+    assert settings.openai_base_url == "https://openrouter.ai/api/v1"
+    assert settings.openai_model == "google/gemma-4-26b-a4b-it:free"
+
+
 def test_public_config_masks_secrets():
     settings = Settings(
         OPENAI_API_KEY="very-secret",

@@ -33,7 +33,7 @@ class DirectumConnectionStatus(BaseModel):
 
 
 class LLMConnectionRequest(BaseModel):
-    provider: Literal["ario", "openai-compatible", "ollama"]
+    provider: Literal["ario", "openai-compatible", "ollama", "openrouter"]
     base_url: str = Field(min_length=1)
     api_key: SecretStr | None = Field(default=None, repr=False)
     model: str = Field(min_length=1)
