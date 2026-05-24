@@ -241,12 +241,54 @@ class LLMService:
             return self._safe_directum_error_message(exc)
 
     def _action_item_preview_marker(self, payload: dict[str, Any], performer_name: str) -> str:
+        corrected = self._action_item_text_to_imperative(payload)
         preview = {
             "type": "action_item",
-            "payload": payload,
+            "payload": corrected,
             "display": {"performer_name": performer_name},
         }
         return f"[[{ACTION_ITEM_PREVIEW_MARKER}:{json.dumps(preview, ensure_ascii=False, default=str)}]]"
+
+    def _action_item_text_to_imperative(self, payload: dict[str, Any]) -> dict[str, Any]:
+        subject = payload.get("subject", "")
+        action_text = payload.get("action_text", "")
+
+        infinitive_subject = self._verb_phrase_to_infinitive_noun(subject)
+        imperative_action = self._verb_phrase_to_imperative(action_text)
+
+        return {
+            **payload,
+            "subject": infinitive_subject,
+            "action_text": imperative_action,
+        }
+
+    def _verb_phrase_to_infinitive_noun(self, text: str) -> str:
+        text = text.strip()
+        if not text:
+            return text
+
+        text = re.sub(r"\bчтобы\s+она\s+", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\bчтобы\s+он\s+", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\bона\s+", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\bон\b", "", text, flags=re.IGNORECASE).strip()
+
+        text = text[0].upper() + text[1:] if text else text
+
+        return text
+
+    def _verb_phrase_to_imperative(self, text: str) -> str:
+        text = text.strip()
+        if not text:
+            return text
+
+        text = re.sub(r"\bчтобы\s+она\s+", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\bчтобы\s+он\s+", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\bона\s+", "", text, flags=re.IGNORECASE).strip()
+        text = re.sub(r"\bон\b", "", text, flags=re.IGNORECASE).strip()
+
+        text = text[0].upper() + text[1:] if text else text
+
+        return text
 
     def _clean_employee_query(self, value: str) -> str:
         return value.strip(EMPLOYEE_QUERY_STRIP_CHARS)

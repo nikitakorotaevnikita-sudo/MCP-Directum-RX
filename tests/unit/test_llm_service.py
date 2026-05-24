@@ -421,6 +421,40 @@ def test_stream_chat_handles_search_then_create_tool_calls():
     assert len(client.completions.requests) == 3
 
 
+def test_action_item_preview_corrects_verb_phrases_to_imperative():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="gemma4",
+        tool_calling="disabled",
+        tool_registry=registry,
+    )
+
+    chunks = list(
+        service.stream_chat(
+            "Создай "
+            "поручение "
+            "для Наташи Ардо., "
+            "чтобы она подготовила "
+            "документы для Аппарата "
+            "правительства. "
+            "Срок - 26.05.26",
+            [],
+        )
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "Наташи Ардо"})
+    assert registry.calls[1][0] == "create_action_item"
+
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+
+    assert preview["payload"]["subject"] == "Подготовила документы для Аппарата правительства"
+    assert preview["payload"]["action_text"] == "Подготовила документы для Аппарата правительства"
+    assert preview["payload"]["deadline"].startswith("2026-05-26T23:59:00")
+
+
 def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
     registry = RecordingToolRegistry()
     service = LLMService(
