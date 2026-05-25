@@ -49,7 +49,7 @@ class MeetingsService:
         return MeetingSummary(
             id=meeting_id,
             subject=row.get("Subject") or "",
-            start_date=row.get("StartDate") or "",
+            start_date=row.get("StartDate") or None,
             end_date=row.get("EndDate"),
             place=row.get("Place") or None,
             agenda_summary=agenda,

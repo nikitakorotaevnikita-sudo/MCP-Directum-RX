@@ -155,7 +155,7 @@ class ChatRequest(BaseModel):
 class MeetingSummary(BaseModel):
     id: int
     subject: str
-    start_date: datetime
+    start_date: datetime | None = None
     end_date: datetime | None = None
     place: str | None = None
     agenda_summary: str | None = None

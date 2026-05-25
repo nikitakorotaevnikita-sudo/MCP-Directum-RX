@@ -1,5 +1,6 @@
 from datetime import date, datetime, timezone
 from src.models.schemas import ActionItemDetail, DirectumUser, MeetingSummary
+from src.services.directum_client import DirectumError
 from src.services.meetings import MeetingsService
 
 
@@ -170,8 +171,6 @@ def test_get_my_meetings_agenda_truncated_to_200_chars():
 # ---------------------------------------------------------------------------
 # Task 4: MeetingsService.get_action_item_details
 # ---------------------------------------------------------------------------
-
-from src.services.directum_client import DirectumError
 
 
 class FakeGetOneClient(FakeMeetingsClient):
