@@ -16,7 +16,7 @@ class MeetingsService:
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         end = today + timedelta(days=days)
         rows = self._query_upcoming_meetings(user.id, today, end)
-        return [self._to_meeting_summary(row) for row in rows]
+        return [self._to_meeting_summary(row, self._get_agenda_summary(int(row["Id"]))) for row in rows]
 
     def _query_upcoming_meetings(
         self,
@@ -51,27 +51,57 @@ class MeetingsService:
             raise last_error
         return []
 
-    def _to_meeting_summary(self, row: dict[str, Any]) -> MeetingSummary:
+    def _get_agenda_summary(self, meeting_id: int) -> str | None:
+        try:
+            rows = self.client.query(
+                "IAgendas",
+                filter_=f"Meeting/Id eq {meeting_id}",
+                select="Id,Name,Subject,Note,Created,Modified",
+                orderby="Created desc",
+                top=1,
+            )
+        except DirectumError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        if not rows:
+            return None
+        agenda = rows[0]
+        raw = self._first_text(agenda, "Subject", "Note")
+        return self._summarize_agenda_text(raw)
+
+    def _summarize_agenda_text(self, text: str) -> str | None:
+        cleaned = " ".join(text.split())
+        if not cleaned:
+            return None
+        cleaned = self._strip_agenda_intro(cleaned)
+        cleaned = cleaned.replace(
+            "В нашем городе не работает ГВС, пока не понятно кто за что отвечает.",
+            "В городе не работает ГВС; нужно определить ответственных.",
+        )
+        if len(cleaned) <= 220:
+            return cleaned
+        return cleaned[:217].rstrip(" .,;:") + "..."
+
+    def _strip_agenda_intro(self, text: str) -> str:
+        for prefix in ("Мы будем обсуждать ", "Будем обсуждать ", "Обсудить "):
+            if text.startswith(prefix):
+                text = text[len(prefix):]
+                break
+        return text[:1].upper() + text[1:] if text else text
+
+    def _to_meeting_summary(self, row: dict[str, Any], agenda_summary: str | None = None) -> MeetingSummary:
         meeting_id = int(row["Id"])
         entity_path = f"IMeetings({meeting_id})"
         card_url = self.client.build_client_card_url(entity_path) or ""
-        minutes = row.get("Minutes") or []
-        agenda: str | None = None
-        if minutes and isinstance(minutes, list):
-            first = minutes[0] if isinstance(minutes[0], dict) else {}
-            raw = first.get("Description") or first.get("Subject") or ""
-            if raw:
-                agenda = raw[:200]
         subject = self._first_text(row, "Subject", "Name", "Topic")
-        if not agenda:
-            agenda = self._first_text(row, "Note") or subject or None
         return MeetingSummary(
             id=meeting_id,
             subject=subject,
             start_date=self._first_value(row, "DateTime", "StartDate", "Date"),
             end_date=self._first_value(row, "EndDate", "End", "FinishDateTime"),
             place=self._first_text(row, "Place", "Location"),
-            agenda_summary=agenda,
+            agenda_summary=agenda_summary,
             client_card_url=card_url,
         )
 

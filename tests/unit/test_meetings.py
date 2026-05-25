@@ -54,12 +54,15 @@ def test_action_item_detail_fields():
 
 
 class FakeMeetingsClient:
-    def __init__(self, rows=None):
+    def __init__(self, rows=None, agenda_rows=None):
         self.calls = []
         self._rows = rows or []
+        self._agenda_rows = agenda_rows or []
 
     def query(self, entity_set, **kwargs):
         self.calls.append((entity_set, kwargs))
+        if entity_set == "IAgendas":
+            return self._agenda_rows
         return self._rows
 
     def build_client_card_url(self, entity_path):
@@ -115,7 +118,7 @@ def test_get_my_meetings_filters_by_date_and_member():
     assert "1165" in kwargs["filter_"]
 
 
-def test_get_my_meetings_agenda_from_minutes():
+def test_get_my_meetings_agenda_from_agenda_document():
     rows = [
         {
             "Id": 11,
@@ -123,18 +126,26 @@ def test_get_my_meetings_agenda_from_minutes():
             "StartDate": "2026-05-28T14:00:00Z",
             "EndDate": None,
             "Place": None,
-            "Minutes": [{"Description": "Обсуждение итогов квартала", "Subject": "Протокол"}],
         }
     ]
     service = MeetingsService(
-        client=FakeMeetingsClient(rows=rows),
+        client=FakeMeetingsClient(
+            rows=rows,
+            agenda_rows=[
+                {
+                    "Id": 578,
+                    "Subject": "Мы будем обсуждать проблемы ЖКХ. В городе не работает ГВС.",
+                    "Note": None,
+                }
+            ],
+        ),
         current_user_service=FakeCurrentUser(),
     )
     result = service.get_my_meetings()
-    assert result[0].agenda_summary == "Обсуждение итогов квартала"
+    assert result[0].agenda_summary == "Проблемы ЖКХ. В городе не работает ГВС."
 
 
-def test_get_my_meetings_agenda_falls_back_to_subject_when_no_minutes():
+def test_get_my_meetings_agenda_does_not_fall_back_to_meeting_subject():
     rows = [
         {
             "Id": 12,
@@ -142,7 +153,6 @@ def test_get_my_meetings_agenda_falls_back_to_subject_when_no_minutes():
             "StartDate": "2026-05-28T14:00:00Z",
             "EndDate": None,
             "Place": None,
-            "Minutes": [],
         }
     ]
     service = MeetingsService(
@@ -150,7 +160,7 @@ def test_get_my_meetings_agenda_falls_back_to_subject_when_no_minutes():
         current_user_service=FakeCurrentUser(),
     )
     result = service.get_my_meetings()
-    assert result[0].agenda_summary == "Совещание по ЭДО"
+    assert result[0].agenda_summary is None
 
 
 def test_get_my_meetings_agenda_truncated_to_200_chars():
@@ -162,15 +172,14 @@ def test_get_my_meetings_agenda_truncated_to_200_chars():
             "StartDate": "2026-05-27T10:00:00Z",
             "EndDate": None,
             "Place": None,
-            "Minutes": [{"Description": long_description, "Subject": ""}],
         }
     ]
     service = MeetingsService(
-        client=FakeMeetingsClient(rows=rows),
+        client=FakeMeetingsClient(rows=rows, agenda_rows=[{"Subject": long_description}]),
         current_user_service=FakeCurrentUser(),
     )
     result = service.get_my_meetings()
-    assert len(result[0].agenda_summary) <= 200
+    assert len(result[0].agenda_summary) <= 220
 
 
 # ---------------------------------------------------------------------------
