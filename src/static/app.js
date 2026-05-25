@@ -301,6 +301,18 @@ function renderResults(items) {
   });
 }
 
+function attachActionItemReportLinks(container) {
+    container.querySelectorAll('a[href^="#action-item-"]').forEach((link) => {
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            const id = link.getAttribute("href").replace("#action-item-", "");
+            const text = `отчёт поручение #${id}`;
+            chatInput.value = text;
+            document.querySelector("#chat-form").dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
+        });
+    });
+}
+
 function renderMeetingResults(items) {
   results.innerHTML = "";
   if (!Array.isArray(items) || items.length === 0) {
@@ -415,6 +427,7 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
   const parsedAnswer = parseAssistantResponse(answer);
   const isMd = looksLikeMarkdown(parsedAnswer.text);
   const assistantMessage = addMessage(parsedAnswer.text, "assistant", isMd);
+  attachActionItemReportLinks(assistantMessage);
   if (parsedAnswer.preview?.type === "action_item" || parsedAnswer.preview?.type === "task") {
     renderActionItemPreview(parsedAnswer.preview, assistantMessage);
   }
