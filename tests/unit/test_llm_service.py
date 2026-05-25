@@ -1540,7 +1540,7 @@ def test_stream_chat_action_item_report_missing_id_asks_clarification():
 
     # Should ask for clarification, not call tool
     assert "get_action_item_details" not in [c[0] for c in registry.calls]
-    assert response  # non-empty clarification message
+    assert "укажите номер" in response.lower() or "номер поручения" in response.lower()
 
 
 def test_stream_chat_action_item_report_includes_narrative():

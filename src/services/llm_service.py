@@ -297,7 +297,7 @@ class LLMService:
             )
             and "поручени" in normalized
         )
-        if wants_action_item_report:
+        if wants_action_item_report and direct_tool is None:
             return self._direct_action_item_report_response(message)
 
         wants_meetings = (
@@ -1168,10 +1168,10 @@ class LLMService:
             return self._safe_directum_error_message(exc)
 
     def _extract_action_item_id(self, message: str) -> int | None:
-        match = re.search(r"#\s*(\d+)|\bпоручени[еяю]\s+(\d+)|(\d+)\s*$", message, re.IGNORECASE)
+        match = re.search(r"#\s*(\d+)|\bпоручени[еяюи]\s+(\d+)", message, re.IGNORECASE)
         if match:
-            raw = match.group(1) or match.group(2) or match.group(3)
-            if raw and raw.isdigit():
+            raw = match.group(1) or match.group(2)
+            if raw:
                 return int(raw)
         return None
 
