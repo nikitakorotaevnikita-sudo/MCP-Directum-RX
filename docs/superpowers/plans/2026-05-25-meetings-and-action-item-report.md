@@ -144,7 +144,7 @@ git commit -m "feat: add MeetingSummary and ActionItemDetail pydantic models"
 
 ---
 
-## Task 2: Add IMeetings card GUID to DirectumClient
+## ✅ Task 2 COMPLETED: Add IMeetings card GUID to DirectumClient
 
 **Files:**
 - Modify: `src/services/directum_client.py`
@@ -152,7 +152,7 @@ git commit -m "feat: add MeetingSummary and ActionItemDetail pydantic models"
 
 Context: `build_client_card_url("IMeetings(42)")` currently returns `None` because `IMeetings` is not in `DIRECTUM_CARD_GUIDS_BY_ENTITY`. We add a placeholder GUID that will need to be verified against a real Directum instance.
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Add to `tests/unit/test_directum_client.py`:
 
@@ -165,14 +165,14 @@ def test_build_client_card_url_for_meeting():
     assert "rx.example" in url
 ```
 
-- [ ] **Step 2: Run test to confirm it fails**
+- [x] **Step 2: Run test to confirm it fails**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_directum_client.py::test_build_client_card_url_for_meeting -v
 ```
 Expected: FAIL — `assert url is not None` fails (returns `None`).
 
-- [ ] **Step 3: Add GUID constant and map entry to directum_client.py**
+- [x] **Step 3: Add GUID constant and map entry to directum_client.py**
 
 In `src/services/directum_client.py`, after the existing constants block:
 
@@ -189,21 +189,21 @@ DIRECTUM_CARD_GUIDS_BY_ENTITY = {
 }
 ```
 
-- [ ] **Step 4: Run test to confirm it passes**
+- [x] **Step 4: Run test to confirm it passes**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_directum_client.py::test_build_client_card_url_for_meeting -v
 ```
 Expected: PASS.
 
-- [ ] **Step 5: Run full unit tests to catch regressions**
+- [x] **Step 5: Run full unit tests to catch regressions**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/ -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add src/services/directum_client.py tests/unit/test_directum_client.py
@@ -212,13 +212,13 @@ git commit -m "feat: add IMeetings card GUID to DirectumClient"
 
 ---
 
-## Task 3: Create MeetingsService — get_my_meetings
+## ✅ Task 3 COMPLETED: Create MeetingsService — get_my_meetings
 
 **Files:**
 - Create: `src/services/meetings.py`
 - Modify: `tests/unit/test_meetings.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add to `tests/unit/test_meetings.py`:
 
@@ -343,14 +343,14 @@ def test_get_my_meetings_agenda_truncated_to_200_chars():
     assert len(result[0].agenda_summary) <= 200
 ```
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py -v
 ```
 Expected: `ImportError` — `MeetingsService` not defined.
 
-- [ ] **Step 3: Implement MeetingsService.get_my_meetings**
+- [x] **Step 3: Implement MeetingsService.get_my_meetings**
 
 Create `src/services/meetings.py`:
 
@@ -414,14 +414,14 @@ class MeetingsService:
         )
 ```
 
-- [ ] **Step 4: Run tests to confirm they pass**
+- [x] **Step 4: Run tests to confirm they pass**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py -v -k "get_my_meetings"
 ```
 Expected: 5 PASSED.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/services/meetings.py tests/unit/test_meetings.py
@@ -430,13 +430,13 @@ git commit -m "feat: add MeetingsService.get_my_meetings with OData IMeetings qu
 
 ---
 
-## Task 4: Add get_action_item_details to MeetingsService
+## ✅ Task 4 COMPLETED: Add get_action_item_details to MeetingsService
 
 **Files:**
 - Modify: `src/services/meetings.py`
 - Modify: `tests/unit/test_meetings.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add to `tests/unit/test_meetings.py`:
 
@@ -510,14 +510,14 @@ def test_get_action_item_details_performer_no_job_title():
     assert result.performer == "Иванова М.П."
 ```
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py -v -k "get_action_item"
 ```
 Expected: `AttributeError` — `MeetingsService` has no `get_action_item_details`.
 
-- [ ] **Step 3: Add get_action_item_details to MeetingsService**
+- [x] **Step 3: Add get_action_item_details to MeetingsService**
 
 Add to `src/services/meetings.py` inside the `MeetingsService` class, after `get_my_meetings`:
 
@@ -586,14 +586,14 @@ Add to `src/services/meetings.py` inside the `MeetingsService` class, after `get
         )
 ```
 
-- [ ] **Step 4: Run tests to confirm they pass**
+- [x] **Step 4: Run tests to confirm they pass**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/services/meetings.py tests/unit/test_meetings.py

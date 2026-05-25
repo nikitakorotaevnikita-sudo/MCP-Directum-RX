@@ -165,3 +165,76 @@ def test_get_my_meetings_agenda_truncated_to_200_chars():
     )
     result = service.get_my_meetings()
     assert len(result[0].agenda_summary) <= 200
+
+
+# ---------------------------------------------------------------------------
+# Task 4: MeetingsService.get_action_item_details
+# ---------------------------------------------------------------------------
+
+from src.services.directum_client import DirectumError
+
+
+class FakeGetOneClient(FakeMeetingsClient):
+    def __init__(self, data=None, raise_404=False):
+        super().__init__()
+        self._data = data or {}
+        self._raise_404 = raise_404
+
+    def get_one(self, entity_path):
+        self.calls.append(("get_one", entity_path))
+        if self._raise_404:
+            raise DirectumError("Not found", status_code=404)
+        return self._data
+
+
+def _ai_task_row():
+    return {
+        "Id": 42,
+        "Subject": "Подготовить записку",
+        "Text": "Подготовить аналитическую записку",
+        "Status": "InProcess",
+        "DeadLine": "2026-05-30T23:59:00Z",
+        "Created": "2026-05-20T08:00:00Z",
+        "Performer": {"Id": 99, "Name": "Иванова М.П.", "JobTitle": "Главный специалист"},
+        "Author": {"Id": 1165, "Name": "Петров А.С."},
+        "ActionItemExecutionAssignments": [],
+    }
+
+
+def test_get_action_item_details_returns_detail():
+    client = FakeGetOneClient(data=_ai_task_row())
+    service = MeetingsService(client=client, current_user_service=FakeCurrentUser())
+
+    result = service.get_action_item_details(42)
+
+    assert result.id == 42
+    assert result.subject == "Подготовить записку"
+    assert result.performer == "Иванова М.П. (Главный специалист)"
+    assert result.author == "Петров А.С."
+    assert result.status == "InProcess"
+    assert result.narrative == ""
+
+    call_type, entity_path = client.calls[0]
+    assert call_type == "get_one"
+    assert "42" in entity_path
+
+
+def test_get_action_item_details_raises_on_404():
+    client = FakeGetOneClient(raise_404=True)
+    service = MeetingsService(client=client, current_user_service=FakeCurrentUser())
+
+    try:
+        service.get_action_item_details(99)
+        assert False, "Should have raised DirectumError"
+    except DirectumError as e:
+        assert "99" in e.safe_message or "не найдено" in e.safe_message.lower()
+
+
+def test_get_action_item_details_performer_no_job_title():
+    row = _ai_task_row()
+    row["Performer"]["JobTitle"] = None
+    client = FakeGetOneClient(data=row)
+    service = MeetingsService(client=client, current_user_service=FakeCurrentUser())
+
+    result = service.get_action_item_details(42)
+    assert result.performer == "Иванова М.П."
