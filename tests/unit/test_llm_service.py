@@ -1581,3 +1581,17 @@ def test_format_analytics_item_includes_report_link_when_id_present():
     }
     result = service._format_analytics_item(item)
     assert "#action-item-42" in result
+
+
+def test_format_analytics_item_no_report_link_when_id_absent():
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    item = {"subject": "Задача без id", "deadline": None}
+    result = service._format_analytics_item(item)
+    assert "#action-item-" not in result
