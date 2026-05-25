@@ -190,4 +190,5 @@ def test_build_client_card_url_for_meeting():
     url = client.build_client_card_url("IMeetings(5)")
     assert url is not None
     assert "/5" in url
+    assert "dbc0dd63-4d23-4f41-92ae-cab59bb70c8c" in url
     assert "rx.example" in url

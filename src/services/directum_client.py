@@ -7,8 +7,7 @@ import httpx
 
 
 DIRECTUM_TASK_CARD_GUID = "83f2a537-0cf0-4429-ae76-e9a386ca53aa"
-# NOTE: Verify this GUID against a real Directum RX instance (Admin > Forms > IMeetings)
-DIRECTUM_MEETING_CARD_GUID = "a9b3c4d5-1234-5678-abcd-ef0123456789"
+DIRECTUM_MEETING_CARD_GUID = "dbc0dd63-4d23-4f41-92ae-cab59bb70c8c"
 DIRECTUM_CARD_GUIDS_BY_ENTITY = {
     "IAssignments": DIRECTUM_TASK_CARD_GUID,
     "IActionItemExecutionAssignments": DIRECTUM_TASK_CARD_GUID,
