@@ -1184,13 +1184,13 @@ git commit -m "feat: add direct action item report routing in LLMService"
 
 ---
 
-## Task 9: Frontend — Sidebar meetings button
+## ✅ Task 9 COMPLETED: Frontend — Sidebar meetings button
 
 **Files:**
 - Modify: `src/static/index.html`
 - Modify: `src/static/app.js`
 
-- [ ] **Step 1: Add button to sidebar in index.html**
+- [x] **Step 1: Add button to sidebar in index.html**
 
 In `src/static/index.html`, find the `<nav class="nav-list">` block and add after "Создать поручение":
 
@@ -1198,7 +1198,7 @@ In `src/static/index.html`, find the `<nav class="nav-list">` block and add afte
 <button class="nav-item" type="button" data-action="meetings">📅 Мои совещания</button>
 ```
 
-- [ ] **Step 2: Add meetings action handler in app.js**
+- [x] **Step 2: Add meetings action handler in app.js**
 
 In `src/static/app.js`, find the `quickAction(action)` function. Add `meetings` to the `endpoints` object:
 
@@ -1235,7 +1235,7 @@ if (action === "meetings") {
 }
 ```
 
-- [ ] **Step 3: Add renderMeetingResults function in app.js**
+- [x] **Step 3: Add renderMeetingResults function in app.js**
 
 Add this function before `quickAction`:
 
@@ -1281,14 +1281,14 @@ function renderMeetingResults(items) {
 }
 ```
 
-- [ ] **Step 4: Update app.js cache-buster version string in index.html**
+- [x] **Step 4: Update app.js cache-buster version string in index.html**
 
 Find `<script src="/static/app.js?v=...">` and update the version:
 ```html
 <script src="/static/app.js?v=20260525-meetings"></script>
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/static/index.html src/static/app.js
