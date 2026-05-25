@@ -301,12 +301,53 @@ function renderResults(items) {
   });
 }
 
+function renderMeetingResults(items) {
+  results.innerHTML = "";
+  if (!Array.isArray(items) || items.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "result-card";
+    empty.textContent = "Совещаний не запланировано.";
+    results.appendChild(empty);
+    return;
+  }
+  items.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "result-card";
+    const startRaw = item.start_date || "";
+    const startStr = startRaw
+      ? new Date(startRaw).toLocaleString("ru-RU", {
+          day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        })
+      : "";
+    const subject = item.subject || "Совещание";
+    const place = item.place || "";
+    const heading = document.createElement("strong");
+    heading.textContent = `${startStr} — ${subject}`;
+    card.appendChild(heading);
+    if (place) {
+      card.append(` · ${place}`);
+    }
+    if (item.client_card_url) {
+      const br = document.createElement("br");
+      card.appendChild(br);
+      const link = document.createElement("a");
+      link.href = item.client_card_url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Открыть карточку";
+      card.appendChild(link);
+    }
+    results.appendChild(card);
+  });
+}
+
 async function quickAction(action) {
   const endpoints = {
     my: "/api/directum/assignments/my",
     overdue: "/api/directum/assignments/overdue",
     assigned: "/api/directum/action-items/assigned-to-me",
     created: "/api/directum/action-items/created-by-me",
+    meetings: "/api/directum/meetings/upcoming",
   };
 
   if (action === "create") {
@@ -315,7 +356,12 @@ async function quickAction(action) {
   }
 
   const response = await fetch(endpoints[action]);
-  renderResults(await response.json());
+  const data = await response.json();
+  if (action === "meetings") {
+    renderMeetingResults(data);
+  } else {
+    renderResults(data);
+  }
 }
 
 document.querySelectorAll("[data-action]").forEach((button) => {
