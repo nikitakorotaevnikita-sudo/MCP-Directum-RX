@@ -28,13 +28,13 @@
 
 ---
 
-## Task 1: Pydantic models for MeetingSummary and ActionItemDetail
+## ✅ Task 1 COMPLETED: Pydantic models for MeetingSummary and ActionItemDetail
 
 **Files:**
 - Modify: `src/models/schemas.py`
 - Test: `tests/unit/test_meetings.py` (just model validation for now)
 
-- [ ] **Step 1: Write failing model tests**
+- [x] **Step 1: Write failing model tests**
 
 Create `tests/unit/test_meetings.py`:
 
@@ -87,14 +87,14 @@ def test_action_item_detail_fields():
     assert d.narrative == ""
 ```
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py -v
 ```
 Expected: `ImportError` — `MeetingSummary` not defined.
 
-- [ ] **Step 3: Add models to schemas.py**
+- [x] **Step 3: Add models to schemas.py**
 
 In `src/models/schemas.py`, add after the `from datetime import datetime` import:
 ```python
@@ -128,14 +128,14 @@ class ActionItemDetail(BaseModel):
     narrative: str = ""
 ```
 
-- [ ] **Step 4: Run tests to confirm they pass**
+- [x] **Step 4: Run tests to confirm they pass**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py -v
 ```
 Expected: 3 PASSED.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 git add src/models/schemas.py tests/unit/test_meetings.py

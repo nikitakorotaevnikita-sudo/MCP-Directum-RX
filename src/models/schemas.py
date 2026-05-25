@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -150,3 +150,26 @@ class ToolCallRecord(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     history: list[dict[str, str]] = Field(default_factory=list)
+
+
+class MeetingSummary(BaseModel):
+    id: int
+    subject: str
+    start_date: datetime
+    end_date: datetime | None = None
+    place: str | None = None
+    agenda_summary: str | None = None
+    client_card_url: str
+
+
+class ActionItemDetail(BaseModel):
+    id: int
+    subject: str
+    text: str | None = None
+    performer: str
+    author: str
+    deadline: date | None = None
+    status: str
+    created_date: date
+    client_card_url: str
+    narrative: str = ""
