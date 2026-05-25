@@ -1297,7 +1297,7 @@ git commit -m "feat: add Meetings sidebar button and renderMeetingResults in fro
 
 ---
 
-## Task 10: Frontend — Clickable action items in analytics
+## ✅ Task 10 COMPLETED: Frontend — Clickable action items in analytics
 
 **Files:**
 - Modify: `src/services/llm_service.py`
@@ -1305,7 +1305,7 @@ git commit -m "feat: add Meetings sidebar button and renderMeetingResults in fro
 
 Context: The analytics output (`_format_analytics_item`) currently renders items as `[**title**](<url>)`. We need each item to also carry a "report" trigger link with `href="#action-item-{id}"`. `app.js` post-processes rendered markdown to attach click handlers.
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Add to `tests/unit/test_llm_service.py`:
 
@@ -1316,14 +1316,14 @@ def test_format_analytics_item_includes_action_item_link(existing_llm_service):
     assert "#action-item-42" in result
 ```
 
-- [ ] **Step 2: Run test to confirm it fails**
+- [x] **Step 2: Run test to confirm it fails**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_llm_service.py::test_format_analytics_item_includes_action_item_link -v
 ```
 Expected: FAIL.
 
-- [ ] **Step 3: Update _format_analytics_item in llm_service.py**
+- [x] **Step 3: Update _format_analytics_item in llm_service.py**
 
 Find `_format_analytics_item` in `src/services/llm_service.py` and update the return line to append a report link when `id` is present:
 
@@ -1341,14 +1341,14 @@ def _format_analytics_item(self, item: dict[str, Any]) -> str:
     return f"{self._markdown_item_title(title, item.get('url'))} — {', '.join(details)}{report_link}"
 ```
 
-- [ ] **Step 4: Run test to confirm it passes**
+- [x] **Step 4: Run test to confirm it passes**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_llm_service.py::test_format_analytics_item_includes_action_item_link -v
 ```
 Expected: PASS.
 
-- [ ] **Step 5: Add click handler in app.js**
+- [x] **Step 5: Add click handler in app.js**
 
 In `src/static/app.js`, find where the assistant message is added to the DOM. After `addMessage(parsedAnswer.text, "assistant", isMd)`, find the reference to `assistantMessage` and add post-processing:
 
@@ -1380,14 +1380,14 @@ function attachActionItemReportLinks(container) {
 }
 ```
 
-- [ ] **Step 6: Run all tests**
+- [x] **Step 6: Run all tests**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/ -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```
 git add src/services/llm_service.py src/static/app.js
