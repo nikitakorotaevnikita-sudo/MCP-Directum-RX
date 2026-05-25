@@ -15,23 +15,39 @@ class MeetingsService:
         user = self.current_user_service.get_current_user()
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         end = today + timedelta(days=days)
-        filter_ = (
-            f"StartDate ge {today.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-            f"and StartDate le {end.strftime('%Y-%m-%dT%H:%M:%SZ')} "
-            f"and Members/any(m: m/Member/Id eq {user.id})"
-        )
-        rows = self.client.query(
-            "IMeetings",
-            filter_=filter_,
-            select="Id,Subject,StartDate,EndDate,Place",
-            expand=(
-                "Members($expand=Member($select=Id,Name)),"
-                "Minutes($select=Description,Subject;$orderby=Created asc;$top=1)"
-            ),
-            orderby="StartDate asc",
-            top=20,
-        )
+        rows = self._query_upcoming_meetings(user.id, today, end)
         return [self._to_meeting_summary(row) for row in rows]
+
+    def _query_upcoming_meetings(
+        self,
+        user_id: int,
+        start: datetime,
+        end: datetime,
+    ) -> list[dict[str, Any]]:
+        start_text = start.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_text = end.strftime("%Y-%m-%dT%H:%M:%SZ")
+        last_error: DirectumError | None = None
+        for start_field in ("DateTime", "StartDate", "Date"):
+            filter_ = (
+                f"{start_field} ge {start_text} "
+                f"and {start_field} le {end_text} "
+                f"and Members/any(m: m/Member/Id eq {user_id})"
+            )
+            try:
+                return self.client.query(
+                    "IMeetings",
+                    filter_=filter_,
+                    select="Id,Name,DateTime,Location,Note,Duration,Status",
+                    orderby=f"{start_field} asc",
+                    top=20,
+                )
+            except DirectumError as exc:
+                if exc.status_code != 400:
+                    raise
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        return []
 
     def _to_meeting_summary(self, row: dict[str, Any]) -> MeetingSummary:
         meeting_id = int(row["Id"])
@@ -44,17 +60,29 @@ class MeetingsService:
             raw = first.get("Description") or first.get("Subject") or ""
             if raw:
                 agenda = raw[:200]
+        subject = self._first_text(row, "Subject", "Name", "Topic")
         if not agenda:
-            agenda = row.get("Subject") or None
+            agenda = self._first_text(row, "Note") or subject or None
         return MeetingSummary(
             id=meeting_id,
-            subject=row.get("Subject") or "",
-            start_date=row.get("StartDate") or None,
-            end_date=row.get("EndDate"),
-            place=row.get("Place") or None,
+            subject=subject,
+            start_date=self._first_value(row, "DateTime", "StartDate", "Date"),
+            end_date=self._first_value(row, "EndDate", "End", "FinishDateTime"),
+            place=self._first_text(row, "Place", "Location"),
             agenda_summary=agenda,
             client_card_url=card_url,
         )
+
+    def _first_value(self, row: dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            value = row.get(key)
+            if value not in (None, ""):
+                return value
+        return None
+
+    def _first_text(self, row: dict[str, Any], *keys: str) -> str:
+        value = self._first_value(row, *keys)
+        return str(value) if value is not None else ""
 
     def get_action_item_details(self, action_item_id: int) -> ActionItemDetail:
         expand = (

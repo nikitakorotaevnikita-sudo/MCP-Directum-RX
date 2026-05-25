@@ -86,9 +86,9 @@ def test_get_my_meetings_filters_by_date_and_member():
         {
             "Id": 10,
             "Subject": "Планёрка",
-            "StartDate": "2026-05-27T10:00:00Z",
+            "DateTime": "2026-05-27T10:00:00Z",
             "EndDate": "2026-05-27T11:00:00Z",
-            "Place": "Зал 1",
+            "Location": "Зал 1",
             "Minutes": [],
         }
     ]
@@ -106,6 +106,9 @@ def test_get_my_meetings_filters_by_date_and_member():
 
     entity_set, kwargs = client.calls[0]
     assert entity_set == "IMeetings"
+    assert "StartDate" not in kwargs["filter_"]
+    assert kwargs["select"] == "Id,Name,DateTime,Location,Note,Duration,Status"
+    assert kwargs["orderby"] == "DateTime asc"
     assert "Members/any" in kwargs["filter_"]
     assert "1165" in kwargs["filter_"]
 
