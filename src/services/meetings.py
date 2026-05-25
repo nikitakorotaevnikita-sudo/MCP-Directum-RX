@@ -31,7 +31,9 @@ class MeetingsService:
             filter_ = (
                 f"{start_field} ge {start_text} "
                 f"and {start_field} le {end_text} "
-                f"and Members/any(m: m/Member/Id eq {user_id})"
+                f"and (Members/any(m: m/Member/Id eq {user_id}) "
+                f"or President/Id eq {user_id} "
+                f"or Secretary/Id eq {user_id})"
             )
             try:
                 return self.client.query(

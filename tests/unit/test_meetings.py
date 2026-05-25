@@ -110,6 +110,8 @@ def test_get_my_meetings_filters_by_date_and_member():
     assert kwargs["select"] == "Id,Name,DateTime,Location,Note,Duration,Status"
     assert kwargs["orderby"] == "DateTime asc"
     assert "Members/any" in kwargs["filter_"]
+    assert "President/Id eq 1165" in kwargs["filter_"]
+    assert "Secretary/Id eq 1165" in kwargs["filter_"]
     assert "1165" in kwargs["filter_"]
 
 
