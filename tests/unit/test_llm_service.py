@@ -1558,3 +1558,26 @@ def test_stream_chat_action_item_report_includes_narrative():
     response = "".join(service.stream_chat("\u0440\u0430\u0441\u0441\u043a\u0430\u0436\u0438 \u043e \u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0438 42", []))
 
     assert "\u041f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0432 \u0441\u0440\u043e\u043a." in response
+
+
+# \u2500\u2500 Task 10: clickable report links in analytics \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+
+def test_format_analytics_item_includes_report_link_when_id_present():
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    item = {
+        "id": 42,
+        "subject": "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0437\u0430\u043f\u0438\u0441\u043a\u0443",
+        "status": "InProcess",
+        "deadline": None,
+        "url": "https://rx.example/card/42",
+    }
+    result = service._format_analytics_item(item)
+    assert "#action-item-42" in result

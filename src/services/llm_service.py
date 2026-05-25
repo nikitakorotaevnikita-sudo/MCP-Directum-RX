@@ -1090,7 +1090,9 @@ class LLMService:
             details.append(f"статус: {status}")
         deadline = self._format_deadline_for_display(item.get("deadline"))
         details.append(f"срок: {deadline or 'не указан'}")
-        return f"{self._markdown_item_title(title, item.get('url'))} — {', '.join(details)}"
+        item_id = item.get("id")
+        report_link = f" · [📋](#action-item-{item_id})" if item_id is not None else ""
+        return f"{self._markdown_item_title(title, item.get('url'))} — {', '.join(details)}{report_link}"
 
     def _deadline_from_item(self, item: dict[str, Any]) -> datetime | None:
         raw = item.get("deadline")
