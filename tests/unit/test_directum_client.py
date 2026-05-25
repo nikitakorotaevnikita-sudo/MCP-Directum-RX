@@ -183,3 +183,11 @@ def test_query_raises_error_on_non_list_collection_value():
         assert exc.safe_message == "Directum returned an unexpected collection response"
     else:
         raise AssertionError("DirectumError was not raised")
+
+
+def test_build_client_card_url_for_meeting():
+    client = DirectumClient("https://rx.example/Integration/odata", "Basic dXNlcjpwYXNz")
+    url = client.build_client_card_url("IMeetings(5)")
+    assert url is not None
+    assert "/5" in url
+    assert "rx.example" in url
