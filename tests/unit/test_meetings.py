@@ -239,6 +239,19 @@ def test_get_action_item_details_performer_no_job_title():
     assert result.performer == "Иванова М.П."
 
 
+def test_get_action_item_details_raises_when_not_author():
+    row = _ai_task_row()
+    row["Author"]["Id"] = 999  # different from current user id=1165
+    client = FakeGetOneClient(data=row)
+    service = MeetingsService(client=client, current_user_service=FakeCurrentUser())
+
+    try:
+        service.get_action_item_details(42)
+        assert False, "Should have raised DirectumError"
+    except DirectumError as e:
+        assert "автором" in e.safe_message.lower()
+
+
 # ---------------------------------------------------------------------------
 # Task 6: Endpoint /api/directum/meetings/upcoming
 # ---------------------------------------------------------------------------

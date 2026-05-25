@@ -76,6 +76,13 @@ class MeetingsService:
                     status_code=404,
                 ) from exc
             raise
+        current_user = self.current_user_service.get_current_user()
+        author_id = (row.get("Author") or {}).get("Id")
+        if author_id != current_user.id:
+            raise DirectumError(
+                "Поручение найдено, но вы не являетесь его автором.",
+                status_code=403,
+            )
         return self._to_action_item_detail(row)
 
     def _to_action_item_detail(self, row: dict[str, Any]) -> ActionItemDetail:
