@@ -1,0 +1,5792 @@
+{
+  "AbsenceReason": {
+    "properties": {
+      "Name": "Имя",
+      "Code": "Код"
+    },
+    "entity_set": "IAbsenceReasons"
+  },
+  "Absence": {
+    "properties": {
+      "Name": "Имя",
+      "Employee": "Сотрудник",
+      "Begin": "С",
+      "End": "По",
+      "AbsenceReason": "Причина",
+      "Note": "Примечание",
+      "RXAbsence": "Отсутствие"
+    },
+    "display_name": "Отсутствие сотрудника",
+    "collection_name": "Отсутствия сотрудников",
+    "entity_set": "IAbsences"
+  },
+  "AbsenceTaskNotice": {
+    "properties": {
+      "Employee": "Сотрудник"
+    },
+    "entity_set": "ICustomCompanyAbsenceTaskNotices"
+  },
+  "AbsenceTaskObservers": {
+    "properties": {},
+    "entity_set": "IAbsenceTaskObserverss"
+  },
+  "AbsenceTaskSerificates": {
+    "properties": {
+      "SertificateNumber": "Номер листка нетрудосопособности"
+    },
+    "entity_set": "ICustomCompanyAbsenceTaskSerificatess"
+  },
+  "AbsenceTask": {
+    "properties": {
+      "Begin": "С",
+      "End": "По",
+      "Employee": "Сотрудник",
+      "Serificates": "Листки нетрудоспособности",
+      "Instruction": "Инструкция",
+      "Notice": "Уведомить",
+      "Observers": "Уведомить"
+    },
+    "display_name": "Задача на обработку отсутствия",
+    "collection_name": "Задачи на обработку отсутствия",
+    "entity_set": "IAbsenceTasks"
+  },
+  "AccessRole": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Роль доступа на club.directum.ru",
+    "collection_name": "Роли доступа на club.directum.ru",
+    "entity_set": "IAccessRoles"
+  },
+  "AccountingDocumentBase": {
+    "properties": {
+      "SentDateSungero": "Дата отправки",
+      "TrackNumberSungero": "№ отправления"
+    },
+    "entity_set": "IDocflowAccountingDocumentBases"
+  },
+  "AccountingDocumentBaseTracking": {
+    "properties": {},
+    "entity_set": "IDocflowAccountingDocumentBaseTrackings"
+  },
+  "AccountingDocumentBaseVersions": {
+    "properties": {},
+    "entity_set": "IDocflowAccountingDocumentBaseVersionss"
+  },
+  "AccountingSystem": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Учетная система",
+    "collection_name": "Учетные системы"
+  },
+  "AcquaintanceAssignmentAcquaintanceVersions": {
+    "properties": {},
+    "entity_set": "IAcquaintanceAssignmentAcquaintanceVersionss"
+  },
+  "AcquaintanceAssignment": {
+    "properties": {},
+    "entity_set": "IAcquaintanceAssignments"
+  },
+  "AcquaintanceCompleteNotification": {
+    "properties": {},
+    "entity_set": "IAcquaintanceCompleteNotifications"
+  },
+  "AcquaintanceFinishAssignment": {
+    "properties": {},
+    "entity_set": "IAcquaintanceFinishAssignments"
+  },
+  "AcquaintanceListExcludedParticipants": {
+    "properties": {},
+    "entity_set": "IAcquaintanceListExcludedParticipantss"
+  },
+  "AcquaintanceListParticipants": {
+    "properties": {},
+    "entity_set": "IAcquaintanceListParticipantss"
+  },
+  "AcquaintanceList": {
+    "properties": {},
+    "display_name": "Список ознакомления",
+    "entity_set": "IAcquaintanceLists"
+  },
+  "AcquaintanceTaskAcquaintanceVersions": {
+    "properties": {},
+    "entity_set": "IAcquaintanceTaskAcquaintanceVersionss"
+  },
+  "AcquaintanceTaskExcludedPerformers": {
+    "properties": {
+      "ExcludedPerformer": "Исключённый участник"
+    },
+    "entity_set": "IAcquaintanceTaskExcludedPerformerss"
+  },
+  "AcquaintanceTaskObservers": {
+    "properties": {},
+    "entity_set": "IAcquaintanceTaskObserverss"
+  },
+  "AcquaintanceTaskPerformers": {
+    "properties": {
+      "Performer": "Исполнитель"
+    },
+    "entity_set": "IAcquaintanceTaskPerformerss"
+  },
+  "AcquaintanceTask": {
+    "properties": {
+      "Performer": "Исполнитель",
+      "Deadline": "Срок",
+      "Performers": "Исполнители",
+      "ExcludedPerformers": "Кроме",
+      "DocGosMevId": "Номер заказа из Госключа"
+    },
+    "display_name": "Задача на ознакомление с кадровым документом",
+    "collection_name": "Задачи на ознакомление с кадровыми документами",
+    "entity_set": "IAcquaintanceTasks"
+  },
+  "ActionItemExecutionAssignment": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionAssignments"
+  },
+  "ActionItemExecutionNotification": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionNotifications"
+  },
+  "ActionItemExecutionTaskActionItemObservers": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionTaskActionItemObserverss"
+  },
+  "ActionItemExecutionTaskActionItemParts": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionTaskActionItemPartss"
+  },
+  "ActionItemExecutionTaskCoAssignees": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionTaskCoAssigneess"
+  },
+  "ActionItemExecutionTaskObservers": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionTaskObserverss"
+  },
+  "ActionItemExecutionTask": {
+    "properties": {},
+    "entity_set": "IActionItemExecutionTasks"
+  },
+  "ActionItemObserversNotification": {
+    "properties": {},
+    "entity_set": "IActionItemObserversNotifications"
+  },
+  "ActionItemSupervisorAssignment": {
+    "properties": {},
+    "entity_set": "IActionItemSupervisorAssignments"
+  },
+  "ActionItemSupervisorNotification": {
+    "properties": {},
+    "entity_set": "IActionItemSupervisorNotifications"
+  },
+  "ActivityActivityBusinessTasks": {
+    "properties": {
+      "BusinessTask": "Бизнес-задача"
+    }
+  },
+  "ActivityDocument": {
+    "properties": {
+      "Company": "Организация"
+    },
+    "display_name": "Документ по активности",
+    "entity_set": "IActivityDocuments"
+  },
+  "ActivityDocumentTracking": {
+    "properties": {},
+    "entity_set": "IActivityDocumentTrackings"
+  },
+  "ActivityDocumentVersions": {
+    "properties": {},
+    "entity_set": "IActivityDocumentVersionss"
+  },
+  "ActivityKind": {
+    "properties": {
+      "Name": "Имя",
+      "TableActivity": "Таблица Активностей",
+      "Description": "Описание"
+    },
+    "display_name": "Вид активности",
+    "collection_name": "Виды активностей"
+  },
+  "ActivityKindTableActivity": {
+    "properties": {
+      "ActivityType": "Тип активности",
+      "ActivityTypeGuid": "Гуид сущности"
+    }
+  },
+  "ActivityOtherContacts": {
+    "properties": {
+      "Company": "Организация",
+      "Contact": "Контакт",
+      "Phone": "Телефон",
+      "Email": "Почта",
+      "JobTitle": "Должность"
+    }
+  },
+  "ActivityPerformedWorkDetails": {
+    "properties": {
+      "PlanStage": "Этап плана",
+      "JobKind": "Вид работ"
+    }
+  },
+  "ActivityResultPurpose": {
+    "properties": {
+      "Name": "Имя",
+      "RelatedResults": "Связанные результаты"
+    },
+    "display_name": "Причина результата активности",
+    "collection_name": "Причины результата активности"
+  },
+  "ActivityResult": {
+    "properties": {
+      "Name": "Имя",
+      "ActivityType": "Тип активности"
+    },
+    "display_name": "Результат активности",
+    "collection_name": "Результаты активности"
+  },
+  "ActivitySurvey": {
+    "properties": {
+      "Number": "№",
+      "Question": "Вопрос",
+      "Answer": "Ответ",
+      "Note": "Примечание"
+    }
+  },
+  "Activity": {
+    "properties": {
+      "Name": "Наименование"
+    },
+    "display_name": "Вид деятельности",
+    "collection_name": "Виды деятельности",
+    "entity_set": "IActivities"
+  },
+  "Addendum": {
+    "properties": {},
+    "entity_set": "IAddendums"
+  },
+  "AddendumTracking": {
+    "properties": {},
+    "entity_set": "IAddendumTrackings"
+  },
+  "AddendumVersions": {
+    "properties": {},
+    "entity_set": "IAddendumVersionss"
+  },
+  "AdditionalMedicalCarePayments": {
+    "properties": {
+      "DateBill": "Дата",
+      "SumBill": "Сумма",
+      "TypeDMO": "Тип ДМО",
+      "Bill": "Чек",
+      "Note": "Примечание"
+    }
+  },
+  "AdditionalMedicalCare": {
+    "properties": {
+      "Name": "Имя",
+      "Employee": "Сотрудник",
+      "PeriodBegin": "Начало периода",
+      "PeriodEnd": "Конец периода",
+      "SumDMO": "Сумма ДМО",
+      "BalanceDMO": "Остаток ДМО",
+      "BalanceSport": "Остаток на спорт",
+      "Payments": "Выплаты",
+      "Treatment": "Лечение",
+      "Massage": "Массаж",
+      "Stomatology": "Стоматология",
+      "Sport": "Спорт",
+      "EmployeeExperience": "Стаж на начало периода",
+      "EmployeeExperienceYears": "Стаж",
+      "Created": "Создано"
+    },
+    "display_name": "Мед. Обслуживание",
+    "collection_name": "Мед. Обслуживание"
+  },
+  "Agenda": {
+    "properties": {},
+    "entity_set": "IAgendas"
+  },
+  "AgendaTracking": {
+    "properties": {},
+    "entity_set": "IAgendaTrackings"
+  },
+  "AgendaVersions": {
+    "properties": {},
+    "entity_set": "IAgendaVersionss"
+  },
+  "ApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание",
+    "entity_set": "IApprovalAssignments"
+  },
+  "ApprovalChangeRequests": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "display_name": "Задание на согласование запроса на изменение",
+    "collection_name": "Задания на согласование запроса на изменение",
+    "entity_set": "IApprovalChangeRequestss"
+  },
+  "ApprovalCheckReturnAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalCheckReturnAssignments"
+  },
+  "ApprovalCheckingAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalCheckingAssignments"
+  },
+  "ApprovalExecutionAssignmentCollapsedStagesTypesExe": {
+    "properties": {},
+    "entity_set": "IApprovalExecutionAssignmentCollapsedStagesTypesExes"
+  },
+  "ApprovalExecutionAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalExecutionAssignments"
+  },
+  "ApprovalManagerAssignmentAddApprovers": {
+    "properties": {},
+    "entity_set": "IApprovalManagerAssignmentAddApproverss"
+  },
+  "ApprovalManagerAssignmentAddressees": {
+    "properties": {},
+    "entity_set": "IApprovalManagerAssignmentAddresseess"
+  },
+  "ApprovalManagerAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalManagerAssignments"
+  },
+  "ApprovalNotification": {
+    "properties": {},
+    "entity_set": "IApprovalNotifications"
+  },
+  "ApprovalPrintingAssignmentCollapsedStagesTypesPr": {
+    "properties": {},
+    "entity_set": "IApprovalPrintingAssignmentCollapsedStagesTypesPrs"
+  },
+  "ApprovalPrintingAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalPrintingAssignments"
+  },
+  "ApprovalProgressReport": {
+    "properties": {
+      "Importance": "Важность"
+    },
+    "collection_name": "Задания на согласование отчета о ходе проекта",
+    "display_name": "Задание на согласование отчета о ходе проекта",
+    "entity_set": "IApprovalProgressReports"
+  },
+  "ApprovalRegistrationAssignmentCollapsedStagesTypesReg": {
+    "properties": {},
+    "entity_set": "IApprovalRegistrationAssignmentCollapsedStagesTypesRegs"
+  },
+  "ApprovalRegistrationAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalRegistrationAssignments"
+  },
+  "ApprovalRequestAssigment": {
+    "properties": {
+      "Vacancies": "Требуемые сотрудники",
+      "Note": "Примечание к заявке"
+    },
+    "display_name": "Задание на утверждение заявки на сотрудников",
+    "collection_name": "Задания на утверждение заявок на сотрудников",
+    "entity_set": "IApprovalRequestAssigments"
+  },
+  "ApprovalRequestAssigmentVacancies": {
+    "properties": {
+      "JobPosition": "Должность",
+      "Minimal": "Минимум",
+      "Desirable": "Желательно",
+      "CandidateExperience": "Опыт",
+      "Requirement": "Требования"
+    },
+    "entity_set": "IApprovalRequestAssigmentVacanciess"
+  },
+  "ApprovalReviewAssignmentCollapsedStagesTypesRe": {
+    "properties": {},
+    "entity_set": "IApprovalReviewAssignmentCollapsedStagesTypesRes"
+  },
+  "ApprovalReviewAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalReviewAssignments"
+  },
+  "ApprovalReworkAssignmentAddApprovers": {
+    "properties": {},
+    "entity_set": "IApprovalReworkAssignmentAddApproverss"
+  },
+  "ApprovalReworkAssignmentAddressees": {
+    "properties": {},
+    "entity_set": "IApprovalReworkAssignmentAddresseess"
+  },
+  "ApprovalReworkAssignmentApprovers": {
+    "properties": {},
+    "entity_set": "IApprovalReworkAssignmentApproverss"
+  },
+  "ApprovalReworkAssignmentRegApprovers": {
+    "properties": {},
+    "entity_set": "IApprovalReworkAssignmentRegApproverss"
+  },
+  "ApprovalReworkAssignment": {
+    "properties": {
+      "AddApprovers": "Доп. согласующие"
+    },
+    "entity_set": "IApprovalReworkAssignments"
+  },
+  "ApprovalRole": {
+    "properties": {},
+    "display_name": "Роль согласования",
+    "entity_set": "IApprovalRoles"
+  },
+  "ApprovalSendingAssignmentCollapsedStagesTypesSen": {
+    "properties": {},
+    "entity_set": "IApprovalSendingAssignmentCollapsedStagesTypesSens"
+  },
+  "ApprovalSendingAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalSendingAssignments"
+  },
+  "ApprovalSigningAssignmentCollapsedStagesTypesSig": {
+    "properties": {},
+    "entity_set": "IApprovalSigningAssignmentCollapsedStagesTypesSigs"
+  },
+  "ApprovalSigningAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalSigningAssignments"
+  },
+  "ApprovalSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IApprovalSimpleAssignments"
+  },
+  "ApprovalSimpleNotification": {
+    "properties": {},
+    "entity_set": "IApprovalSimpleNotifications"
+  },
+  "ApprovalStageApprovalRoles": {
+    "properties": {},
+    "entity_set": "IApprovalStageApprovalRoless"
+  },
+  "ApprovalStageRecipients": {
+    "properties": {},
+    "entity_set": "IApprovalStageRecipientss"
+  },
+  "ApprovalStage": {
+    "properties": {},
+    "entity_set": "IApprovalStages"
+  },
+  "ApprovalTaskAddApproversExpanded": {
+    "properties": {},
+    "entity_set": "IApprovalTaskAddApproversExpandeds"
+  },
+  "ApprovalTaskAddApprovers": {
+    "properties": {},
+    "entity_set": "IApprovalTaskAddApproverss"
+  },
+  "ApprovalTaskAddressees": {
+    "properties": {},
+    "entity_set": "IApprovalTaskAddresseess"
+  },
+  "ApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IApprovalTaskObserverss"
+  },
+  "ApprovalTaskReqApprovers": {
+    "properties": {},
+    "entity_set": "IApprovalTaskReqApproverss"
+  },
+  "ApprovalTaskRevokedDocumentsRights": {
+    "properties": {},
+    "entity_set": "IApprovalTaskRevokedDocumentsRightss"
+  },
+  "ApprovalTask": {
+    "properties": {
+      "Signatory": "На подпись"
+    },
+    "entity_set": "IApprovalTasks"
+  },
+  "ApproveOfferAmountAssignment": {
+    "properties": {},
+    "entity_set": "IHRApproveOfferAmountTasks"
+  },
+  "AreaOfExpertiseDirectMembers": {
+    "properties": {},
+    "entity_set": "IAreaOfExpertiseDirectMemberss"
+  },
+  "AreaOfExpertiseExperts": {
+    "properties": {},
+    "entity_set": "IAreaOfExpertiseExpertss"
+  },
+  "AreaOfExpertiseRecipientLinks": {
+    "properties": {},
+    "entity_set": "IAreaOfExpertiseRecipientLinkss"
+  },
+  "AreaOfExpertise": {
+    "properties": {},
+    "entity_set": "IAreaOfExpertises"
+  },
+  "AuraConstant": {
+    "properties": {
+      "Name": "Имя",
+      "Note": "Примечание",
+      "ConstantValue": "Значение"
+    },
+    "display_name": "Константа",
+    "collection_name": "Константы",
+    "entity_set": "IAuraConstants"
+  },
+  "AzureTeamProjectSetting": {
+    "properties": {
+      "Product": "Продукт",
+      "TeamProject": "Проект",
+      "ProductOwner": "Владелец продукта",
+      "Domain": "Домен",
+      "Collection": "Коллекция",
+      "AccessToken": "Токен доступа",
+      "AreaPath": "Область",
+      "JsonCustomFields": "Дополнительные поля"
+    },
+    "display_name": "Настройка создания замечания в Azure DevOps",
+    "collection_name": "Настройки создания замечания в Azure DevOps"
+  },
+  "BankExchangeBoxes": {
+    "properties": {},
+    "entity_set": "IBankExchangeBoxess"
+  },
+  "Bank": {
+    "properties": {},
+    "display_name": "Банк",
+    "entity_set": "IBanks"
+  },
+  "BaseMessageQueue": {
+    "properties": {
+      "Name": "Имя"
+    }
+  },
+  "BonusApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание на утверждение премии",
+    "collection_name": "Задания на утверждение премии",
+    "entity_set": "IHRBonusApprovalAssignments"
+  },
+  "BonusApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IBonusApprovalTaskObserverss"
+  },
+  "BonusApprovalTask": {
+    "properties": {},
+    "display_name": "Задача на утверждение премии",
+    "collection_name": "Задачи на утверждение премии",
+    "entity_set": "IBonusApprovalTasks"
+  },
+  "BonusBonusDetails": {
+    "properties": {
+      "Employee": "Сотрудник",
+      "BonusHours": "Премия",
+      "ExcludedHours": "Исключения",
+      "ActualHours": "Фактические часы"
+    },
+    "entity_set": "IBonusBonusDetailss"
+  },
+  "BonusEndorseAssignment": {
+    "properties": {},
+    "display_name": "Задание на согласование премии",
+    "collection_name": "Задания на согласование премии",
+    "entity_set": "IBonusEndorseAssignments"
+  },
+  "BonusReworkAssignment": {
+    "properties": {},
+    "display_name": "Задание на доработку премии",
+    "collection_name": "Задания на доработку премии",
+    "entity_set": "IBonusReworkAssignments"
+  },
+  "Bonus": {
+    "properties": {
+      "Name": "Имя",
+      "CalculationDate": "Дата начисления",
+      "ApprovalDate": "Дата утверждения",
+      "Note": "Примечание",
+      "BonusHours": "Сумма часов премии",
+      "BonusDetails": "Детализация",
+      "PeriodStart": "Начало периода",
+      "PeriodEnd": "Конец периода",
+      "ActualHoursSum": "Итого факт. часов"
+    },
+    "display_name": "Премия",
+    "collection_name": "Премии",
+    "entity_set": "IBonuss"
+  },
+  "BriefingArrangeAssignment": {
+    "properties": {},
+    "display_name": "Задание на организацию вводного инструктажа",
+    "collection_name": "Задания на организацию вводного инструктажа",
+    "entity_set": "IBriefingArrangeAssignments"
+  },
+  "BusinessDirectionDetailEmployeesAccessRigths": {
+    "properties": {},
+    "entity_set": "IBusinessDirectionDetailEmployeesAccessRigthss"
+  },
+  "BusinessDirectionDetailPaymentNotify": {
+    "properties": {},
+    "entity_set": "IBusinessDirectionDetailPaymentNotifies"
+  },
+  "BusinessDirectionDetail": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Тема расчетов",
+    "collection_name": "Темы расчетов",
+    "entity_set": "IBusinessDirectionDetails"
+  },
+  "BusinessDirectionPaymentNotify": {
+    "properties": {},
+    "entity_set": "IBusinessDirectionPaymentNotifies"
+  },
+  "BusinessDirection": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Направление деятельности",
+    "collection_name": "Направления деятельности",
+    "entity_set": "IBusinessDirections"
+  },
+  "BusinessTask": {
+    "properties": {
+      "Name": "Имя",
+      "Interested": "Заинтересованные"
+    },
+    "display_name": "Бизнес-задача",
+    "collection_name": "Бизнес-задачи"
+  },
+  "BusinessTripApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripApprovalAssignments"
+  },
+  "BusinessTripApprovalTaskExpenses": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripApprovalTaskExpensess"
+  },
+  "BusinessTripApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripApprovalTaskObserverss"
+  },
+  "BusinessTripApprovalTaskRecipientsForAbortNotification": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripApprovalTaskRecipientsForAbortNotifications"
+  },
+  "BusinessTripApprovalTaskRoute": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripApprovalTaskRoutes"
+  },
+  "BusinessTripApprovalTask": {
+    "properties": {
+      "AirTicketsInfoSungero": "Информация об авиабилетах по ИТ-проездному",
+      "ProjectSungero": "Проект"
+    },
+    "entity_set": "IBusinessTripsBusinessTripApprovalTasks"
+  },
+  "BusinessTripExpenses": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripExpensess"
+  },
+  "BusinessTripPrepareReportAssignmentExpenses": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripPrepareReportAssignmentExpensess"
+  },
+  "BusinessTripPrepareReportAssignmentRoute": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripPrepareReportAssignmentRoutes"
+  },
+  "BusinessTripPrepareReportAssignment": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripPrepareReportAssignments"
+  },
+  "BusinessTripProcessDocumentsAssignment": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripProcessDocumentsAssignments"
+  },
+  "BusinessTripReWorkAssignmentExpenses": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripReWorkAssignmentExpensess"
+  },
+  "BusinessTripReWorkAssignmentRoute": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripReWorkAssignmentRoutes"
+  },
+  "BusinessTripReWorkAssignment": {
+    "properties": {
+      "AirTicketsInfoSungero": "Информация об авиабилетах по ИТ-проездному",
+      "ProjectSungero": "Проект"
+    },
+    "entity_set": "IBusinessTripsBusinessTripReWorkAssignments"
+  },
+  "BusinessTripRoute": {
+    "properties": {},
+    "entity_set": "IBusinessTripsBusinessTripRoutes"
+  },
+  "BusinessTrip": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Командировочное удостоверение",
+    "collection_name": "Командировочные удостоверения",
+    "entity_set": "IBusinessTripsBusinessTrips"
+  },
+  "BusinessUnitBoxExchangeServiceCertificates": {
+    "properties": {},
+    "entity_set": "IBusinessUnitBoxExchangeServiceCertificatess"
+  },
+  "BusinessUnitBox": {
+    "properties": {},
+    "display_name": "Абонентский ящик нашей организации",
+    "entity_set": "IBusinessUnitBoxs"
+  },
+  "BusinessUnitRecipientLinks": {
+    "properties": {},
+    "entity_set": "IBusinessUnitRecipientLinkss"
+  },
+  "BusinessUnit": {
+    "properties": {
+      "BsnUnitKasId": "ИД объекта ТехКАС",
+      "CEO": "Руководитель",
+      "ChiefAccountant": "Главный бухгалтер",
+      "SalaryAccountant": "Бухгалтер по ЗП",
+      "Accounting": "Бухгалтерия"
+    },
+    "display_name": "Наша организация",
+    "entity_set": "IBusinessUnits"
+  },
+  "CandidateActivityKinds": {
+    "properties": {
+      "ActivityKind": "Вид деятельности",
+      "KasId": "ИД в ТехКАС"
+    },
+    "entity_set": "ICandidateActivityKindss"
+  },
+  "CandidateDocumentsUploadingAssignment": {
+    "properties": {},
+    "entity_set": "ICandidateDocumentsUploadingAssignments"
+  },
+  "CandidateExperience": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Уровень опытности кандидатов",
+    "collection_name": "Уровни опытности кандидатов",
+    "entity_set": "ICandidateExperiences"
+  },
+  "CandidateJobTitles": {
+    "properties": {},
+    "entity_set": "ICandidateJobTitless"
+  },
+  "CandidateMeetingNotifyUsers": {
+    "properties": {},
+    "entity_set": "ICandidateMeetingNotifyUserss"
+  },
+  "CandidateMeetingObservers": {
+    "properties": {},
+    "entity_set": "ICandidateMeetingObserverss"
+  },
+  "CandidateMeetingParticipants": {
+    "properties": {},
+    "entity_set": "ICandidateMeetingParticipantss"
+  },
+  "CandidateMeeting": {
+    "properties": {
+      "NotifyUsers": "Копия"
+    },
+    "entity_set": "ICandidateMeetings"
+  },
+  "CandidatePositions": {
+    "properties": {
+      "Position": "Должность",
+      "KasId": "ИД в ТехКАС"
+    },
+    "entity_set": "ICandidatePositionss"
+  },
+  "CandidateProcessingStage": {
+    "properties": {
+      "Name": "Наименование",
+      "Duration": "Длительность этапа, раб.дн.",
+      "TimeLimit": "Срок ответа, раб.дн.",
+      "NeedNotify": "Уведомлять",
+      "IsMain": "Основной"
+    },
+    "display_name": "Этап работы с кандидатом",
+    "collection_name": "Этапы работы с кандидатами",
+    "entity_set": "ICandidateProcessingStages"
+  },
+  "CandidateStagesReport": {
+    "properties": {},
+    "display_name": "Отчет по этапам работы с кандидатами"
+  },
+  "CandidateStages": {
+    "properties": {
+      "Date": "Дата",
+      "Stage": "Этап",
+      "Time": "Время",
+      "Owner": "Ответственный",
+      "Letter": "Письмо",
+      "Notes": "Примечание",
+      "KasId": "ИД в ТехКАС"
+    },
+    "entity_set": "ICandidateStagess"
+  },
+  "Candidate": {
+    "properties": {
+      "FillingDate": "Дата заполнения",
+      "Person": "Персона",
+      "StageDate": "Дата этапа",
+      "Sex": "Пол",
+      "BirthDate": "Дата рождения",
+      "StageOwner": "Ответственный за этап",
+      "SearchType": "Тип поиска",
+      "InfoSource": "Источник резюме",
+      "Phone": "Телефон",
+      "Email": "E-mail",
+      "ICQ": "ICQ, Skype",
+      "HighSchool": "ВУЗ",
+      "Speciality": "Специальность",
+      "EducationForm": "Форма обучения",
+      "GraduationYear": "Год окончания",
+      "FurtherEducation": "Другие учебные заведения",
+      "ExtraMarks": "Доп. отметки",
+      "NextStage": "Следующий этап",
+      "StageTime": "Время этапа",
+      "Recorder": "Зарегистрировал",
+      "Target": "Куда направляется",
+      "Comment": "Примечание",
+      "AdditionalInfo": "Дополнительно",
+      "PersonalContact": "Общение",
+      "Stages": "Этапы",
+      "ActivityKinds": "Виды деятельности",
+      "Positions": "Должности",
+      "DefaultPhoto": "Фотография по умолчанию",
+      "PositionsString": "Должности",
+      "ActivityKindsString": "Виды деятельности",
+      "KasId": "ИД в ТехКАС",
+      "DefaultPhotoKasId": "ИД фото по-умолчанию в ТехКАС НПО",
+      "CompanyInfoSource": "Откуда узнал о компании",
+      "SocailNetwork": "Социальные сети",
+      "CandidateExperience": "Уровень опытности",
+      "Photo": "Фото",
+      "PlanContactDate": "Напомнить"
+    },
+    "display_name": "Кандидат",
+    "collection_name": "Кандидаты",
+    "entity_set": "ICandidates"
+  },
+  "CandidateTargetDir": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Направление обращения кандидата",
+    "collection_name": "Направления обращения кандидата",
+    "entity_set": "ICandidateTargetDirs"
+  },
+  "CandidateVacancyStages": {
+    "properties": {},
+    "entity_set": "ICandidateVacancyStagess"
+  },
+  "CaseFile": {
+    "properties": {
+      "Location": "Местонахождение",
+      "LongTerm": "Переходящее"
+    },
+    "display_name": "Дело",
+    "entity_set": "ICaseFiles"
+  },
+  "CeoRateApproveAssignment": {
+    "properties": {
+      "RateEmployeeLogin": "Логин"
+    },
+    "display_name": "Задание на утверждение ставки",
+    "collection_name": "Задания на утверждение ставки",
+    "entity_set": "ICeoRateApproveAssignments"
+  },
+  "CertificateIssueErrorAssignment": {
+    "properties": {},
+    "entity_set": "ICertificateIssueErrorAssignments"
+  },
+  "CertificateIssueErrorNotice": {
+    "properties": {},
+    "entity_set": "ICertificateIssueErrorNotices"
+  },
+  "CertificateIssueNotice": {
+    "properties": {},
+    "entity_set": "ICertificateIssueNotices"
+  },
+  "CertificateIssueStatementAcceptAssignment": {
+    "properties": {},
+    "entity_set": "ICertificateIssueStatementAcceptAssignments"
+  },
+  "CertificateIssueStatementDocument": {
+    "properties": {},
+    "entity_set": "ICertificateIssueStatementDocuments"
+  },
+  "CertificateIssueStatementDocumentTracking": {
+    "properties": {},
+    "entity_set": "ICertificateIssueStatementDocumentTrackings"
+  },
+  "CertificateIssueStatementDocumentVersions": {
+    "properties": {},
+    "entity_set": "ICertificateIssueStatementDocumentVersionss"
+  },
+  "CertificateIssueTaskObservers": {
+    "properties": {},
+    "entity_set": "ICertificateIssueTaskObserverss"
+  },
+  "CertificateIssueTask": {
+    "properties": {},
+    "entity_set": "ICertificateIssueTasks"
+  },
+  "CheckReturnAssignment": {
+    "properties": {},
+    "entity_set": "ICheckReturnAssignments"
+  },
+  "CheckReturnCheckAssignment": {
+    "properties": {},
+    "entity_set": "ICheckReturnCheckAssignments"
+  },
+  "CheckReturnTaskObservers": {
+    "properties": {},
+    "entity_set": "ICheckReturnTaskObserverss"
+  },
+  "CheckReturnTask": {
+    "properties": {},
+    "entity_set": "ICheckReturnTasks"
+  },
+  "ChiefAccountantAssignment": {
+    "properties": {
+      "LoginChiefAccAssign": "Логин"
+    },
+    "display_name": "Задание главному бухгалтеру",
+    "collection_name": "Задания главному бухгалтеру",
+    "entity_set": "IChiefAccountantAssignments"
+  },
+  "ChooseGiftAssignment": {
+    "properties": {},
+    "entity_set": "IChooseGiftAssignments"
+  },
+  "ChooseMentorAndTeamAssignment": {
+    "properties": {
+      "Mentor": "Наставник",
+      "RoomNumber": "Номер комнаты",
+      "NeedMentor": "Нужен наставник",
+      "AdditionalUserGroups": "Группы пользователей"
+    },
+    "entity_set": "IHRAssignments"
+  },
+  "ChooseMentorAssignment": {
+    "properties": {
+      "Mentor": "Наставник",
+      "RoomNumber": "Номер комнаты",
+      "AdditionalEquipment": "Недостающее оборудование",
+      "AdditionalUserGroups": "Группы пользователей",
+      "MainTeam": "Команда",
+      "IsTimeRatePay": "Отметка выполненных работ"
+    },
+    "display_name": "Задание на определение наставника",
+    "collection_name": "Задания на определение наставника",
+    "entity_set": "IChooseMentorAssignments"
+  },
+  "City": {
+    "properties": {},
+    "entity_set": "ICities"
+  },
+  "ClassificationSetting": {
+    "properties": {
+      "Name": "Имя"
+    }
+  },
+  "ClientActivity": {
+    "properties": {
+      "Project": "Проект"
+    },
+    "display_name": "Активность с клиентом",
+    "collection_name": "Активности с клиентами"
+  },
+  "CloseConfirmationAssignment": {
+    "properties": {},
+    "entity_set": "ICloseConfirmationAssignments"
+  },
+  "ClosureReason": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Причина закрытия сделки",
+    "collection_name": "Причины закрытия сделок"
+  },
+  "CodeReviewAssignmentCommits": {
+    "properties": {
+      "Comment": "Комментарий",
+      "RepositoryName": "Репозиторий",
+      "CommitDate": "Дата"
+    },
+    "entity_set": "ICodeReviewAssignmentCommitss"
+  },
+  "CodeReviewAssignment": {
+    "properties": {
+      "WorkItems": "Work items"
+    },
+    "entity_set": "ICodeReviewAssignments"
+  },
+  "CodeReviewAssignmentWorkItems": {
+    "properties": {
+      "Title": "Заголовок",
+      "WorkItemType": "Тип"
+    },
+    "entity_set": "ICodeReviewAssignmentWorkItemss"
+  },
+  "CodeReviewFinishedNotice": {
+    "properties": {},
+    "entity_set": "ICodeReviewFinishedNotices"
+  },
+  "CodeReviewFinishedNoticeWorkItems": {
+    "properties": {
+      "WorkItemType": "Тип",
+      "Title": "Заголовок"
+    },
+    "entity_set": "ICodeReviewFinishedNoticeWorkItemss"
+  },
+  "CodeReviewMarksReport": {
+    "properties": {},
+    "display_name": "Отчёт по рецензированию кода"
+  },
+  "CodeReviewTaskCommits": {
+    "properties": {
+      "Comment": "Комментарий",
+      "RepositoryName": "Репозиторий",
+      "CommitDate": "Дата"
+    },
+    "entity_set": "ICodeReviewTaskCommitss"
+  },
+  "CodeReviewTaskObservers": {
+    "properties": {},
+    "entity_set": "ICodeReviewTaskObserverss"
+  },
+  "CodeReviewTask": {
+    "properties": {},
+    "entity_set": "ICodeReviewTasks"
+  },
+  "CodeReviewTaskWorkItems": {
+    "properties": {
+      "Title": "Заголовок",
+      "WorkItemType": "Тип"
+    },
+    "entity_set": "ICodeReviewTaskWorkItemss"
+  },
+  "CodeReworkAssignmentCommits": {
+    "properties": {
+      "Comment": "Комментарий",
+      "RepositoryName": "Репозиторий",
+      "CommitDate": "Дата"
+    },
+    "entity_set": "ICodeReworkAssignmentCommitss"
+  },
+  "CodeReworkAssignment": {
+    "properties": {},
+    "entity_set": "ICodeReworkAssignments"
+  },
+  "CodeReworkAssignmentWorkItems": {
+    "properties": {
+      "WorkItemType": "Тип",
+      "Title": "Заголовок"
+    },
+    "entity_set": "ICodeReworkAssignmentWorkItemss"
+  },
+  "CommercialOfferAddressees": {
+    "properties": {},
+    "entity_set": "ICommercialOfferAddresseess"
+  },
+  "CommercialOffer": {
+    "properties": {
+      "Deal": "Сделка"
+    },
+    "display_name": "Коммерческое предложение",
+    "collection_name": "Коммерческие предложения",
+    "entity_set": "ICommercialOffers"
+  },
+  "CommercialOfferTracking": {
+    "properties": {},
+    "entity_set": "ICommercialOfferTrackings"
+  },
+  "CommercialOfferVersions": {
+    "properties": {},
+    "entity_set": "ICommercialOfferVersionss"
+  },
+  "CompanyCategories": {
+    "properties": {},
+    "entity_set": "ICompanyCategoriess"
+  },
+  "CompanyCategory": {
+    "properties": {
+      "Name": "Имя",
+      "Note": "Примечание",
+      "RequiredResponsible": "Ответственный за организацию обязателен",
+      "Roles": "Ответственный обязателен, если не указан"
+    },
+    "display_name": "Категория организации",
+    "collection_name": "Категории организаций"
+  },
+  "CompanyDirective": {
+    "properties": {},
+    "entity_set": "ICompanyDirectives"
+  },
+  "CompanyDirectiveTracking": {
+    "properties": {},
+    "entity_set": "ICompanyDirectiveTrackings"
+  },
+  "CompanyDirectiveVersions": {
+    "properties": {},
+    "entity_set": "ICompanyDirectiveVersionss"
+  },
+  "CompanyExchangeBoxes": {
+    "properties": {},
+    "entity_set": "ICompanyExchangeBoxess"
+  },
+  "CompanyExternalResponsiblesSungero": {
+    "properties": {},
+    "entity_set": "ICompanyExternalResponsiblesSungeros"
+  },
+  "CompanyInfoSource": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Источник информации о компании",
+    "collection_name": "Источники информации о компании",
+    "entity_set": "ICompanyInfoSources"
+  },
+  "CompanyResponsiblesSungero": {
+    "properties": {
+      "Employee": "Сотрудник",
+      "Begin": "С",
+      "End": "По",
+      "Role": "Роль"
+    },
+    "entity_set": "ICompanyResponsiblesSungeros"
+  },
+  "Company": {
+    "properties": {
+      "TRRC": "КПП",
+      "PSRN": "ОГРН",
+      "NCEO": "ОКПО",
+      "NCEA": "ОКВЭД",
+      "ExchangeBoxes": "Электронный обмен",
+      "WrongTIN": "Невалидный ИНН",
+      "WrongTRRC": "Невалидный КПП",
+      "LargeHolding": "Крупный холдинг",
+      "NumberOfStudentsSungero": "Количество учащихся (ВУЗ)",
+      "NumberOfWorkersSungero": "Количество сотрудников",
+      "IndustrySungero": "Отрасль",
+      "KindOfActivitySungero": "Вид деятельности",
+      "NumberOfComputersSungero": "Численность компьютеров",
+      "HeadCompanyRoleSungero": "Роль головной организации",
+      "UsedDataBaseSungero": "Используемые СУБД",
+      "UsedECMSungero": "Используемые системы ЭДО",
+      "StopSalesReasonSungero": "Причины остановки продаж ЭДО",
+      "ExchangeServiceSungero": "Используемый сервис обмена",
+      "AccountingSystemSungero": "Учетная система",
+      "ClassECMSungero": "Класс СЭД",
+      "PartnerSungero": "Партнер",
+      "ExchengeMemberIdSungero": "ИД участника обмена",
+      "NCEAGroupSungero": "Группа ОКВЭД"
+    },
+    "display_name": "Организация",
+    "entity_set": "Company"
+  },
+  "CompanyWorkStage": {
+    "properties": {
+      "Name": "Имя",
+      "CompanyCategory": "Категория организации"
+    },
+    "display_name": "Стадия работы",
+    "collection_name": "Стадии работ"
+  },
+  "ConditionAddressees": {
+    "properties": {},
+    "entity_set": "IConditionAddresseess"
+  },
+  "ConditionConditionDocumentKinds": {
+    "properties": {},
+    "entity_set": "IConditionConditionDocumentKindss"
+  },
+  "ConditionCurrencies": {
+    "properties": {},
+    "entity_set": "IConditionCurrenciess"
+  },
+  "ConditionDeliveryMethods": {
+    "properties": {},
+    "entity_set": "IConditionDeliveryMethodss"
+  },
+  "ConditionDocumentKinds": {
+    "properties": {},
+    "entity_set": "IConditionDocumentKindss"
+  },
+  "Condition": {
+    "properties": {},
+    "entity_set": "IConditions"
+  },
+  "ConfirmationAssignment": {
+    "properties": {},
+    "display_name": "Задание на согласование с руководителем отдела",
+    "collection_name": "Задания на согласование с руководителем отдела",
+    "entity_set": "IConfirmationAssignments"
+  },
+  "ConsentDocument": {
+    "properties": {},
+    "entity_set": "IHRDocFlowConsentDocuments"
+  },
+  "ConsentDocumentTracking": {
+    "properties": {},
+    "entity_set": "IHRDocFlowConsentDocumentTrackings"
+  },
+  "ConsentDocumentVersions": {
+    "properties": {},
+    "entity_set": "IHRDocFlowConsentDocumentVersionss"
+  },
+  "ConstantProjectPaymentNotify": {
+    "properties": {},
+    "entity_set": "IConstantProjectPaymentNotifies"
+  },
+  "ConstantProjectProjectMembers": {
+    "properties": {},
+    "entity_set": "IConstantProjectProjectMemberss"
+  },
+  "ConstantProject": {
+    "properties": {},
+    "display_name": "Постоянный проект",
+    "collection_name": "Постоянные проекты",
+    "entity_set": "IConstantProjects"
+  },
+  "ContactCategory": {
+    "properties": {
+      "Name": "Имя",
+      "Note": "Примечание"
+    },
+    "display_name": "Категория контакта",
+    "collection_name": "Категории контакта"
+  },
+  "ContactContactCategories": {
+    "properties": {
+      "ContactCategory": "Категория контакта"
+    },
+    "entity_set": "IContactContactCategoriess"
+  },
+  "ContactMarkStage": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Стадия оценки контакта",
+    "collection_name": "Стадии оценки контакта"
+  },
+  "ContactMark": {
+    "properties": {
+      "Name": "Имя",
+      "Method": "Способ",
+      "LastCommunication": "Дата посл. общения",
+      "Timeline": "T",
+      "Need": "N",
+      "Authority": "A",
+      "Budget": "B",
+      "BusinessTask": "Бизнес-задача",
+      "Responsible": "Ответственный",
+      "Company": "Организация",
+      "Contact": "Контакт"
+    },
+    "display_name": "Оценка",
+    "collection_name": "Оценки"
+  },
+  "ContactQualificationActivityBusinessTasks": {
+    "properties": {
+      "OldBudget": "B",
+      "OldLastCommunication": "Дата",
+      "OldTimeline": "T",
+      "OldNeed": "N",
+      "OldAuthority": "A",
+      "OldMethod": "Способ"
+    }
+  },
+  "ContactQualificationAssignment": {
+    "properties": {},
+    "display_name": "Задание на квалификацию контакта",
+    "collection_name": "Задания на квалификацию контакта",
+    "entity_set": "IContactQualificationAssignments"
+  },
+  "ContactQualificationMethod": {
+    "properties": {
+      "Method": "Способ общения"
+    }
+  },
+  "ContactQualification": {
+    "properties": {
+      "Request": "Заявка",
+      "Method": "Способ общения"
+    },
+    "collection_name": "Квалификации контакта",
+    "display_name": "Квалификация контакта"
+  },
+  "ContactQualificationTaskObservers": {
+    "properties": {},
+    "entity_set": "IContactQualificationTaskObserverss"
+  },
+  "ContactQualificationTask": {
+    "properties": {
+      "Performer": "Кому",
+      "Deadline": "Срок"
+    },
+    "display_name": "Задача на квалификацию контактов",
+    "collection_name": "Задачи на квалификацию контактов",
+    "entity_set": "IContactQualificationTasks"
+  },
+  "Contact": {
+    "properties": {
+      "Homepage": "Сайт",
+      "ContactCategories": "Категория",
+      "Name": "ФИО",
+      "Company": "Организация",
+      "CategoriesStringSungero": "Категория"
+    },
+    "entity_set": "IContacts"
+  },
+  "ContractAmountAccessRights": {
+    "properties": {},
+    "entity_set": "IContractAmountAccessRightss"
+  },
+  "ContractApprovalRole": {
+    "properties": {},
+    "display_name": "Роль согласования договоров",
+    "entity_set": "IContractApprovalRoles"
+  },
+  "ContractCategoryDocumentKinds": {
+    "properties": {},
+    "entity_set": "IContractCategoryDocumentKindss"
+  },
+  "ContractCategory": {
+    "properties": {},
+    "display_name": "Категория договора",
+    "entity_set": "IContractCategories"
+  },
+  "ContractMilestones": {
+    "properties": {},
+    "entity_set": "IContractMilestoness"
+  },
+  "ContractStatement": {
+    "properties": {},
+    "display_name": "Акт выполненных работ",
+    "entity_set": "IContractStatements"
+  },
+  "ContractStatementTracking": {
+    "properties": {},
+    "entity_set": "IContractStatementTrackings"
+  },
+  "ContractStatementVersions": {
+    "properties": {},
+    "entity_set": "IContractStatementVersionss"
+  },
+  "Contract": {
+    "properties": {},
+    "entity_set": "IContracts"
+  },
+  "ContractTracking": {
+    "properties": {},
+    "entity_set": "IContractTrackings"
+  },
+  "ContractVersions": {
+    "properties": {},
+    "entity_set": "IContractVersionss"
+  },
+  "ContractsApprovalRuleBusinessUnits": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleBusinessUnitss"
+  },
+  "ContractsApprovalRuleConditions": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleConditionss"
+  },
+  "ContractsApprovalRuleDepartments": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleDepartmentss"
+  },
+  "ContractsApprovalRuleDocumentGroups": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleDocumentGroupss"
+  },
+  "ContractsApprovalRuleDocumentKinds": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleDocumentKindss"
+  },
+  "ContractsApprovalRuleStages": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleStagess"
+  },
+  "ContractsApprovalRule": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRules"
+  },
+  "ContractsApprovalRuleTransitions": {
+    "properties": {},
+    "entity_set": "IContractsApprovalRuleTransitionss"
+  },
+  "ContractualDocumentBase": {
+    "properties": {
+      "SentDateSungero": "Дата отправки",
+      "TrackNumberSungero": "№ отправления"
+    },
+    "entity_set": "IContractualDocumentBases"
+  },
+  "ContractualDocumentBaseTracking": {
+    "properties": {},
+    "entity_set": "IContractualDocumentBaseTrackings"
+  },
+  "ContractualDocumentBaseVersions": {
+    "properties": {},
+    "entity_set": "IContractualDocumentBaseVersionss"
+  },
+  "ControlAssignment": {
+    "properties": {},
+    "display_name": "Задание на проверку квалификации контакта по мероприятию",
+    "collection_name": "Задание на проверку квалификации контакта по мероприятию",
+    "entity_set": "IControlAssignments"
+  },
+  "ControlHRDocumentSigningTaskObservers": {
+    "properties": {},
+    "entity_set": "IControlHRDocumentSigningTaskObserverss"
+  },
+  "ControlHRDocumentSigningTask": {
+    "properties": {
+      "SigningEmployee": "Подписывающий сотрудник",
+      "StaffMoveInfo": "Информация"
+    },
+    "display_name": "Задача на контроль подписания кадровых документов",
+    "collection_name": "Задачи на контроль подписания кадровых документов",
+    "entity_set": "IControlHRDocumentSigningTasks"
+  },
+  "CostsType": {
+    "properties": {
+      "Name": "Имя",
+      "Comment": "Примечание",
+      "Code": "Код",
+      "Compensation": "Компенсация"
+    },
+    "display_name": "Вид затрат",
+    "collection_name": "Виды затрат",
+    "entity_set": "ICostsTypes"
+  },
+  "CounterpartyConflictProcessingAssignment": {
+    "properties": {},
+    "entity_set": "ICounterpartyConflictProcessingAssignments"
+  },
+  "CounterpartyConflictProcessingTaskObservers": {
+    "properties": {},
+    "entity_set": "ICounterpartyConflictProcessingTaskObserverss"
+  },
+  "CounterpartyConflictProcessingTask": {
+    "properties": {},
+    "entity_set": "ICounterpartyConflictProcessingTasks"
+  },
+  "CounterpartyDocument": {
+    "properties": {},
+    "entity_set": "ICounterpartyDocuments"
+  },
+  "CounterpartyDocumentTracking": {
+    "properties": {},
+    "entity_set": "ICounterpartyDocumentTrackings"
+  },
+  "CounterpartyDocumentVersions": {
+    "properties": {},
+    "entity_set": "ICounterpartyDocumentVersionss"
+  },
+  "Country": {
+    "properties": {},
+    "entity_set": "ICountries"
+  },
+  "CourseBase": {
+    "properties": {
+      "Name": "Имя",
+      "DisplayedName": "Наименование",
+      "Number": "Номер",
+      "Owner": "Владелец",
+      "Responsible": "Обрабатывает заявки",
+      "IsEmployeeCourse": "Сотрудников",
+      "IsPartnerCourse": "Партнеров",
+      "IsClientCourse": "Клиентов",
+      "AllowFutureRequest": "Разрешить заявки на будущее, без выбора группы",
+      "Duration": "Длительность (ак. ч.)",
+      "Capacity": "Мест в группе"
+    },
+    "display_name": "Курс (Набор курсов)",
+    "collection_name": "Курсы (Наборы курсов)"
+  },
+  "CourseEntranceRequirements": {
+    "properties": {
+      "CourseKnowledge": "Знания по курсу"
+    }
+  },
+  "Course": {
+    "properties": {
+      "CourseFolder": "Папка курса",
+      "EntranceRequirements": "Входные требования",
+      "CourseIdEdu": "ИД курса на портале"
+    },
+    "display_name": "Курс",
+    "collection_name": "Курсы"
+  },
+  "CoursesSetCoursesStudied": {
+    "properties": {
+      "Course": "Курс"
+    }
+  },
+  "CoursesSet": {
+    "properties": {
+      "CoursesStudied": "Изучаемые курсы"
+    },
+    "display_name": "Набор курсов",
+    "collection_name": "Наборы курсов"
+  },
+  "CreateLoginAssignment": {
+    "properties": {
+      "LoginName": "Логин"
+    },
+    "display_name": "Задание на создание логина",
+    "collection_name": "Задания на создание логина",
+    "entity_set": "ICreateLoginAssignments"
+  },
+  "CreateProjectProgressReport": {
+    "properties": {},
+    "collection_name": "Простые задания по отчету",
+    "display_name": "Простое задание по отчету",
+    "entity_set": "ICreateProjectProgressReports"
+  },
+  "CreationRequestAssigment": {
+    "properties": {
+      "Vacancies": "Требуемые сотрудники",
+      "Note": "Примечание к заявке"
+    },
+    "display_name": "Задание на создание заявки на сотрудников",
+    "collection_name": "Задания на создание заявок на сотрудников",
+    "entity_set": "ICreationRequestAssigments"
+  },
+  "CreationRequestAssigmentVacancies": {
+    "properties": {
+      "JobPosition": "Должность",
+      "Minimal": "Минимум",
+      "Desirable": "Желательно",
+      "CandidateExperience": "Опыт",
+      "Requirement": "Требования"
+    },
+    "entity_set": "ICreationRequestAssigmentVacanciess"
+  },
+  "CrossCuttingPost": {
+    "properties": {
+      "Name": "Наименование"
+    },
+    "display_name": "Сквозная должность",
+    "collection_name": "Сквозные должности"
+  },
+  "Currency": {
+    "properties": {},
+    "display_name": "Валюта",
+    "entity_set": "ICurrencies"
+  },
+  "CustomProjectInfrastructureTaskObservers": {
+    "properties": {},
+    "entity_set": "ISupportCustomProjectInfrastructureTaskObserverss"
+  },
+  "CustomProjectInfrastructureTask": {
+    "properties": {},
+    "display_name": "Задача на поддержку инфраструктуры заказных проектов",
+    "collection_name": "Задачи на поддержку инфраструктуры заказных проектов",
+    "entity_set": "ISupportCustomProjectInfrastructureTasks"
+  },
+  "DCIMessageQueueMessageParams": {
+    "properties": {},
+    "entity_set": "IDCIMessageQueueMessageParamss"
+  },
+  "DCIMessageQueue": {
+    "properties": {
+      "Type": "Тип",
+      "ProcessName": "Имя процесса",
+      "MessageStatus": "Статус",
+      "Note": "Примечание",
+      "MessageParams": "Параметры",
+      "Name": "Имя",
+      "AdditionDate": "Создано",
+      "SendingDate": "Отправлено",
+      "MessageName": "Имя сообщения",
+      "Dependency": "Зависимость",
+      "ProcessGlobalId": "ИД процесса",
+      "ProcessMessageGlobalId": "ИД сообщения",
+      "BeginProcessing": "Начало обработки",
+      "Transport": "Транспорт"
+    },
+    "display_name": "Очередь сообщений",
+    "collection_name": "Очередь сообщений",
+    "entity_set": "IDCIMessageQueues"
+  },
+  "DCIModuleSetting": {
+    "properties": {
+      "Name": "Идентификатор системы",
+      "AdapterUrl": "Url адаптера",
+      "ExchangeFolder": "Папка обмена",
+      "KasSystemId": "Идентификатор системы ТехКАС",
+      "AdapterSite": "Адрес сайта адаптера"
+    },
+    "display_name": "Настройка DCI",
+    "collection_name": "Настройки DCI"
+  },
+  "DCISignedDocumentSignedVersions": {
+    "properties": {
+      "VersionNumber": "Номер версии"
+    }
+  },
+  "DCISignedDocument": {
+    "properties": {
+      "Name": "Наименование",
+      "DocumentId": "ИД документа"
+    },
+    "display_name": "Подписанный документ",
+    "collection_name": "Подписанные документы"
+  },
+  "DMOApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание на согласование документов по ДМО",
+    "collection_name": "Задания на согласования документов по ДМО",
+    "entity_set": "IDMOApprovalAssignments"
+  },
+  "DMOApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IDMOApprovalTaskObserverss"
+  },
+  "DMOApprovalTask": {
+    "properties": {},
+    "entity_set": "IDMOApprovalTasks"
+  },
+  "DMOReport": {
+    "properties": {},
+    "display_name": "Отчет по принятым документам ДМО"
+  },
+  "DMOReworkAssignment": {
+    "properties": {},
+    "entity_set": "IDMOReworkAssignments"
+  },
+  "DeadlineExtensionAssignment": {
+    "properties": {},
+    "entity_set": "IDeadlineExtensionAssignments"
+  },
+  "DeadlineExtensionNotification": {
+    "properties": {},
+    "entity_set": "IDeadlineExtensionNotifications"
+  },
+  "DeadlineExtensionTaskObservers": {
+    "properties": {},
+    "entity_set": "IDeadlineExtensionTaskObserverss"
+  },
+  "DeadlineExtensionTask": {
+    "properties": {},
+    "entity_set": "IDeadlineExtensionTasks"
+  },
+  "DeadlineRejectionAssignment": {
+    "properties": {},
+    "entity_set": "IDeadlineRejectionAssignments"
+  },
+  "DealBusinessTasks": {
+    "properties": {
+      "BusinessTask": "Бизнес задача"
+    }
+  },
+  "DealCompetitors": {
+    "properties": {
+      "Competitor": "Конкурент",
+      "Strong": "Чем сильны"
+    }
+  },
+  "DealDocument": {
+    "properties": {
+      "Company": "Организация",
+      "Deal": "Сделка",
+      "Encrypted": "Зашифрован"
+    },
+    "display_name": "Документ по сделке",
+    "collection_name": "Документы по сделке",
+    "entity_set": "IDealDocuments"
+  },
+  "DealDocumentTracking": {
+    "properties": {},
+    "entity_set": "IDealDocumentTrackings"
+  },
+  "DealDocumentVersions": {
+    "properties": {},
+    "entity_set": "IDealDocumentVersionss"
+  },
+  "DealProduct": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Продукт",
+    "collection_name": "Продукты"
+  },
+  "DealStage": {
+    "properties": {
+      "Name": "Имя",
+      "Probability": "Вероятность",
+      "RegistrationKind": "Вид регистрации",
+      "BusinessUnitRequired": "Наша организация обязательна",
+      "ProjectScopeRequired": "Рамки проекта обязательны"
+    },
+    "display_name": "Стадия сделки",
+    "collection_name": "Стадии сделки"
+  },
+  "Deal": {
+    "properties": {
+      "Name": "Имя",
+      "Company": "Организация",
+      "BusinessTasks": "Бизнес-задачи",
+      "Partner": "Партнер",
+      "CanManageSumRecipients": "Права на суммы",
+      "Responsible": "Ответственный",
+      "Timeline": "Дата старта",
+      "Note": "Примечание",
+      "Need": "Суть",
+      "Result": "Результат",
+      "Competitors": "Конкуренты",
+      "Kind": "Вид",
+      "Product": "Продукт",
+      "Service": "Услуга",
+      "NumberUsers": "Кол-во пользователей",
+      "DateOpen": "Дата создания",
+      "DateClose": "Дата закрытия",
+      "Nuances": "Особенности",
+      "Probability": "Вероятность",
+      "CostServices": "Стоимость услуг",
+      "SoftwareCost": "Стоимость ПО",
+      "Reason": "Причина",
+      "SaleScheme": "Схема совместной продажи",
+      "IsPartnerSiteCreate": "Создана с партнерского портала",
+      "DateResultChange": "Дата изменения результата",
+      "BoxImplementation": "Внедрение от коробки",
+      "CommentBox": "Комментарий к коробке",
+      "ClassECM": "Класс СЭД",
+      "NumberOfWorkers": "Количество сотрудников",
+      "Region": "Регион",
+      "City": "Населенный пункт",
+      "Industry": "Отрасль",
+      "LargeHolding": "Крупный холдинг",
+      "HeadCompany": "Головная орг.",
+      "Tips": "Заметки",
+      "Competitor": "Конкурент",
+      "CompanyCategories": "Категории организации"
+    },
+    "display_name": "Сделка",
+    "collection_name": "Все сделки"
+  },
+  "DealsReport": {
+    "properties": {},
+    "display_name": "Отчет по сделкам"
+  },
+  "DelayPerformedWorksOfTeamReport": {
+    "properties": {},
+    "display_name": "Средняя задержка отметки выполненных работ"
+  },
+  "DeleteDocumentQueue": {
+    "properties": {
+      "Name": "Имя",
+      "AdditionDate": "Создано"
+    }
+  },
+  "DepartmentRecipientLinks": {
+    "properties": {},
+    "entity_set": "IDepartmentRecipientLinkss"
+  },
+  "Department": {
+    "properties": {
+      "DepKasId": "ИД объекта ТехКАС",
+      "ClosedDate": "Дата закрытия отметки вып. работ",
+      "DisplayAs": "Краткое наименование",
+      "IsGroup": "Группа в составе подразделения",
+      "IsDepartment": "Департамент",
+      "Description": "Описание"
+    },
+    "display_name": "Подразделение",
+    "entity_set": "IDepartments"
+  },
+  "DepartmentVacationsReport": {
+    "properties": {},
+    "display_name": "Отчет о фактических отпусках сотрудников подразделения"
+  },
+  "DirCloseConfirmAssignment": {
+    "properties": {},
+    "entity_set": "IDirCloseConfirmAssignments"
+  },
+  "DirectorConfirmationAssignment": {
+    "properties": {
+      "ProjectOld": "Проект"
+    },
+    "entity_set": "IDirectorConfirmationAssignments"
+  },
+  "DocPublishApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IDocPublishApprovalAssignments"
+  },
+  "DocPublishAssignment": {
+    "properties": {},
+    "entity_set": "IDocPublishAssignments"
+  },
+  "DocRelatedToWork": {
+    "properties": {},
+    "entity_set": "IHRDocFlowDocRelatedToWorks"
+  },
+  "DocRelatedToWorkTracking": {
+    "properties": {},
+    "entity_set": "IHRDocFlowDocRelatedToWorkTrackings"
+  },
+  "DocRelatedToWorkVersions": {
+    "properties": {},
+    "entity_set": "IHRDocFlowDocRelatedToWorkVersionss"
+  },
+  "DocReviewApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IDocReviewApprovalAssignments"
+  },
+  "DocReviewNotice": {
+    "properties": {},
+    "entity_set": "IDocReviewNotices"
+  },
+  "DocReviewReworkAssignmentReviewers": {
+    "properties": {},
+    "entity_set": "IDocReviewReworkAssignmentReviewerss"
+  },
+  "DocReviewReworkAssignment": {
+    "properties": {},
+    "display_name": "Задание на доработку текста документа",
+    "collection_name": "Задания на доработку текста документа",
+    "entity_set": "IDocReviewReworkAssignments"
+  },
+  "DocumentFlowTaskAddApprovers": {
+    "properties": {},
+    "entity_set": "IDocumentFlowTaskAddApproverss"
+  },
+  "DocumentFlowTaskAddressees": {
+    "properties": {},
+    "entity_set": "IDocumentFlowTaskAddresseess"
+  },
+  "DocumentFlowTaskObservers": {
+    "properties": {},
+    "entity_set": "IDocumentFlowTaskObserverss"
+  },
+  "DocumentFlowTaskRevokedDocumentsRights": {
+    "properties": {},
+    "entity_set": "IDocumentFlowTaskRevokedDocumentsRightss"
+  },
+  "DocumentFlowTask": {
+    "properties": {},
+    "entity_set": "IDocumentFlowTasks"
+  },
+  "DocumentPreparationAssignment": {
+    "properties": {},
+    "display_name": "Задание на подготовку документов",
+    "collection_name": "Задания на подготовку документов",
+    "entity_set": "IDocumentPreparationAssignments"
+  },
+  "DocumentRegisterNumberFormatItems": {
+    "properties": {},
+    "entity_set": "IDocumentRegisterNumberFormatItemss"
+  },
+  "DocumentRegister": {
+    "properties": {},
+    "display_name": "Журнал регистрации",
+    "entity_set": "IDocumentRegisters"
+  },
+  "DocumentReviewTaskAddressees": {
+    "properties": {},
+    "entity_set": "IDocumentReviewTaskAddresseess"
+  },
+  "DocumentReviewTaskObservers": {
+    "properties": {},
+    "entity_set": "IDocumentReviewTaskObserverss"
+  },
+  "DocumentReviewTaskResolutionObservers": {
+    "properties": {},
+    "entity_set": "IDocumentReviewTaskResolutionObserverss"
+  },
+  "DocumentReviewTask": {
+    "properties": {},
+    "display_name": "Задача на рассмотрение документа",
+    "entity_set": "IDocumentReviewTasks"
+  },
+  "DocumentTemplateBusinessUnits": {
+    "properties": {},
+    "entity_set": "IDocumentTemplateBusinessUnitss"
+  },
+  "DocumentTemplateDepartments": {
+    "properties": {},
+    "entity_set": "IDocumentTemplateDepartmentss"
+  },
+  "DocumentTemplateDocumentKinds": {
+    "properties": {},
+    "entity_set": "IDocumentTemplateDocumentKindss"
+  },
+  "DocumentTemplate": {
+    "properties": {},
+    "entity_set": "IDocumentTemplates"
+  },
+  "DocumentTemplateVersions": {
+    "properties": {},
+    "entity_set": "IDocumentTemplateVersionss"
+  },
+  "DocumentationReviewTaskMarks": {
+    "properties": {},
+    "entity_set": "IDocumentationReviewTaskMarkss"
+  },
+  "DocumentationReviewTaskObservers": {
+    "properties": {},
+    "entity_set": "IDocumentationReviewTaskObserverss"
+  },
+  "DocumentationReviewTaskReviewers": {
+    "properties": {},
+    "entity_set": "IDocumentationReviewTaskReviewerss"
+  },
+  "DocumentationReviewTask": {
+    "properties": {},
+    "display_name": "Задача на рецензирование справки",
+    "collection_name": "Задачи на рецензирование справки",
+    "entity_set": "IDocumentationReviewTasks"
+  },
+  "DonorCompanyCompName": {
+    "properties": {
+      "OrgName": "Варианты написания названия"
+    },
+    "entity_set": "IDonorCompanyCompNames"
+  },
+  "DonorCompany": {
+    "properties": {
+      "Name": "Название",
+      "CompName": "Варианты названий"
+    },
+    "display_name": "Опыт работы",
+    "collection_name": "Опыт работы",
+    "entity_set": "IDonorCompanies"
+  },
+  "DraftApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IDraftApprovalTaskObserverss"
+  },
+  "DraftApprovalTaskReviewers": {
+    "properties": {},
+    "entity_set": "IDraftApprovalTaskReviewerss"
+  },
+  "DraftApprovalTask": {
+    "properties": {
+      "MaxDeadline": "Конечный срок",
+      "NeedsReview": "Задание на приемку"
+    },
+    "entity_set": "IDraftApprovalTasks"
+  },
+  "DueDiligenceWebsite": {
+    "properties": {},
+    "entity_set": "IDueDiligenceWebsites"
+  },
+  "EAcquintanceInOrderAssignment": {
+    "properties": {
+      "DocumentKindsOrderToSign": "Порядок видов документов на ознакомление"
+    },
+    "collection_name": "Задания на ознакомление с несколькими документами в электронном виде",
+    "display_name": "Задание на ознакомление с несколькими документами в электронном виде",
+    "entity_set": "ISigningEAcquintanceInOrderAssignments"
+  },
+  "ECMSystem": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Система ЭДО",
+    "collection_name": "Системы ЭДО"
+  },
+  "EmployeeHiringTaskObservers": {
+    "properties": {},
+    "entity_set": "IEmployeeHiringTaskObserverss"
+  },
+  "EmployeeHiringTask": {
+    "properties": {
+      "Candidate": "Кандидат",
+      "EntryDate": "Время выхода",
+      "BriefingResponsible": "Инструктаж",
+      "Department": "Отдел",
+      "DepartmentGroup": "Группа отдела",
+      "BreakWorkLength": "Прервать стаж",
+      "JobTitle": "Должность",
+      "Category": "Категория",
+      "WorkingHours": "Рабочие часы",
+      "ResourceManagerPool": "Пул ресурс-менеджера",
+      "NewWorkingHours": "Рабочие часы",
+      "IsOfficePlace": "Место в офисе",
+      "Vacancy": "Вакансия"
+    },
+    "display_name": "Задача на прием сотрудника (Устарела)",
+    "collection_name": "Задачи на прием сотрудника (Устарели)",
+    "entity_set": "IEmployeeHiringTasks"
+  },
+  "EmployeeRequestApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IEmployeeRequestApprovalTaskObserverss"
+  },
+  "EmployeeRequestApprovalTask": {
+    "properties": {
+      "Vacancies": "Требуемые сотрудники",
+      "Manager": "Руководитель",
+      "Note": "Примечание к заявке",
+      "RequestDate": "Дата заявки"
+    },
+    "display_name": "Задача на утверждение заявки на сотрудников",
+    "collection_name": "Задачи на утверждение заявки на сотрудников",
+    "entity_set": "IEmployeeRequestApprovalTasks"
+  },
+  "EmployeeRequestApprovalTaskVacancies": {
+    "properties": {
+      "JobPosition": "Должность",
+      "Minimal": "Минимум",
+      "Desirable": "Желательно",
+      "CandidateExperience": "Опыт",
+      "Requirement": "Требования"
+    },
+    "entity_set": "IEmployeeRequestApprovalTaskVacanciess"
+  },
+  "EmployeeRequestReport": {
+    "properties": {},
+    "display_name": "Сводка по заявкам на сотрудников"
+  },
+  "EmployeeRequest": {
+    "properties": {
+      "Name": "Имя",
+      "RequestDate": "Дата заявки",
+      "Department": "Подразделение",
+      "StartDate": "Дата начала",
+      "EndDate": "Дата завершения",
+      "ApprovedDate": "Дата утверждения",
+      "Vacancies": "Требуемые сотрудники",
+      "TypeRequest": "Тип",
+      "Quarter": "Период",
+      "KasID": "ИД объекта в ТехКАС НПО"
+    },
+    "display_name": "Заявка на сотрудников",
+    "collection_name": "Заявки на сотрудников"
+  },
+  "EmployeeRequestVacancies": {
+    "properties": {
+      "JobPosition": "Должность",
+      "Minimal": "Минимум",
+      "Desirable": "Желательно",
+      "CandidateExperience": "Опыт",
+      "Requirement": "Требования"
+    }
+  },
+  "EmployeeSettings": {
+    "properties": {
+      "Name": "Имя",
+      "Employee": "Сотрудник",
+      "MinistryLaborProject": "Кадровый электронный документооборот",
+      "TypeAward": "Периодичность премии",
+      "IsTimeRatePay": "Отметка выполненных работ",
+      "IsStaffMember": "Постоянный",
+      "IsOfficePlace": "Место в офисе"
+    },
+    "display_name": "Настройки сотрудника",
+    "collection_name": "Настройки сотрудников"
+  },
+  "Employee": {
+    "properties": {
+      "KasId": "ИД объекта ТехКАС",
+      "HireDate": "Дата начала работы",
+      "FireDate": "Дата увольнения",
+      "Rank": "Категория",
+      "IsMissing": "Отсутствует",
+      "BirthDate": "Дата рождения",
+      "Room": "Помещение",
+      "EmployeeCode": "Табельный номер",
+      "Mentor": "Наставник",
+      "BsnUnit": "Наша орг.",
+      "GroupDepartment": "Группа",
+      "BuhKasLogin": "Логин",
+      "Phone": "Внутренний телефон",
+      "Experience": "Стаж",
+      "ExperienceYears": "Стаж в годах",
+      "MainTeam": "Команда",
+      "ExperienceMonthsSungero": "Стаж в месяцах"
+    },
+    "entity_set": "IEmployees"
+  },
+  "EmployeeTrainingAnalysisAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задание на анализ обучения сотрудника",
+    "collection_name": "Задания на анализ обучения сотрудника",
+    "entity_set": "IEmployeeTrainingAnalysisAssignments"
+  },
+  "EmployeeTrainingAnalysisTaskObservers": {
+    "properties": {},
+    "entity_set": "IEmployeeTrainingAnalysisTaskObserverss"
+  },
+  "EmployeeTrainingAnalysisTask": {
+    "properties": {
+      "Employee": "Сотрудник"
+    },
+    "display_name": "Задача по анализу обучения сотрудника",
+    "collection_name": "Задачи по анализу обучения сотрудников",
+    "entity_set": "IEmployeeTrainingAnalysisTasks"
+  },
+  "EmployerInfoSourceKind": {
+    "properties": {
+      "Name": "Наименование",
+      "Notes": "Примечание"
+    },
+    "display_name": "Тип источника информации о работодателе",
+    "collection_name": "Типы источников информации о работодателе",
+    "entity_set": "IEmployerInfoSourceKinds"
+  },
+  "EmployerInfoSource": {
+    "properties": {
+      "Name": "Имя",
+      "SourceType": "Тип источника"
+    },
+    "display_name": "Источник информации о работодателе",
+    "collection_name": "Источники информации о работодателе",
+    "entity_set": "IEmployerInfoSources"
+  },
+  "EntityRecognitionInfoClassificationResults": {
+    "properties": {
+      "PredictedClass": "Прогнозируемый класс"
+    }
+  },
+  "EntityRecognitionInfo": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "collection_name": "Результаты классификации",
+    "entity_set": "IEntityRecognitionInfos"
+  },
+  "EventParticipation": {
+    "properties": {
+      "LastCommunication": "Дата",
+      "ClientId": "ИД клиента"
+    }
+  },
+  "EventProcessedContactAdditionalContacts": {
+    "properties": {
+      "Company": "Организация",
+      "Contact": "Контакт",
+      "Authority": "Влияние"
+    }
+  },
+  "EventProcessedContact": {
+    "properties": {
+      "MarketingEvent": "Мероприятие",
+      "MarketingEventStage": "Этап",
+      "AdditionalContacts": "Дополнительные контакты",
+      "Budget": "Бюджет",
+      "Need": "Критичность проблем",
+      "Timeline": "Срок принятия решения"
+    },
+    "collection_name": "Контакты с мероприятий",
+    "display_name": "Контакт с мероприятия"
+  },
+  "EventProcessingContactSearch": {
+    "properties": {
+      "RelatedTask": "Связанная задача",
+      "MatchType": "Тип совпадения",
+      "TIN": "ИНН",
+      "Email": "Email",
+      "CreatedDuringProcessing": "Создан при обработке"
+    },
+    "display_name": "Результат обработки списка контактов"
+  },
+  "ExchangeDocumentProcessingAssignment": {
+    "properties": {},
+    "entity_set": "IExchangeDocumentProcessingAssignments"
+  },
+  "ExchangeDocumentProcessingTaskObservers": {
+    "properties": {},
+    "entity_set": "IExchangeDocumentProcessingTaskObserverss"
+  },
+  "ExchangeDocumentProcessingTask": {
+    "properties": {},
+    "entity_set": "IExchangeDocumentProcessingTasks"
+  },
+  "ExchangeDocument": {
+    "properties": {},
+    "entity_set": "IExchangeDocuments"
+  },
+  "ExchangeDocumentTracking": {
+    "properties": {},
+    "entity_set": "IExchangeDocumentTrackings"
+  },
+  "ExchangeDocumentVersions": {
+    "properties": {},
+    "entity_set": "IExchangeDocumentVersionss"
+  },
+  "ExchangeService": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Сервис обмена документами",
+    "collection_name": "Сервисы обмена документами",
+    "entity_set": "IExchangeServices"
+  },
+  "ExpenseReportApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportApprovalAssignments"
+  },
+  "ExpenseReportApprovalSignAssignment": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportApprovalSignAssignments"
+  },
+  "ExpenseReportApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportApprovalTaskObserverss"
+  },
+  "ExpenseReportApprovalTask": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportApprovalTasks"
+  },
+  "ExpenseReportEmployeeSignAssignment": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportEmployeeSignAssignments"
+  },
+  "ExpenseReportExpenses": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportExpensess"
+  },
+  "ExpenseReportPrepareAssignment": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportPrepareAssignments"
+  },
+  "ExpenseReportSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportSimpleAssignments"
+  },
+  "ExpenseReport": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReports"
+  },
+  "ExpenseReportTracking": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportTrackings"
+  },
+  "ExpenseReportVersions": {
+    "properties": {},
+    "entity_set": "IExpenseReportsExpenseReportVersionss"
+  },
+  "ExternalRequest": {
+    "properties": {
+      "Number": "Номер"
+    },
+    "display_name": "Обращение в службу поддержки",
+    "collection_name": "Обращения в службу поддержки"
+  },
+  "ExternalTrainingRequest": {
+    "properties": {
+      "Employee": "Слушатель",
+      "FormatTraining": "Формат обучения",
+      "TrainingName": "Наименование обучения",
+      "TrainingLink": "Ссылка на обучение",
+      "TrainingCost": "Стоимость обучения",
+      "TripCost": "Стоимость выезда",
+      "Justification": "Обоснование",
+      "Note": "Примечание"
+    },
+    "display_name": "Заявка на внешнее обучение",
+    "collection_name": "Заявки на внешнее обучение"
+  },
+  "FakeDocument": {
+    "properties": {},
+    "display_name": "Документ",
+    "entity_set": "IFakeDocuments"
+  },
+  "FakeDocumentVersions": {
+    "properties": {},
+    "entity_set": "IFakeDocumentVersionss"
+  },
+  "FileRetentionPeriod": {
+    "properties": {},
+    "entity_set": "IFileRetentionPeriods"
+  },
+  "FinancialResponsibilityCenter": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "entity_set": "IFinancialResponsibilityCenters"
+  },
+  "FinishAssignment": {
+    "properties": {},
+    "entity_set": "IFinishAssignments"
+  },
+  "FinishNotice": {
+    "properties": {},
+    "entity_set": "IFinishNotices"
+  },
+  "FreeApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IFreeApprovalAssignments"
+  },
+  "FreeApprovalFinishAssignment": {
+    "properties": {},
+    "entity_set": "IFreeApprovalFinishAssignments"
+  },
+  "FreeApprovalNotification": {
+    "properties": {},
+    "entity_set": "IFreeApprovalNotifications"
+  },
+  "FreeApprovalReworkAssignmentApprovers": {
+    "properties": {},
+    "entity_set": "IFreeApprovalReworkAssignmentApproverss"
+  },
+  "FreeApprovalReworkAssignment": {
+    "properties": {},
+    "entity_set": "IFreeApprovalReworkAssignments"
+  },
+  "FreeApprovalTaskApprovers": {
+    "properties": {},
+    "entity_set": "IFreeApprovalTaskApproverss"
+  },
+  "FreeApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IFreeApprovalTaskObserverss"
+  },
+  "FreeApprovalTask": {
+    "properties": {},
+    "display_name": "Задача на согласование документа",
+    "collection_name": "Задачи на согласование документа",
+    "entity_set": "IFreeApprovalTasks"
+  },
+  "FromLongVacationApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IFromLongVacationApprovalAssignments"
+  },
+  "FromLongVacationApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IFromLongVacationApprovalTaskObserverss"
+  },
+  "FromLongVacationApprovalTask": {
+    "properties": {
+      "Department": "Подразделение",
+      "NeedWriteNews": "Опубликовать новость",
+      "WorkingHours": "Рабочие часы",
+      "NewWorkingHours": "Рабочие часы",
+      "NewBusinessUnit": "Наша организация",
+      "MainTeam": "Основная команда"
+    },
+    "display_name": "Задача на выход из длительного отпуска",
+    "collection_name": "Задачи на выход из длительного отпуска",
+    "entity_set": "IFromLongVacationApprovalTasks"
+  },
+  "FromLongVacationCheckAssignment": {
+    "properties": {},
+    "entity_set": "IFromLongVacationCheckAssignments"
+  },
+  "FromLongVacationPersonalSpecialistAssignment": {
+    "properties": {
+      "IsEDocManagment": "Участвует в электронном документообороте"
+    },
+    "entity_set": "IFromLongVacationPersonalSpecialistAssignments"
+  },
+  "FromLongVacationReworkAssignment": {
+    "properties": {
+      "Department": "Подразделение",
+      "DepartmentGroup": "Группа",
+      "JobTitle": "Должность",
+      "Date": "Дата",
+      "Category": "Категория",
+      "NeedWriteNews": "Опубликовать новость",
+      "AdditionalEquipment": "Оборудование",
+      "UserGroups": "Группы пользователей",
+      "Room": "Помещение",
+      "Mentor": "Наставник"
+    },
+    "display_name": "Задание на доработку выхода из длительного отпуска",
+    "collection_name": "Задания на доработку выхода из длительного отпуска",
+    "entity_set": "IFromLongVacationReworkAssignments"
+  },
+  "FromLongVacationSimpleAssignment": {
+    "properties": {
+      "BusinessUnit": "Наша организация"
+    },
+    "collection_name": "Задания по выходу из длительного отпуска",
+    "display_name": "Задание по выходу из длительного отпуска",
+    "entity_set": "IFromLongVacationSimpleAssignments"
+  },
+  "FromLongVacationWorkplaceAssignment": {
+    "properties": {
+      "WorkplaceNumber": "Рабочее место"
+    },
+    "display_name": "Задание на спецоценку рабочего места",
+    "collection_name": "Задания на спецоценку рабочего места",
+    "entity_set": "IFromLongVacationWorkplaceAssignments"
+  },
+  "GECheckPlanVacationDaysAssignment": {
+    "properties": {},
+    "entity_set": "IGECheckPlanVacationDaysAssignments"
+  },
+  "GEReportDBEApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IGEReportDBEApprovalAssignments"
+  },
+  "GEReportPrepareAssignmentCommitee": {
+    "properties": {
+      "CommiteeMember": "Член комиссии"
+    },
+    "entity_set": "IGEReportPrepareAssignmentCommitees"
+  },
+  "GEReportPrepareAssignment": {
+    "properties": {
+      "Commitee": "Комиссия",
+      "NewJobTitle": "Новая должность",
+      "NewDepartmentGroup": "Новая группа",
+      "RateChanges": "Изменяется ставка",
+      "ChangeDate": "Дата изменения",
+      "Grade": "Категория"
+    },
+    "display_name": "Задание на оформление отчёта об аттестации",
+    "collection_name": "Задания на оформление отчёта об аттестации",
+    "entity_set": "IGEReportPrepareAssignments"
+  },
+  "GEReportReworkAssignmentApprovers": {
+    "properties": {},
+    "entity_set": "IGEReportReworkAssignmentApproverss"
+  },
+  "GEReportReworkAssignment": {
+    "properties": {},
+    "display_name": "Задание на доработку отчёта об аттестации",
+    "collection_name": "Задания на доработку отчёта об аттестации",
+    "entity_set": "IGEReportReworkAssignments"
+  },
+  "GEVacationPlanningAssignment": {
+    "properties": {},
+    "entity_set": "IGEVacationPlanningAssignments"
+  },
+  "GetTokenAssignment": {
+    "properties": {},
+    "entity_set": "IGetTokenAssignments"
+  },
+  "GosMevSetting": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Настройка Госключа"
+  },
+  "GoskeyInstallAssignment": {
+    "properties": {},
+    "entity_set": "IGoskeyInstallAssignments"
+  },
+  "GradeEvalArrangeAssignmentCommitee": {
+    "properties": {
+      "CommiteeMember": "Член комиссии"
+    },
+    "entity_set": "IGradeEvalArrangeAssignmentCommitees"
+  },
+  "GradeEvalArrangeAssignment": {
+    "properties": {
+      "EvaluationDate": "Дата аттестации",
+      "Commitee": "Комиссия",
+      "Grade": "Категория"
+    },
+    "display_name": "Задание на организацию аттестации сотрудника",
+    "collection_name": "Задания на организацию аттестации сотрудника",
+    "entity_set": "IGradeEvalArrangeAssignments"
+  },
+  "GradeEvalSimpleAssignment": {
+    "properties": {
+      "IsEDocManagment": "Участвует в электронном документообороте"
+    },
+    "entity_set": "IGradeEvalSimpleAssignments"
+  },
+  "GradeEvaluationTaskCommitee": {
+    "properties": {
+      "CommiteeMember": "Член комиссии"
+    },
+    "entity_set": "IGradeEvaluationTaskCommitees"
+  },
+  "GradeEvaluationTaskObservers": {
+    "properties": {},
+    "entity_set": "IGradeEvaluationTaskObserverss"
+  },
+  "GradeEvaluationTask": {
+    "properties": {
+      "EvaluationDate": "Дата аттестации",
+      "Grade": "Категория",
+      "Commitee": "Комиссия",
+      "NewJobTitle": "Новая должность",
+      "NewDepartmentGroup": "Новая группа",
+      "RateChanges": "Изменяется ставка",
+      "Employee": "Сотрудник",
+      "LastEvaluationResult": "Результат аттестации",
+      "ChangeDate": "Дата изменения",
+      "ManagerGradeEvaluation": "Аттестуется руководитель",
+      "OldJobTitle": "Предыдущая должность"
+    },
+    "display_name": "Задача на аттестацию сотрудника",
+    "collection_name": "Задачи на аттестацию сотрудника",
+    "entity_set": "IGradeEvaluationTasks"
+  },
+  "HRDocument": {
+    "properties": {
+      "IsCorrection": "Заявление для корректировки отпуска"
+    },
+    "collection_name": "Кадровые документы",
+    "display_name": "Кадровый документ",
+    "entity_set": "IHRDocuments"
+  },
+  "HRDocumentTracking": {
+    "properties": {},
+    "entity_set": "IHRDocumentTrackings"
+  },
+  "HRDocumentVersions": {
+    "properties": {},
+    "entity_set": "IHRDocumentVersionss"
+  },
+  "HighSchool": {
+    "properties": {
+      "Name": "Наименование",
+      "Code": "Код"
+    },
+    "display_name": "ВУЗ",
+    "collection_name": "ВУЗы",
+    "entity_set": "IHighSchools"
+  },
+  "HiringDocumentVerificationAssignmentMainInfoSettings": {
+    "properties": {},
+    "entity_set": "IHiringDocumentVerificationAssignmentMainInfoSettingss"
+  },
+  "HiringDocumentVerificationAssignmentPersonalDocumentSettings": {
+    "properties": {},
+    "entity_set": "IHiringDocumentVerificationAssignmentPersonalDocumentSettingss"
+  },
+  "HiringDocumentVerificationAssignment": {
+    "properties": {},
+    "entity_set": "IHiringDocumentVerificationAssignments"
+  },
+  "HiringNotice": {
+    "properties": {},
+    "entity_set": "IHiringHiringNotices"
+  },
+  "HiringSimpleAssignment": {
+    "properties": {},
+    "display_name": "Задание",
+    "entity_set": "IHiringSimpleAssignments"
+  },
+  "HiringTaskInfoForFillOnReworkSettings": {
+    "properties": {},
+    "entity_set": "IHiringTaskInfoForFillOnReworkSettingss"
+  },
+  "HiringTaskMainInfoSettings": {
+    "properties": {},
+    "entity_set": "IHiringTaskMainInfoSettingss"
+  },
+  "HiringTaskObservers": {
+    "properties": {},
+    "entity_set": "IHiringTaskObserverss"
+  },
+  "HiringTaskPersonalDocumentSettings": {
+    "properties": {},
+    "entity_set": "IHiringTaskPersonalDocumentSettingss"
+  },
+  "HiringTask": {
+    "properties": {
+      "BreakWorkLengthSungero": "Прервать стаж",
+      "CategorySungero": "Категория",
+      "NewWorkingHoursSungero": "Рабочие часы",
+      "HourlyRateSungero": "Часовая ставка",
+      "CitySungero": "Населенный пункт",
+      "EntryDateSungero": "Время выхода",
+      "JobTitleSungero": "Должность",
+      "IsRepeatedHireSungero": "Повторный приём",
+      "CitizenshipSungero": "Гражданство"
+    },
+    "entity_set": "IHiringTasks"
+  },
+  "IncomingContactBusinessTasks": {
+    "properties": {
+      "BusinessTask": "Бизнес-задача"
+    }
+  },
+  "IncomingContactDutyAssignmentSellers": {
+    "properties": {
+      "Seller": "Продавец"
+    }
+  },
+  "IncomingContactDutyAssignment": {
+    "properties": {
+      "PartnerPassCompany": "Организация для передачи партнеру",
+      "PartnerPassActivity": "Активность для передачи партнеру",
+      "PartnerPassMode": "Режим передачи партнеру",
+      "Instruction": "Инструкция",
+      "Sellers": "Продавцы",
+      "TaskDeadline": "Срок задачи",
+      "Qualificator": "Квалифицирующий",
+      "DeleteAttachments": "Удалить вложения"
+    },
+    "display_name": "Задание дежурному по входящему контакту",
+    "collection_name": "Задания дежурному по входящему контакту"
+  },
+  "IncomingContactQualificationAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задание на квалификацию контакта",
+    "collection_name": "Задания на квалификацию контакта"
+  },
+  "IncomingContactSellerAssignment": {
+    "properties": {
+      "Seller": "Продавец"
+    },
+    "display_name": "Задание на передачу контакта в работу",
+    "collection_name": "Задания на передачу контакта в работу"
+  },
+  "IncomingContact": {
+    "properties": {
+      "BusinessTasks": "Бизнес-задачи",
+      "Summary": "Сводка",
+      "Purpose": "Причина",
+      "Created": "Дата создания",
+      "Note": "Примечание",
+      "Product": "Продукт",
+      "InitialProduct": "Первоначальный продукт",
+      "Site": "Сайт",
+      "SendPageAddress": "Адрес страницы отправки",
+      "TrafficSource": "Источник трафика",
+      "SendForm": "Форма отправки",
+      "VisitorId": "ИД посетителя",
+      "FirstReferrer": "Первоисточник",
+      "Source": "Источник",
+      "TookToWorkOld": "Взял в работу",
+      "MainSystem": "Основная система",
+      "Budget": "Бюджет",
+      "Need": "Критичность проблем",
+      "Timeline": "Срок принятия решения"
+    },
+    "collection_name": "Входящие контакты",
+    "display_name": "Входящий контакт"
+  },
+  "IncomingContactTask": {
+    "properties": {
+      "Duty": "Дежурный",
+      "ContactProcessed": "Контакт обработан",
+      "Qualificator": "Квалифицирующий",
+      "Deadline": "Срок",
+      "Source": "Источник",
+      "Sellers": "Продавцы",
+      "Email": "Email",
+      "CompanyName": "Наименование организации",
+      "ContactName": "ФИО контакта",
+      "ContactPhone": "Телефон контакта",
+      "LeadRejectionMessage": "Сообщение в отказе по лиду",
+      "LeadTransferDenied": "Отказано в передаче лида партнеру"
+    },
+    "display_name": "Задача на обработку контакта",
+    "collection_name": "Задачи на обработку контакта"
+  },
+  "Industry": {
+    "properties": {
+      "Name": "Имя",
+      "Code": "Код",
+      "HighLevelIndustry": "Отрасль верхнего уровня"
+    },
+    "display_name": "Отрасль",
+    "collection_name": "Отрасли"
+  },
+  "InternalRequest": {
+    "properties": {
+      "Number": "Номер",
+      "Author": "Автор",
+      "Result": "Результат",
+      "MainService": "Сервис",
+      "Service": "Услуга",
+      "Estimate": "Оценка"
+    },
+    "display_name": "Обращение во внутренние службы поддержки",
+    "collection_name": "Обращения во внутренние службы поддержки"
+  },
+  "InternalTrainingRequest": {
+    "properties": {
+      "Company": "Организация",
+      "Course": "Курс",
+      "Coordinator": "Координатор",
+      "Initiator": "Инициатор",
+      "Partner": "Партнер",
+      "NeedCheckRequirements": "Нужно проверить входные требования",
+      "Justification": "Обоснование",
+      "TrainingGroup": "Группа обучения",
+      "Note": "Примечание",
+      "Listener": "Слушатель",
+      "StudyKind": "Вид обучения",
+      "IsPaid": "Платное обучение",
+      "Tenant": "IP/тенант",
+      "IsPaidNotification": "Напоминание об акте"
+    },
+    "display_name": "Заявка на внутреннее обучение",
+    "collection_name": "Заявки на внутреннее обучение"
+  },
+  "JobKind": {
+    "properties": {
+      "Name": "Имя",
+      "Comment": "Примечание",
+      "Code": "Код"
+    },
+    "display_name": "Вид работы",
+    "collection_name": "Виды работ",
+    "entity_set": "IJobKinds"
+  },
+  "JobPositionDepartments": {
+    "properties": {
+      "Department": "Подразделение"
+    }
+  },
+  "JobPosition": {
+    "properties": {
+      "Name": "Наименование",
+      "Notes": "Примечание",
+      "Priority": "Приоритет",
+      "Unit": "Подразделение",
+      "Departments": "Подразделения"
+    },
+    "display_name": "Вакантная должность",
+    "collection_name": "Вакантные должности"
+  },
+  "JobTitle": {
+    "properties": {
+      "AuraDepartment": "Подразделение",
+      "OfficialName": "Офиц. наименование",
+      "CrossCuttingPost": "Сквозная должность"
+    },
+    "display_name": "Должность",
+    "entity_set": "IJobTitles"
+  },
+  "JointSaleScheme": {
+    "properties": {
+      "Name": "Имя",
+      "BusinessUnitRequired": "Наша организация обязательна"
+    },
+    "collection_name": "Схемы совместной продажи",
+    "display_name": "Схема совместной продажи"
+  },
+  "JubileePrepareNewsAssignment": {
+    "properties": {
+      "NewResponsible": "Переадресовать сотруднку"
+    },
+    "display_name": "Задание на подготовку новости и благодарности",
+    "collection_name": "Задания на подготовку новости и благодарности",
+    "entity_set": "IJubileePrepareNewsAssignments"
+  },
+  "JubileeRequestNewDateAssignment": {
+    "properties": {
+      "NewResponsible": "Новый ответственный",
+      "NewDate": "Новая дата",
+      "HintText": "Инструкция",
+      "PeopleNewsUrl": "Ссылка на новость на People"
+    },
+    "display_name": "Задание на получение благодарности и подарка и публикацию новости",
+    "collection_name": "Задания на получение благодарности и подарка и публикацию новости",
+    "entity_set": "IJubileeRequestNewDateAssignments"
+  },
+  "JubileeSimpleAssignment": {
+    "properties": {
+      "NewResponsible": "Новый ответственный"
+    },
+    "display_name": "Задание на подготовку благодарности и подарка",
+    "collection_name": "Задания на подготовку благодарности и подарка",
+    "entity_set": "IJubileeSimpleAssignments"
+  },
+  "JubileeTaskObservers": {
+    "properties": {},
+    "entity_set": "IJubileeTaskObserverss"
+  },
+  "JubileeTask": {
+    "properties": {
+      "NewResponsble": "Новый ответственный"
+    },
+    "display_name": "Задача на организацию юбилея",
+    "collection_name": "Задачи на организацию юбилея",
+    "entity_set": "IJubileeTasks"
+  },
+  "KeyTasksActionItemReport": {
+    "properties": {},
+    "display_name": "Отчет выполнение поручений по ключевым задачам"
+  },
+  "KeyTasksApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание на согласование ключевых задач",
+    "collection_name": "Задания на согласование ключевых задач",
+    "entity_set": "IKeyTasksApprovalAssignments"
+  },
+  "KeyTasksApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IKeyTasksApprovalTaskObserverss"
+  },
+  "KeyTasksApprovalTask": {
+    "properties": {
+      "MaxDeadline": "Срок",
+      "Performer": "Исполнитель",
+      "ProductionUnitId": "ИД производственной единицы",
+      "TaskType": "Тип задачи"
+    },
+    "display_name": "Задача на утверждение документов по ключевым задачам",
+    "collection_name": "Задачи на утверждение документов по ключевым задачам",
+    "entity_set": "IKeyTasksApprovalTasks"
+  },
+  "KeyTasksDocument": {
+    "properties": {
+      "PreparedBy": "Подготовил",
+      "Assignee": "Исполнитель",
+      "OurSignatory": "Подписал"
+    },
+    "entity_set": "IKeyTasksDocuments"
+  },
+  "KeyTasksDocumentTracking": {
+    "properties": {},
+    "entity_set": "IKeyTasksDocumentTrackings"
+  },
+  "KeyTasksDocumentVersions": {
+    "properties": {},
+    "entity_set": "IKeyTasksDocumentVersionss"
+  },
+  "KeyTasksFormationAssignmentAdditionalApprovers": {
+    "properties": {},
+    "entity_set": "IKeyTasksFormationAssignmentAdditionalApproverss"
+  },
+  "KeyTasksFormationAssignment": {
+    "properties": {},
+    "entity_set": "IKeyTasksFormationAssignments"
+  },
+  "KeyTasksReworkAssignment": {
+    "properties": {},
+    "display_name": "Задание на доработку ключевых задач",
+    "collection_name": "Задания на доработку ключевых задач",
+    "entity_set": "IKeyTasksReworkAssignments"
+  },
+  "KeyTasksSignAssignment": {
+    "properties": {},
+    "display_name": "Задание на утверждение ключевых задач",
+    "collection_name": "Задания на утверждение ключевых задач",
+    "entity_set": "IPlanningKeyTasksSignAssignments"
+  },
+  "LeadAcceptanceProcessingPartnerAssignment": {
+    "properties": {},
+    "display_name": "Задание на обработку принятия лида партнером",
+    "collection_name": "Задания на обработку принятия лида партнером",
+    "entity_set": "ISalesAssignments"
+  },
+  "LeadAnalytics": {
+    "properties": {
+      "Begin": "Дата начала",
+      "End": "Дата окончания",
+      "StageWorkingDays": "Длительность, р.д."
+    }
+  },
+  "LeadBusinessTasks": {
+    "properties": {
+      "BusinessTask": "Бизнес-задача"
+    }
+  },
+  "LeadContacts": {
+    "properties": {
+      "Company": "Организация",
+      "Contact": "Контакт",
+      "JobTitle": "Должность",
+      "Phone": "Телефон",
+      "Email": "Почта",
+      "Category": "Категория"
+    }
+  },
+  "LeadPurpose": {
+    "properties": {
+      "Name": "Имя",
+      "Description": "Описание"
+    },
+    "display_name": "Причина закрытия лида",
+    "collection_name": "Причины закрытия лида"
+  },
+  "Lead": {
+    "properties": {
+      "Name": "Имя",
+      "PlanCommunication": "План. дата общения",
+      "LastCommunication": "Дата посл. общения",
+      "Responsible": "Ответственный",
+      "Note": "Примечание",
+      "Site": "Сайт",
+      "SendPageAddress": "Адрес страницы отправки",
+      "TrafficSource": "Источник трафика",
+      "SendForm": "Форма отправки",
+      "VisitorId": "ИД посетителя",
+      "FirstReferrer": "Первоисточник",
+      "Source": "Источник",
+      "Budget": "Бюджет",
+      "Need": "Критичность проблем",
+      "Timeline": "Срок принятия решения",
+      "BusinessTasks": "Бизнес-задачи",
+      "MarketingEvent": "Мероприятие",
+      "Contacts": "Контакты",
+      "Analytics": "История переходов",
+      "Deal": "Сделка",
+      "Kind": "Вид",
+      "Partner": "Партнер",
+      "GivenToSellerDate": "Дата передачи продавцу",
+      "TakenToWorkDate": "Дата обработки продавцом",
+      "Region": "Регион",
+      "EventDate": "Дата мероприятия",
+      "Email": "Эл.почта",
+      "FullName": "ФИО",
+      "PhoneNumber": "Телефон",
+      "Send": "Отложить",
+      "ParentLead": "Предыдущий лид",
+      "Purpose": "Причина закрытия",
+      "Timezone": "Час. пояс (отн. MSK)",
+      "ClassECM": "Класс СЭД",
+      "NumberOfWorkers": "Количество сотрудников",
+      "DealResult": "Результат сделки",
+      "Probability": "Вероятность сделки",
+      "DealDateClose": "Дата закрытия сделки",
+      "DealReason": "Причина закрытия сделки",
+      "Industry": "Отрасль",
+      "NCEAGroup": "Группа ОКВЭД",
+      "CompanyCategories": "Категории организации"
+    }
+  },
+  "LearnCourseMark": {
+    "properties": {
+      "Name": "Имя"
+    }
+  },
+  "LetterTemplate": {
+    "properties": {
+      "Name": "Наименование",
+      "Template": "Шаблон письма",
+      "Notes": "Примечание",
+      "Subject": "Тема"
+    },
+    "display_name": "Шаблон письма",
+    "collection_name": "Шаблоны писем"
+  },
+  "LineRecipientLinks": {
+    "properties": {},
+    "entity_set": "ILineRecipientLinkss"
+  },
+  "Line": {
+    "properties": {},
+    "entity_set": "ILines"
+  },
+  "LocalRegulationDocument": {
+    "properties": {},
+    "entity_set": "ILRDManagementLocalRegulationDocuments"
+  },
+  "LocalRegulationDocumentTracking": {
+    "properties": {},
+    "entity_set": "ILRDManagementLocalRegulationDocumentTrackings"
+  },
+  "LocalRegulationDocumentVersions": {
+    "properties": {},
+    "entity_set": "ILRDManagementLocalRegulationDocumentVersionss"
+  },
+  "LongVacationGetTokenAssignment": {
+    "properties": {},
+    "display_name": "Задание на проверку наличия токена",
+    "collection_name": "Задания на проверку наличия токена",
+    "entity_set": "ILongVacationGetTokenAssignments"
+  },
+  "LongVacationSimpleAssignment": {
+    "properties": {},
+    "display_name": "Задание по уходу в длительный отпуск",
+    "collection_name": "Задания по уходу в длительный отпуск",
+    "entity_set": "ILongVacationSimpleAssignments"
+  },
+  "LongVacationTaskObservers": {
+    "properties": {},
+    "entity_set": "ILongVacationTaskObserverss"
+  },
+  "LongVacationTask": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задача на организацию ухода в длительный отпуск",
+    "collection_name": "Задачи на организацию ухода в длительный отпуск",
+    "entity_set": "ILongVacationTasks"
+  },
+  "MailDeliveryMethod": {
+    "properties": {},
+    "entity_set": "IMailDeliveryMethods"
+  },
+  "MainService": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Сервис",
+    "collection_name": "Сервисы",
+    "entity_set": "ISupportMainServices"
+  },
+  "ManagersAssistant": {
+    "properties": {},
+    "entity_set": "IManagersAssistants"
+  },
+  "MarketingActivityMethods": {
+    "properties": {
+      "Method": "Способ общения"
+    }
+  },
+  "MarketingActivity": {
+    "properties": {
+      "Method": "Способ общения",
+      "Methods": "Способ общения"
+    },
+    "display_name": "Маркетинговая активность",
+    "collection_name": "Маркетинговые активности"
+  },
+  "MarketingEventStage": {
+    "properties": {
+      "Name": "Имя"
+    }
+  },
+  "MarketingEvent": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Маркетинговое мероприятие",
+    "collection_name": "Маркетинговые мероприятия"
+  },
+  "MedicalPaymentDocument": {
+    "properties": {
+      "Sum": "Компенсация",
+      "IncomeDate": "Дата приема",
+      "ExecutionState": "Исполнение",
+      "TypeDMO": "Тип ДМО",
+      "Assignee": "Сотрудник",
+      "Subject": "Содержание"
+    },
+    "display_name": "Документ ДМО",
+    "collection_name": "Документы ДМО",
+    "entity_set": "IMedicalPaymentDocuments"
+  },
+  "MedicalPaymentDocumentTracking": {
+    "properties": {},
+    "entity_set": "IMedicalPaymentDocumentTrackings"
+  },
+  "MedicalPaymentDocumentVersions": {
+    "properties": {},
+    "entity_set": "IMedicalPaymentDocumentVersionss"
+  },
+  "MeetingMembers": {
+    "properties": {},
+    "entity_set": "IMeetingMemberss"
+  },
+  "MeetingNotice": {
+    "properties": {},
+    "display_name": "Уведомление",
+    "entity_set": "IMeetingNotices"
+  },
+  "MeetingSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IMeetingSimpleAssignments"
+  },
+  "Meeting": {
+    "properties": {
+      "Room": "Помещение",
+      "Plan": "План",
+      "PlanStage": "Этап плана",
+      "Duration": "Длительность, ч."
+    },
+    "entity_set": "IMeetings"
+  },
+  "MemoAddressees": {
+    "properties": {},
+    "entity_set": "IMemoAddresseess"
+  },
+  "MemoArticleAreas": {
+    "properties": {},
+    "entity_set": "IMemoArticleAreass"
+  },
+  "MemoArticle": {
+    "properties": {},
+    "entity_set": "IMemoArticles"
+  },
+  "MemoArticleTracking": {
+    "properties": {},
+    "entity_set": "IMemoArticleTrackings"
+  },
+  "MemoArticleVersions": {
+    "properties": {},
+    "entity_set": "IMemoArticleVersionss"
+  },
+  "Memo": {
+    "properties": {},
+    "entity_set": "IMemos"
+  },
+  "MemoTracking": {
+    "properties": {},
+    "entity_set": "IMemoTrackings"
+  },
+  "MemoVersions": {
+    "properties": {},
+    "entity_set": "IMemoVersionss"
+  },
+  "MentorEvaluationSimpleAssignment": {
+    "properties": {},
+    "display_name": "Простое задание на оценку наставничества",
+    "collection_name": "Простое задание на оценку наставничества",
+    "entity_set": "IMentorEvaluationSimpleAssignments"
+  },
+  "MentorEvaluationTaskObservers": {
+    "properties": {},
+    "entity_set": "IMentorEvaluationTaskObserverss"
+  },
+  "MentorEvaluationTask": {
+    "properties": {
+      "MentorshipStartDate": "Начало",
+      "MentorshipEndDate": "Окончание",
+      "EvaluationTries": "Попытки аттестации",
+      "TotalBonus": "Итоговый бонус",
+      "Mentor": "Наставник",
+      "Employee": "Сотрудник",
+      "BonusType": "Тип бонуса",
+      "SubscribeCode": "Код подписки"
+    },
+    "display_name": "Задача на оценку наставничества",
+    "collection_name": "Задачи на оценку наставничества",
+    "entity_set": "IMentorEvaluationTasks"
+  },
+  "MentorSelfEvaluateAssignment": {
+    "properties": {
+      "StudyPeriod": "Типовое время обучения",
+      "MentorshipType": "Вид наставничества"
+    },
+    "display_name": "Задание на самооценку наставника",
+    "collection_name": "Задания на самооценку наставника",
+    "entity_set": "IMentorSelfEvaluateAssignments"
+  },
+  "MentorshipBonusBonusDetails": {
+    "properties": {
+      "BonusHours": "Премия",
+      "Employee": "Наставник"
+    },
+    "entity_set": "IMentorshipBonusBonusDetailss"
+  },
+  "MentorshipBonusDBEApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IMentorshipBonusDBEApprovalAssignments"
+  },
+  "MentorshipBonusNotice": {
+    "properties": {},
+    "entity_set": "IMentorshipBonusNotices"
+  },
+  "MentorshipBonus": {
+    "properties": {
+      "Mentor": "Наставник"
+    },
+    "display_name": "Премия за наставничество",
+    "collection_name": "Премии за наставничество",
+    "entity_set": "IMentorshipBonuss"
+  },
+  "Method": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Способ общения"
+  },
+  "Minutes": {
+    "properties": {
+      "PreparedBy": "Подготовил"
+    },
+    "display_name": "Протокол совещания",
+    "entity_set": "IMinutess"
+  },
+  "MinutesTracking": {
+    "properties": {},
+    "entity_set": "IMinutesTrackings"
+  },
+  "MinutesVersions": {
+    "properties": {},
+    "entity_set": "IMinutesVersionss"
+  },
+  "NotUsedVacationsOnDateReport": {
+    "properties": {},
+    "display_name": "Неиспользваонные отпуска"
+  },
+  "Notes": {
+    "properties": {
+      "Name": "Наименование",
+      "Text": "Текст",
+      "Author": "Автор",
+      "Modified": "Изменено"
+    },
+    "display_name": "Заметка",
+    "collection_name": "Заметки"
+  },
+  "OfficeRecipientLinks": {
+    "properties": {},
+    "entity_set": "IOfficeRecipientLinkss"
+  },
+  "Office": {
+    "properties": {},
+    "entity_set": "IOffices"
+  },
+  "OfficialDocument": {
+    "properties": {},
+    "entity_set": "IOfficialDocuments"
+  },
+  "OfficialDocumentTracking": {
+    "properties": {},
+    "entity_set": "IOfficialDocumentTrackings"
+  },
+  "OfficialDocumentVersions": {
+    "properties": {},
+    "entity_set": "IOfficialDocumentVersionss"
+  },
+  "OpenAIChat": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Чат",
+    "collection_name": "Чаты"
+  },
+  "Order": {
+    "properties": {
+      "ParametersSync": "Параметры синхронизации приказа с БухКАС"
+    },
+    "entity_set": "IOrders"
+  },
+  "OrderTracking": {
+    "properties": {},
+    "entity_set": "IOrderTrackings"
+  },
+  "OrderVersions": {
+    "properties": {},
+    "entity_set": "IOrderVersionss"
+  },
+  "OrganizationSigningConsentCEDOnPaper": {
+    "properties": {},
+    "entity_set": "IHiringOrganizationSigningConsentCEDOnPapers"
+  },
+  "OtherBonusBonusDetails": {
+    "properties": {},
+    "entity_set": "IOtherBonusBonusDetailss"
+  },
+  "OtherBonus": {
+    "properties": {},
+    "display_name": "Прочая премия",
+    "collection_name": "Прочие премии",
+    "entity_set": "IOtherBonuss"
+  },
+  "OurDealAnalytics": {
+    "properties": {
+      "Stage": "Стадия",
+      "Result": "Результат",
+      "Begin": "Дата начала",
+      "End": "Дата окончания",
+      "Cause": "Причина"
+    }
+  },
+  "OurDealInfluenceMatrix": {
+    "properties": {
+      "Contact": "Контакт",
+      "Position": "Должность",
+      "ActivitySign": "Знак активности",
+      "Communication": "Частота общения",
+      "FunctionalRole": "Функциональная роль",
+      "Comment": "Комментарий",
+      "Company": "Организация"
+    }
+  },
+  "OurDeal": {
+    "properties": {
+      "Responsible": "Продавец",
+      "WinningStrategy": "Стратегия победы",
+      "OurOrganization": "Наша орг.",
+      "DealStage": "Стадия",
+      "Rate": "Ставка",
+      "Important": "Важная",
+      "SecondarySale": "Вторичная",
+      "CuratorialFormat": "Формат кураторства",
+      "LastCommunication": "Дата посл. общения",
+      "PlannedCommunication": "План. дата общения",
+      "Analytics": "История переходов",
+      "InfluenceMatrix": "Матрица влияния",
+      "ProductionTeam": "Команда"
+    },
+    "display_name": "Сделка компании",
+    "collection_name": "Сделки компании"
+  },
+  "OutgoingDocumentBaseAddressees": {
+    "properties": {},
+    "entity_set": "IOutgoingDocumentBaseAddresseess"
+  },
+  "OutgoingDocumentBaseInResponseToDocuments": {
+    "properties": {},
+    "entity_set": "IOutgoingDocumentBaseInResponseToDocumentss"
+  },
+  "OutgoingDocumentBase": {
+    "properties": {},
+    "entity_set": "IOutgoingDocumentBases"
+  },
+  "OutgoingDocumentBaseTracking": {
+    "properties": {},
+    "entity_set": "IOutgoingDocumentBaseTrackings"
+  },
+  "OutgoingDocumentBaseVersions": {
+    "properties": {},
+    "entity_set": "IOutgoingDocumentBaseVersionss"
+  },
+  "OutgoingLetterAddressees": {
+    "properties": {},
+    "entity_set": "IOutgoingLetterAddresseess"
+  },
+  "OutgoingLetter": {
+    "properties": {},
+    "entity_set": "IOutgoingLetters"
+  },
+  "OutgoingLetterTracking": {
+    "properties": {},
+    "entity_set": "IOutgoingLetterTrackings"
+  },
+  "OutgoingLetterVersions": {
+    "properties": {},
+    "entity_set": "IOutgoingLetterVersionss"
+  },
+  "OutgoingTaxInvoice": {
+    "properties": {},
+    "entity_set": "IOutgoingTaxInvoices"
+  },
+  "OutgoingTaxInvoiceTracking": {
+    "properties": {},
+    "entity_set": "IOutgoingTaxInvoiceTrackings"
+  },
+  "OutgoingTaxInvoiceVersions": {
+    "properties": {},
+    "entity_set": "IOutgoingTaxInvoiceVersionss"
+  },
+  "OutstaffChooseMentorAssignment": {
+    "properties": {},
+    "entity_set": "IOutstaffChooseMentorAssignments"
+  },
+  "OutstaffCreateLoginAssignment": {
+    "properties": {},
+    "entity_set": "IOutstaffCreateLoginAssignments"
+  },
+  "OutstaffEmployee": {
+    "properties": {
+      "FireDate": "Плановая дата отключения"
+    },
+    "display_name": "Внешний пользователь",
+    "collection_name": "Внешние пользователи",
+    "entity_set": "IOutstaffEmployees"
+  },
+  "OutstaffEmployeeTeams": {
+    "properties": {},
+    "entity_set": "IOutstaffEmployeeTeamss"
+  },
+  "OutstaffHiringSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IOutstaffHiringSimpleAssignments"
+  },
+  "OutstaffHiringTaskObservers": {
+    "properties": {},
+    "entity_set": "IOutstaffHiringTaskObserverss"
+  },
+  "OutstaffHiringTask": {
+    "properties": {},
+    "display_name": "Подключение внешнего пользователя",
+    "collection_name": "Подключение внешнего пользователя",
+    "entity_set": "IOutstaffHiringTasks"
+  },
+  "PMCloseConfirmationAssignment": {
+    "properties": {},
+    "entity_set": "IPMCloseConfirmationAssignments"
+  },
+  "PMConfirmationAssignment": {
+    "properties": {
+      "ProjectOld": "Проект",
+      "ProjectStage": "Этап"
+    },
+    "display_name": "Задание на согласование плана",
+    "collection_name": "Задания на согласование плана",
+    "entity_set": "IPMConfirmationAssignments"
+  },
+  "PartnerActivity": {
+    "properties": {},
+    "display_name": "Активность с партнером",
+    "collection_name": "Активности с партнерами"
+  },
+  "PartnerDealApprovalEmailRecipients": {
+    "properties": {
+      "Contact": "Контакт"
+    },
+    "entity_set": "IPartnerDealApprovalEmailRecipientss"
+  },
+  "PartnerDealApproval": {
+    "properties": {
+      "EmailRecipients": "Получатели письма"
+    },
+    "display_name": "Задание на согласование сделки партнера",
+    "collection_name": "Задания на согласование сделки партнера",
+    "entity_set": "IPartnerDealApprovals"
+  },
+  "PartnerDeal": {
+    "properties": {
+      "DateClose": "Действует по",
+      "DateOpen": "Действует с",
+      "PartnerSeller": "Продавец",
+      "SumToVendor": "Сумма вендору",
+      "ExpirationNotified": "Уведомление об окончании срока отправлено",
+      "IsCustomChange": "Дата действует по изменена сотрудником",
+      "LeadSourse": "Источник лида",
+      "RegistrationDate": "Дата регистрации"
+    },
+    "display_name": "Сделка партнера",
+    "collection_name": "Сделки партнеров"
+  },
+  "PartnerDealTaskObservers": {
+    "properties": {},
+    "entity_set": "IPartnerDealTaskObserverss"
+  },
+  "PartnerDealTask": {
+    "properties": {
+      "CompanyName": "Название организации"
+    },
+    "display_name": "Задача по сделке партнера",
+    "collection_name": "Задачи по сделке партнера",
+    "entity_set": "IPartnerDealTasks"
+  },
+  "PartnerDevelopmentTeamPartners": {
+    "properties": {
+      "Partner": "Партнер"
+    }
+  },
+  "PartnerDevelopmentTeamRegions": {
+    "properties": {
+      "Region": "Регион"
+    }
+  },
+  "PartnerDevelopmentTeam": {
+    "properties": {
+      "Name": "Имя",
+      "Team": "Команда",
+      "Partners": "Партнеры",
+      "Regions": "Регионы",
+      "Countries": "Страны"
+    },
+    "display_name": "Команда развития партнеров",
+    "collection_name": "Команды развития партнеров"
+  },
+  "PartnerLeadActivity": {
+    "properties": {
+      "Result": "Результат",
+      "Created": "Дата создания",
+      "Transfered": "Дата передачи партнеру",
+      "Responsed": "Дата приема/отказа партнером",
+      "IdTask": "ИД задачи"
+    },
+    "display_name": "Активность партнера по лиду",
+    "collection_name": "Активности партнеров по лидам"
+  },
+  "PerformedWorkPerformedWorkDetails": {
+    "properties": {
+      "Plan": "План работ",
+      "PlanStage": "Этап плана",
+      "JobKind": "Вид работ",
+      "Duration": "Часы",
+      "TimeSheetDuration": "В т.ч. по табелю",
+      "Comment": "Примечание",
+      "RequestId": "Обращение",
+      "KasId": "ИД строки объекта ТехКАС",
+      "Number": "№",
+      "ActivityId": "Активность"
+    },
+    "entity_set": "IPerformedWorkPerformedWorkDetailss"
+  },
+  "PerformedWork": {
+    "properties": {
+      "Name": "Имя",
+      "Date": "Дата отметки",
+      "Employee": "Работник",
+      "Duration": "Часы",
+      "TimeSheetDuration": "В т.ч. по табелю",
+      "WeekNumber": "Номер недели",
+      "DayOfWeek": "День недели",
+      "Weekend": "Выходной",
+      "Comment": "Заметки",
+      "PerformedWorkDetails": "Отметки",
+      "KasId": "ИД объекта в ТехКАС НПО",
+      "IsApproved": "S",
+      "LastModified": "Дата последнего изменения"
+    },
+    "display_name": "Отметка работ",
+    "collection_name": "Выполненные работы",
+    "entity_set": "IPerformedWorks"
+  },
+  "PerformerCloseNotice": {
+    "properties": {},
+    "entity_set": "IPerformerCloseNotices"
+  },
+  "PerformerManagerCloseNoticeEmployees": {
+    "properties": {},
+    "entity_set": "IPerformerManagerCloseNoticeEmployeess"
+  },
+  "PerformerManagerCloseNotice": {
+    "properties": {},
+    "entity_set": "IPerformerManagerCloseNotices"
+  },
+  "PerformerManagerNoticeEmployees": {
+    "properties": {
+      "Employee": "Сотрудник",
+      "StartDate": "Начало",
+      "EndDate": "Конец",
+      "Estimate": "Трудоемкость, ч."
+    },
+    "entity_set": "IPerformerManagerNoticeEmployeess"
+  },
+  "PerformerManagerNotice": {
+    "properties": {
+      "ProjectOld": "Проект",
+      "ProjectStage": "Этап проекта"
+    },
+    "entity_set": "IPerformerManagerNotices"
+  },
+  "PerformerNoticePlanStages": {
+    "properties": {
+      "PlanStage": "Этап плана",
+      "StartDate": "Начало",
+      "EndDate": "Конец",
+      "Estimate": "Трудоемкость, ч."
+    },
+    "entity_set": "IPerformerNoticePlanStagess"
+  },
+  "PerformerNotice": {
+    "properties": {},
+    "entity_set": "IPerformerNotices"
+  },
+  "PerformingDisciplineReport": {
+    "properties": {},
+    "display_name": "Выполнение заданий в срок"
+  },
+  "PeriodBonusBonusDetails": {
+    "properties": {},
+    "entity_set": "IPeriodBonusBonusDetailss"
+  },
+  "PeriodBonusRecipients": {
+    "properties": {},
+    "entity_set": "IPeriodBonusRecipientss"
+  },
+  "PeriodBonus": {
+    "properties": {
+      "BonusPercent": "Процент премии",
+      "Department": "Подразделение"
+    },
+    "display_name": "Премия за период",
+    "collection_name": "Премии за период",
+    "entity_set": "IPeriodBonuss"
+  },
+  "PersonExchangeBoxes": {
+    "properties": {},
+    "entity_set": "IPersonExchangeBoxess"
+  },
+  "Person": {
+    "properties": {
+      "KasId": "ИД в ТехКАС",
+      "PassportData": "Паспортные данные",
+      "MaidenName": "Предыдущая фамилия",
+      "Name": "ФИО"
+    },
+    "entity_set": "IPersons"
+  },
+  "PersonalDocumentRequiredDocumentParameters": {
+    "properties": {},
+    "entity_set": "IHiringPersonalDocumentRequiredDocumentParameterss"
+  },
+  "PersonalDocument": {
+    "properties": {},
+    "entity_set": "IHiringPersonalDocuments"
+  },
+  "PersonalDocumentTracking": {
+    "properties": {},
+    "entity_set": "IHiringPersonalDocumentTrackings"
+  },
+  "PersonalDocumentVersions": {
+    "properties": {},
+    "entity_set": "IHiringPersonalDocumentVersionss"
+  },
+  "PersonalInformationSignedVersions": {
+    "properties": {},
+    "entity_set": "IPersonalInformationSignedVersionss"
+  },
+  "PersonalInformation": {
+    "properties": {
+      "Person": "Персона",
+      "Comment": "Примечание",
+      "InformationType": "Тип информации",
+      "KasId": "ИД в ТехКАС",
+      "Encrypted": "Зашифрован в ТехКАС"
+    },
+    "display_name": "Персональная информация",
+    "collection_name": "Персональная информация",
+    "entity_set": "IPersonalInformations"
+  },
+  "PersonalInformationVersions": {
+    "properties": {
+      "KasId": "ИД объекта в Тех КАС НПО"
+    },
+    "entity_set": "IPersonalInformationVersionss"
+  },
+  "PersonalRequestTaskObservers": {
+    "properties": {},
+    "entity_set": "ICompanyServicesChangePersonalInfoTaskObserverss"
+  },
+  "PersonalRequestTask": {
+    "properties": {
+      "PersonalRequestType": "Тип запроса"
+    },
+    "display_name": "Задача на решение персональных запросов сотрудника",
+    "collection_name": "Задачи на решение персональных запросов сотрудника",
+    "entity_set": "ICompanyServicesChangePersonalInfoTasks"
+  },
+  "PersonalSetting": {
+    "properties": {
+      "NotifyApprMyPlans": "Моих планов",
+      "NotifyApprPerformPlans": "Планов с моим участием",
+      "MyContractsNotification": "Моих договоров",
+      "NotifyCloseMyPlans": "Моих планов",
+      "NotifyClosePerformPlans": "Планов с моим участием",
+      "NotifyPlanClosingToday": "Наступление плановой даты закрытия планов",
+      "NotifyPlanViolation": "Нарушение выполнения планов"
+    },
+    "entity_set": "IPersonalSettings"
+  },
+  "PlanApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IPlanApprovalTaskObserverss"
+  },
+  "PlanApprovalTask": {
+    "properties": {
+      "AuthorText": "Текст автора",
+      "IsClosing": "На закрытии / Закрыт"
+    },
+    "display_name": "Задача на согласование внутреннего плана работ",
+    "collection_name": "Задачи на согласование внутренних планов работ",
+    "entity_set": "IPlanApprovalTasks"
+  },
+  "PlanCloseNewsArticle": {
+    "properties": {},
+    "entity_set": "IPlanCloseNewsArticles"
+  },
+  "PlanCloseNewsArticleVersions": {
+    "properties": {},
+    "entity_set": "IPlanCloseNewsArticleVersionss"
+  },
+  "PlanCloseTaskObservers": {
+    "properties": {},
+    "entity_set": "IPlanCloseTaskObserverss"
+  },
+  "PlanCloseTask": {
+    "properties": {
+      "AuthorText": "Текст автора"
+    },
+    "entity_set": "IPlanCloseTasks"
+  },
+  "PlanEmployees": {
+    "properties": {},
+    "entity_set": "IPlanEmployeess"
+  },
+  "PlanStageEmployees": {
+    "properties": {
+      "Employee": "Исполнитель",
+      "Estimate": "Трудоемкость, ч.",
+      "Workload": "Занятость, %",
+      "KasId": "ИД объекта в ТехКАС НПО",
+      "Duration": "Длит-ть, р.д."
+    },
+    "entity_set": "IPlanStageEmployeess"
+  },
+  "PlanStageObserversCloseNotice": {
+    "properties": {},
+    "entity_set": "IPlanStageObserversCloseNotices"
+  },
+  "PlanStageObserversNotice": {
+    "properties": {},
+    "entity_set": "IPlanStageObserversNotices"
+  },
+  "PlanStage": {
+    "properties": {
+      "Name": "Наименование",
+      "Plan": "План",
+      "Number": "Номер",
+      "StartDate": "Дата начала",
+      "EndDate": "Дата завершения",
+      "StageStartsAfter": "Стартует после этапа",
+      "Estimate": "Трудоемкость",
+      "Unforeseen": "% непредвиденных",
+      "Employees": "Исполнители",
+      "JobKind": "Вид работ",
+      "Specification": "Пункт спецификации",
+      "CostsType": "Вид затрат",
+      "Comment": "Примечание",
+      "IsTimeSheet": "Табельный учет",
+      "IsRequestOnly": "Отметка только в обращении",
+      "IsCommentRequired": "Примечание обязательно",
+      "IsRecordForbid": "Отметка запрещена",
+      "EmployeesList": "План. работники",
+      "BaseStartDate": "Перв. дата начала",
+      "BaseEndDate": "Перв. дата завершения",
+      "BaseEstimate": "Перв. трудоемкость",
+      "KasId": "ИД объекта в ТехКАС НПО",
+      "Code": "Авторасчет",
+      "ActualStartDate": "Факт. дата начала",
+      "ActualEndDate": "Факт. дата завершения",
+      "UnforeseenHours": "Часы непредвиденных",
+      "StandardStageType": "Тип стандартного этапа",
+      "Calculate": "Пересчитать",
+      "Addition": "Дополнение"
+    },
+    "display_name": "Этап плана",
+    "collection_name": "Этапы плана",
+    "entity_set": "IPlanStages"
+  },
+  "PlanStagesDetails": {
+    "properties": {
+      "Name": "Наименование",
+      "StartDate": "Дата начала",
+      "EndDate": "Дата завершения",
+      "Employee": "Исполнители",
+      "Estimate": "Трудоемкость, ч.",
+      "Number": "№",
+      "PlanStage": "Этап плана",
+      "UnforeseenHours": "Непредвиденные, ч.",
+      "IsClosed": "Закрыт",
+      "UnforeseenPercent": "% непредв.",
+      "JobKind": "Вид работ",
+      "IsTimeSheet": "Табельный учет",
+      "IsRequestOnly": "Отметка только в обращении",
+      "IsCommentRequired": "Примечание обязательно",
+      "IsRecordForbid": "Отметка запрещена",
+      "Specification": "Пункт спецификации",
+      "CostsType": "Вид затрат",
+      "Addition": "Дополнение",
+      "Duration": "Длит-ть, р.д.",
+      "StartsAfter": "После этапа",
+      "DirProjectsStage": "Этап плана Projects"
+    },
+    "entity_set": "IPlanStagesDetailss"
+  },
+  "Plan": {
+    "properties": {
+      "Name": "Наименование",
+      "Manager": "Руководитель",
+      "ProjectOld": "ПроектOLD",
+      "ProjectStage": "Этап проекта",
+      "CostsType": "Вид затрат",
+      "IsRegular": "Постоянный",
+      "ApprovalDate": "Дата утверждения",
+      "ClosingDate": "Дата закрытия",
+      "StartDate": "Дата начала (план)",
+      "EndDate": "Дата завершения (план)",
+      "Estimate": "Трудоемкость (план)",
+      "BaseStartDate": "Перв. дата начала",
+      "BaseEndDate": "Перв. дата завершения",
+      "BaseEstimate": "Перв. трудоемкость",
+      "ApprovedDuration": "Длительность, р.д.",
+      "ApprovedEstimate": "Трудоемкость",
+      "ActualStartDate": "Дата начала (факт)",
+      "ActualEndDate": "Дата завершения (факт)",
+      "ActualEstimate": "Трудоемкость (факт)",
+      "CommentsHistory": "Утвержденное",
+      "Comment": "Редактируемое",
+      "PlanState": "Состояние",
+      "StagesDetails": "Этапы",
+      "KasId": "ИД в ТехКАС",
+      "Code": "Код",
+      "UpdateDate": "Дата актуализации",
+      "ChangingFlag": "Признак изменения",
+      "Duration": "Длительность, р.д. (план)",
+      "CooperationPercent": "% на обесп. взаим.",
+      "UnforeseenPercent": "% непредв. по срокам",
+      "UnforeseenType": "Непредв. влияют на сроки?",
+      "ActualDuration": "Длительность, р.д. (факт)",
+      "EndDateWithoutStandard": "Дата завершения без стандартных этапов",
+      "Calculate": "Расчет по умолчанию",
+      "DirProjectsPlanSection": "Раздел плана Projects"
+    },
+    "display_name": "Внутренний план работ",
+    "collection_name": "Внутренние планы работ",
+    "entity_set": "IPlans"
+  },
+  "PostalItemsReport": {
+    "properties": {},
+    "display_name": "Реестр документов для почты"
+  },
+  "PowerOfAttorney": {
+    "properties": {},
+    "entity_set": "IPowerOfAttorneies"
+  },
+  "PowerOfAttorneyTracking": {
+    "properties": {},
+    "entity_set": "IPowerOfAttorneyTrackings"
+  },
+  "PowerOfAttorneyVersions": {
+    "properties": {},
+    "entity_set": "IPowerOfAttorneyVersionss"
+  },
+  "PreparingDraftResolutionAssignment": {
+    "properties": {},
+    "entity_set": "IPreparingDraftResolutionAssignments"
+  },
+  "PresaleAcceptWorkAssignment": {
+    "properties": {},
+    "display_name": "Задание на приёмку результатов",
+    "collection_name": "Задания на приёмку результатов",
+    "entity_set": "IPresaleAcceptWorkAssignments"
+  },
+  "PresaleActivityAnalytics": {
+    "properties": {
+      "Begin": "Дата начала",
+      "End": "Дата окончания",
+      "StageDays": "Длительность, р.д.",
+      "StageHours": "Длительность, р.ч.",
+      "AllStageHours": "Длительность, ч."
+    }
+  },
+  "PresaleActivity": {
+    "properties": {
+      "Deadline": "Согласованный срок",
+      "Deal": "Сделка",
+      "WhatToDo": "Суть запроса",
+      "Analytics": "История переходов",
+      "PresaleTeam": "Команда пресейла",
+      "Administrator": "Администратор",
+      "DesiredDeadline": "Желаемый срок",
+      "IsStopGrantRights": "Не выдавать права инициатору",
+      "DealResult": "Результат сделки",
+      "DealClosureReason": "Причина закрытия сделки",
+      "DealClosureDate": "Дата закрытия сделки"
+    },
+    "display_name": "Запрос на пресейл",
+    "collection_name": "Запросы на пресейл"
+  },
+  "PresaleAdminAssignment": {
+    "properties": {
+      "ToOSZR": "Запрос на пресейл в Сопровождение"
+    },
+    "display_name": "Задание на регистрацию запроса на пресейл",
+    "collection_name": "Задания на регистрацию запроса на пресейл",
+    "entity_set": "IPresaleAdminAssignments"
+  },
+  "PresaleDocument": {
+    "properties": {
+      "Activity": "Запрос на пресейл"
+    },
+    "display_name": "Документ по пресейлу",
+    "collection_name": "Документ по пресейлу",
+    "entity_set": "IPresaleDocuments"
+  },
+  "PresaleDocumentTracking": {
+    "properties": {},
+    "entity_set": "IPresaleDocumentTrackings"
+  },
+  "PresaleDocumentVersions": {
+    "properties": {},
+    "entity_set": "IPresaleDocumentVersionss"
+  },
+  "PresaleMetrics": {
+    "properties": {},
+    "display_name": "Изменение статусов запросов на пресейл за период"
+  },
+  "PresaleRequestSimpleAssignment": {
+    "properties": {},
+    "display_name": "Задание на проработку запроса на пресейл",
+    "collection_name": "Задания на проработку запроса на пресейл",
+    "entity_set": "IPresaleRequestSimpleAssignments"
+  },
+  "PresaleRequestTaskObservers": {
+    "properties": {},
+    "entity_set": "IPresaleRequestTaskObserverss"
+  },
+  "PresaleRequestTask": {
+    "properties": {
+      "WhatToDo": "Суть запроса",
+      "ToOSZR": "Запрос на пресейл в Сопровождение"
+    },
+    "display_name": "Задача на обработку запроса на пресейл",
+    "collection_name": "Задачи на обработку запроса на пресейл",
+    "entity_set": "IPresaleRequestTasks"
+  },
+  "PresentationRequestAttachment": {
+    "properties": {},
+    "collection_name": "Приложения к запросу на презентацию",
+    "display_name": "Приложение к запросу на презентацию",
+    "entity_set": "IPresentationRequestAttachments"
+  },
+  "PresentationRequestAttachmentVersions": {
+    "properties": {},
+    "entity_set": "IPresentationRequestAttachmentVersionss"
+  },
+  "Process": {
+    "properties": {
+      "Name": "Имя"
+    }
+  },
+  "ProcessingCertificateIssueRequestErrorAssignment": {
+    "properties": {},
+    "entity_set": "IHiringProcessingCertificateIssueRequestErrorAssignments"
+  },
+  "ProcessingContactControlAssignment": {
+    "properties": {},
+    "entity_set": "IProcessingContactControlAssignments"
+  },
+  "ProcessingContactListAssignment": {
+    "properties": {},
+    "entity_set": "IProcessingContactListAssignments"
+  },
+  "ProcessingContactListTaskBusinessTasks": {
+    "properties": {},
+    "entity_set": "IProcessingContactListTaskBusinessTaskss"
+  },
+  "ProcessingContactListTaskNotify": {
+    "properties": {},
+    "entity_set": "IProcessingContactListTaskNotifies"
+  },
+  "ProcessingContactListTaskObservers": {
+    "properties": {},
+    "entity_set": "IProcessingContactListTaskObserverss"
+  },
+  "ProcessingContactListTask": {
+    "properties": {
+      "Notify": "Уведомить",
+      "Observers": "Уведомить",
+      "SearchIteration": "Итерация поиска",
+      "PartnerStage": "Задача для партнеров",
+      "BusinessTasks": "Бизнес-задачи",
+      "ProcessingStage": "Этап обработки"
+    },
+    "entity_set": "IProcessingContactListTasks"
+  },
+  "ProcessingContactSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IProcessingContactSimpleAssignments"
+  },
+  "ProcessingContactTaskObservers": {
+    "properties": {},
+    "entity_set": "IProcessingContactTaskObserverss"
+  },
+  "ProcessingContactTask": {
+    "properties": {},
+    "display_name": "Задача на обработку организации ответственным",
+    "collection_name": "Задачи на обработку организации ответственным",
+    "entity_set": "IProcessingContactTasks"
+  },
+  "ProcessingHiringResultAssignment": {
+    "properties": {},
+    "entity_set": "IHiringProcessingHiringResultAssignments"
+  },
+  "ProcessingLeadAssignment": {
+    "properties": {
+      "Responsible": "Ответственный",
+      "ResponsibleDeadline": "Срок для ответственного"
+    },
+    "display_name": "Задание на обработку лида",
+    "collection_name": "Задание на обработку лида",
+    "entity_set": "ICRMProcessingLeadAssignments"
+  },
+  "ProcessingLeadBySellerAssignment": {
+    "properties": {
+      "Seller": "Продавец"
+    },
+    "display_name": "Задание на обработку лида продавцом",
+    "collection_name": "Задания на обработку лида продавцом",
+    "entity_set": "ICRMProcessingLeadBySellerAssignments"
+  },
+  "ProcessingLeadTaskObservers": {
+    "properties": {},
+    "entity_set": "ICRMProcessingLeadTaskObserverss"
+  },
+  "ProcessingLeadTask": {
+    "properties": {},
+    "display_name": "Задача на обработку лида",
+    "collection_name": "Задачи на обработку лида",
+    "entity_set": "ICRMProcessingLeadTasks"
+  },
+  "ProcessingOfRefusalSignConsentInElectronicForm": {
+    "properties": {},
+    "entity_set": "IHiringProcessingOfRefusalSignConsentInElectronicForms"
+  },
+  "ProductDocumentation": {
+    "properties": {
+      "Project": "Проект"
+    },
+    "display_name": "Документация на продукт",
+    "collection_name": "Документация на продукт",
+    "entity_set": "IProductDocumentations"
+  },
+  "ProductDocumentationTracking": {
+    "properties": {},
+    "entity_set": "IProductDocumentationTrackings"
+  },
+  "ProductDocumentationVersions": {
+    "properties": {},
+    "entity_set": "IProductDocumentationVersionss"
+  },
+  "ProductionBusinessUnitRecipientLinks": {
+    "properties": {},
+    "entity_set": "IProductionBusinessUnitRecipientLinkss"
+  },
+  "ProductionBusinessUnit": {
+    "properties": {
+      "Description": "Примечание",
+      "Name": "Наименование",
+      "Note": "Примечание"
+    },
+    "entity_set": "IProductionBusinessUnits"
+  },
+  "ProductionUnitManagementTeam": {
+    "properties": {},
+    "entity_set": "IProductionUnitManagementTeams"
+  },
+  "ProductionUnitRecipientLinks": {
+    "properties": {
+      "Member": "Сотрудник"
+    },
+    "entity_set": "IProductionUnitRecipientLinkss"
+  },
+  "ProductionUnit": {
+    "properties": {},
+    "entity_set": "IProductionUnits"
+  },
+  "ProjectActivity": {
+    "properties": {
+      "IsPlanSungero": "Синхронизировать в ВПР",
+      "ClosingSummary": "Результаты"
+    }
+  },
+  "ProjectBasePaymentNotify": {
+    "properties": {
+      "Employee": "Сотрудник"
+    },
+    "entity_set": "IPlanningProjectBasePaymentNotifies"
+  },
+  "ProjectBaseProjectMembers": {
+    "properties": {
+      "Role": "Роль"
+    },
+    "entity_set": "IPlanningProjectBaseProjectMemberss"
+  },
+  "ProjectBase": {
+    "properties": {
+      "Code": "Код",
+      "BusinessDirection": "Направление деятельности",
+      "Comment": "Примечание",
+      "Manager": "Руководитель",
+      "Curator": "Куратор",
+      "InternalCustomer": "Внутренний заказчик",
+      "Administrator": "Администратор",
+      "CostsType": "Вид затрат",
+      "StartDate": "Дата начала",
+      "PaymentNotify": "Уведомлять об оплате",
+      "Stage": "Состояние",
+      "Folder": "Папка проекта"
+    },
+    "display_name": "Проект",
+    "entity_set": "IProjectBases"
+  },
+  "ProjectBonusBonusDetails": {
+    "properties": {
+      "Ratio": "Качество работы"
+    },
+    "entity_set": "IProjectBonusBonusDetailss"
+  },
+  "ProjectBonusInitialBonusDetails": {
+    "properties": {
+      "BonusHours": "Премия",
+      "ExcludedHours": "Исключения",
+      "ActualHours": "Фактические часы",
+      "Employee": "Сотрудник",
+      "Ratio": "Качество работы"
+    },
+    "entity_set": "IProjectBonusInitialBonusDetailss"
+  },
+  "ProjectBonus": {
+    "properties": {
+      "Project": "Проект",
+      "BonusPercent": "Процент премии",
+      "UndistributedHours": "Нераспределенный остаток",
+      "InitialBonusDetails": "Детализация",
+      "InitialCalculationDate": "Дата начисления",
+      "InitialPeriodStart": "Начало периода",
+      "InitialPeriodEnd": "Конец периода",
+      "InitialBonusPercent": "Процент премии"
+    },
+    "display_name": "Премия по проекту",
+    "collection_name": "Премии по проектам",
+    "entity_set": "IProjectBonuss"
+  },
+  "ProjectChangeRequestsTaskObservers": {
+    "properties": {},
+    "entity_set": "IProjectChangeRequestsTaskObserverss"
+  },
+  "ProjectChangeRequestsTask": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "collection_name": "Задачи на согласование запросов на изменение проектов",
+    "display_name": "Задача на согласование запроса на изменение проекта",
+    "entity_set": "IProjectChangeRequestsTasks"
+  },
+  "ProjectClassifier": {
+    "properties": {},
+    "entity_set": "IProjectClassifiers"
+  },
+  "ProjectCloseApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание на утверждение закрытия проекта",
+    "collection_name": "Задания на утверждение закрытия проекта",
+    "entity_set": "IProjectCloseApprovalAssignments"
+  },
+  "ProjectCloseApproveAssignment": {
+    "properties": {},
+    "display_name": "Задание на утверждение закрытия проекта",
+    "collection_name": "Задания на утверждение закрытия проекта",
+    "entity_set": "IProjectCloseApproveAssignments"
+  },
+  "ProjectCloseBonusApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IProjectCloseBonusApprovalAssignments"
+  },
+  "ProjectCloseCreateBonusAssignment": {
+    "properties": {},
+    "entity_set": "IProjectCloseCreateBonusAssignments"
+  },
+  "ProjectCloseEndorseAssignment": {
+    "properties": {},
+    "display_name": "Задание на согласование закрытия проекта",
+    "collection_name": "Задания на согласование закрытия проекта",
+    "entity_set": "IProjectCloseEndorseAssignments"
+  },
+  "ProjectClosePublishAssignment": {
+    "properties": {},
+    "entity_set": "IProjectClosePublishAssignments"
+  },
+  "ProjectCloseSimpleAssignment": {
+    "properties": {},
+    "display_name": "Задание на закрытие проекта",
+    "collection_name": "Задания на закрытие проекта",
+    "entity_set": "IProjectCloseSimpleAssignments"
+  },
+  "ProjectCloseTaskObservers": {
+    "properties": {},
+    "entity_set": "IProjectCloseTaskObserverss"
+  },
+  "ProjectCloseTask": {
+    "properties": {},
+    "display_name": "Задача на закрытие проекта",
+    "collection_name": "Задачи на закрытие проекта",
+    "entity_set": "IProjectCloseTasks"
+  },
+  "ProjectCuratorReport": {
+    "properties": {},
+    "display_name": "Отчет для куратора проекта"
+  },
+  "ProjectDocumentSignedVersions": {
+    "properties": {
+      "Number": "Номер"
+    },
+    "entity_set": "IProjectDocumentSignedVersionss"
+  },
+  "ProjectDocument": {
+    "properties": {
+      "IsSigned": "Подписан",
+      "KasId": "ИД в ТехКАС",
+      "DocumentRegister": "Журнал регистрации",
+      "Index": "Индекс",
+      "Note": "Примечание",
+      "Assignee": "Исполнитель",
+      "Subject": "Содержание",
+      "LastVersionApproved": "Утвержден"
+    },
+    "collection_name": "Проектные документы",
+    "entity_set": "IProjectDocuments"
+  },
+  "ProjectDocumentTracking": {
+    "properties": {},
+    "entity_set": "IProjectDocumentTrackings"
+  },
+  "ProjectDocumentVersions": {
+    "properties": {
+      "KasId": "ИД объекта в КАС"
+    },
+    "entity_set": "IProjectDocumentVersionss"
+  },
+  "ProjectInitApproveAssignment": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "display_name": "Задание на утверждение инициации проекта",
+    "collection_name": "Задания на утверждение инициации проекта",
+    "entity_set": "IProjectInitApproveAssignments"
+  },
+  "ProjectInitEndorseAssignment": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "display_name": "Задание на согласование инициации проекта",
+    "collection_name": "Задания на согласование инициации проекта",
+    "entity_set": "IProjectInitEndorseAssignments"
+  },
+  "ProjectInitPublishAssignment": {
+    "properties": {},
+    "entity_set": "IProjectInitPublishAssignments"
+  },
+  "ProjectInitReworkAssignment": {
+    "properties": {},
+    "entity_set": "IProjectInitReworkAssignments"
+  },
+  "ProjectInitSimpleAssignment": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "display_name": "Задание на инициацию проекта",
+    "collection_name": "Задания на инициацию проекта",
+    "entity_set": "IProjectInitSimpleAssignments"
+  },
+  "ProjectInitTaskObservers": {
+    "properties": {},
+    "entity_set": "IProjectInitTaskObserverss"
+  },
+  "ProjectInitTask": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "display_name": "Задача на инициацию и планирование проекта",
+    "collection_name": "Задачи на инициацию и планирование проекта",
+    "entity_set": "IProjectInitTasks"
+  },
+  "ProjectKAS": {
+    "properties": {
+      "CostsType": "Вид затрат",
+      "ManagerKAS": "Руководитель",
+      "Administrator": "Администратор",
+      "IsRegular": "Постоянный",
+      "Curator": "Куратор"
+    },
+    "collection_name": "Проекты ТехКАС",
+    "display_name": "Проект",
+    "entity_set": "IProjectKASs"
+  },
+  "ProjectKind": {
+    "properties": {},
+    "entity_set": "IProjectKinds"
+  },
+  "ProjectPaymentNotify": {
+    "properties": {},
+    "entity_set": "IPlanningProjectPaymentNotifies"
+  },
+  "ProjectPlanRXOtherNotices": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXOtherNoticess"
+  },
+  "ProjectPlanRXPlanDateNotices": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXPlanDateNoticess"
+  },
+  "ProjectPlanRXResponsibleNotices": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXResponsibleNoticess"
+  },
+  "ProjectPlanRX": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXs"
+  },
+  "ProjectPlanRXTeamMembers": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXTeamMemberss"
+  },
+  "ProjectPlanRXTracking": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXTrackings"
+  },
+  "ProjectPlanRXVersions": {
+    "properties": {},
+    "entity_set": "IProjectPlanRXVersionss"
+  },
+  "ProjectProgressReportTaskObservers": {
+    "properties": {},
+    "entity_set": "IProjectProgressReportTaskObserverss"
+  },
+  "ProjectProgressReportTaskReviewers": {
+    "properties": {},
+    "entity_set": "IProjectProgressReportTaskReviewerss"
+  },
+  "ProjectProgressReportTask": {
+    "properties": {
+      "IsHandheldStart": "Признак ручного запуска",
+      "Performer": "Исполнитель"
+    },
+    "collection_name": "Задачи на согласование отчетов о ходе проектов",
+    "display_name": "Задача на согласование отчета о ходе проекта",
+    "entity_set": "IProjectProgressReportTasks"
+  },
+  "ProjectProjectMembers": {
+    "properties": {},
+    "entity_set": "IPlanningProjectProjectMemberss"
+  },
+  "ProjectStageObservers": {
+    "properties": {
+      "Observer": "Наблюдатель"
+    },
+    "entity_set": "IProjectStageObserverss"
+  },
+  "ProjectStage": {
+    "properties": {
+      "Name": "Имя",
+      "ProjectOld": "ПроектOLD",
+      "Manager": "Руководитель",
+      "IsRegular": "Постоянный",
+      "ProjectStageState": "Статус этапа",
+      "ActualStartDate": "Дата факт. начала",
+      "ActualEndDate": "Дата факт. завершения",
+      "Observers": "Наблюдатели"
+    },
+    "display_name": "Этап проекта",
+    "collection_name": "Этапы проектов",
+    "entity_set": "IProjectStages"
+  },
+  "ProjectSubcontractorsSungero": {
+    "properties": {
+      "Subcontractor": "Субподрядчик"
+    },
+    "entity_set": "IProjectSubcontractorsSungeros"
+  },
+  "ProjectSubcontractors": {
+    "properties": {
+      "Subcontractor": "Субподрядчик"
+    },
+    "entity_set": "IPlanningProjectSubcontractorss"
+  },
+  "Project": {
+    "properties": {
+      "Customer": "Организация-заказчик",
+      "Subcontractors": "Субподрядчики",
+      "MMStage": "Этап ММ",
+      "WorksEndDate": "Факт. дата завершения работ",
+      "ReportsRegularity": "Напоминания об отчетах",
+      "Status": "Состояние",
+      "FirstDateReport": "Дата первого отчета",
+      "ProjectDirectumProjects": "Проект Projects"
+    },
+    "display_name": "Проект",
+    "collection_name": "Проекты",
+    "entity_set": "IProjects"
+  },
+  "ProjectTeamMembers": {
+    "properties": {},
+    "entity_set": "IProjectTeamMemberss"
+  },
+  "ProlongReserveApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание на продление резервирования",
+    "collection_name": "Задания на продление резервирования",
+    "entity_set": "IProlongReserveApprovalAssignments"
+  },
+  "ProlongReserveTaskConflictReserveTasks": {
+    "properties": {},
+    "entity_set": "IProlongReserveTaskConflictReserveTaskss"
+  },
+  "ProlongReserveTaskObservers": {
+    "properties": {},
+    "entity_set": "IProlongReserveTaskObserverss"
+  },
+  "ProlongReserveTask": {
+    "properties": {
+      "ReserveObject": "Объект"
+    },
+    "display_name": "Задача на продление резервирования",
+    "collection_name": "Задачи на продление резервирования",
+    "entity_set": "IProlongReserveTasks"
+  },
+  "PublishPlanCloseNewsAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задание на публикацию новости",
+    "collection_name": "Задания на публикацию новости",
+    "entity_set": "IPublishPlanCloseNewsAssignments"
+  },
+  "PublishRxBuildTaskObservers": {
+    "properties": {},
+    "entity_set": "IProjectDocumentsPublishRxBuildTaskObserverss"
+  },
+  "PublishRxBuildTask": {
+    "properties": {
+      "DLWindows": "DL Windows",
+      "Initiator": "Инициатор",
+      "Counterparty": "для",
+      "Generator": "Generator",
+      "RxReleaseNotes": "RX Release Notes",
+      "Note": "Примечание",
+      "QueuedBy": "Запустил публикацию",
+      "DistribJson": "Информация о дистрибутиве Directum RX (json)",
+      "NeedCloudUpdate": "Требуется обновление облачных стендов СПД"
+    },
+    "display_name": "Задача на публикацию билда Directum RX",
+    "collection_name": "Задачи на публикацию билда Directum RX",
+    "entity_set": "IProjectDocumentsPublishRxBuildTasks"
+  },
+  "PublishRxDistribAssignment": {
+    "properties": {
+      "PublishRxDistribApiUrl": "Адрес API публикации дистрибутива Directum RX"
+    },
+    "display_name": "Задание на публикацию дистрибутива Directum RX",
+    "collection_name": "Задания на публикацию дистрибутива Directum RX",
+    "entity_set": "IProjectDocumentsPublishRxDistribAssignments"
+  },
+  "PublishedAreaAccessRoles": {
+    "properties": {
+      "AccessRole": "Роль доступа"
+    }
+  },
+  "PublishedArea": {
+    "properties": {
+      "AreaOfExpertise": "Область знания",
+      "Category": "Категория",
+      "AccessRoles": "Роль доступа на club.directum.ru"
+    }
+  },
+  "QualificationContactAssignment": {
+    "properties": {
+      "NewDeadline": "Срок"
+    },
+    "entity_set": "IQualificationContactAssignments"
+  },
+  "RateApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IRateApprovalTaskObserverss"
+  },
+  "RateApprovalTask": {
+    "properties": {
+      "Employee": "Сотрудник",
+      "AdditionalAgreementGuid": "Уникальный идентификационный номер дополнительного соглашения в 1С",
+      "IsApprovalCompleted": "Согласование пройдено"
+    },
+    "display_name": "Задача на утверждение ставки",
+    "collection_name": "Задачи на утверждение ставки",
+    "entity_set": "IRateApprovalTasks"
+  },
+  "RateSimpleAssignment": {
+    "properties": {
+      "TalkWith": "Беседа с",
+      "RateEmployeeLogin": "Логин"
+    },
+    "display_name": "Задание по ставке",
+    "collection_name": "Задания по ставке",
+    "entity_set": "IRateSimpleAssignments"
+  },
+  "RefusalReasons": {
+    "properties": {
+      "Name": "Имя",
+      "Description": "Описание"
+    },
+    "display_name": "Причина отказа",
+    "collection_name": "Причины отказа",
+    "entity_set": "IRefusalReasonss"
+  },
+  "Region": {
+    "properties": {
+      "Timezone": "Час. пояс (отн. MSK)"
+    },
+    "entity_set": "IRegions"
+  },
+  "RegistrationGroupDepartments": {
+    "properties": {},
+    "entity_set": "IRegistrationGroupDepartmentss"
+  },
+  "RegistrationGroupRecipientLinks": {
+    "properties": {},
+    "entity_set": "IRegistrationGroupRecipientLinkss"
+  },
+  "RegistrationGroup": {
+    "properties": {},
+    "entity_set": "IRegistrationGroups"
+  },
+  "RegistrationSettingBusinessUnits": {
+    "properties": {},
+    "entity_set": "IRegistrationSettingBusinessUnitss"
+  },
+  "RegistrationSettingDepartments": {
+    "properties": {},
+    "entity_set": "IRegistrationSettingDepartmentss"
+  },
+  "RegistrationSettingDocumentKinds": {
+    "properties": {},
+    "entity_set": "IRegistrationSettingDocumentKindss"
+  },
+  "RegistrationSetting": {
+    "properties": {},
+    "entity_set": "IRegistrationSettings"
+  },
+  "ReleaseNewBuildRXAssignment": {
+    "properties": {},
+    "entity_set": "IReleaseNewBuildRXAssignments"
+  },
+  "ReleaseNewBuildRXTaskObservers": {
+    "properties": {},
+    "entity_set": "IReleaseNewBuildRXTaskObserverss"
+  },
+  "ReleaseNewBuildRXTaskPerformers": {
+    "properties": {
+      "Stage": "Этап",
+      "Performer": "Исполнитель",
+      "SendAssignment": "Отправить задание"
+    },
+    "entity_set": "IReleaseNewBuildRXTaskPerformerss"
+  },
+  "ReleaseNewBuildRXTask": {
+    "properties": {
+      "Performers": "Исполнители",
+      "IsHofix": "Только для облака"
+    },
+    "display_name": "Задача на выпуск билда",
+    "collection_name": "Задачи на выпуск билда",
+    "entity_set": "IReleaseNewBuildRXTasks"
+  },
+  "ReportApprovalAssignment": {
+    "properties": {
+      "EmployeeAccept": "Кандидат подходит"
+    },
+    "entity_set": "IReportApprovalAssignments"
+  },
+  "ReportPreparationAssignmentParticipants": {
+    "properties": {},
+    "entity_set": "IReportPreparationAssignmentParticipantss"
+  },
+  "ReportPreparationAssignment": {
+    "properties": {
+      "Participants": "Участники встречи",
+      "EmployeeAccept": "Кандидат подходит",
+      "Department": "Подразделение",
+      "NeedAdditionalAgreement": "Согласование с ИД"
+    },
+    "display_name": "Задание на оформление отчета",
+    "collection_name": "Задания на оформление отчета",
+    "entity_set": "IReportPreparationAssignments"
+  },
+  "ReportProcessAssignment": {
+    "properties": {},
+    "entity_set": "ISalesReportProcessAssignments"
+  },
+  "ReportRequestAssignment": {
+    "properties": {},
+    "entity_set": "IReportRequestAssignments"
+  },
+  "ReportRequestCheckAssignment": {
+    "properties": {},
+    "entity_set": "IReportRequestCheckAssignments"
+  },
+  "RequestAcceptanceAssignment": {
+    "properties": {},
+    "entity_set": "ISupportRequestAcceptanceAssignments"
+  },
+  "RequestAgreementWithManager": {
+    "properties": {},
+    "display_name": "Задание на согласование c руководителем",
+    "collection_name": "Задания на согласование c руководителем",
+    "entity_set": "ISupportRequestAgreementWithManagers"
+  },
+  "RequestPerformedWork": {
+    "properties": {
+      "Date": "Дата",
+      "PlanStage": "Этап плана",
+      "JobKind": "Вид работ",
+      "Employee": "Сотрудник",
+      "Duration": "Часы",
+      "TimeSheetDuration": "В т.ч. по табелю",
+      "Comment": "Примечание"
+    },
+    "entity_set": "IRequestPerformedWorks"
+  },
+  "RequestSolvingAssignment": {
+    "properties": {},
+    "entity_set": "ISupportRequestSolvingAssignments"
+  },
+  "RequestSolvingTaskObservers": {
+    "properties": {},
+    "entity_set": "ISupportRequestSolvingTaskObserverss"
+  },
+  "RequestSolvingTask": {
+    "properties": {},
+    "entity_set": "ISupportRequestSolvingTasks"
+  },
+  "Request": {
+    "properties": {
+      "Name": "Имя",
+      "ServiceGroup": "Группа услуг",
+      "Description": "Описание",
+      "Plan": "План",
+      "Responsible": "Ответственный",
+      "Deadline": "Срок",
+      "PlatfromVersion": "Версия платформы",
+      "Stage": "Статус",
+      "RegisteredBy": "Регистратор",
+      "CreateDate": "Дата создания",
+      "CloseDate": "Дата закрытия",
+      "RegistrationDate": "Дата регистрации"
+    },
+    "display_name": "Обращение",
+    "collection_name": "Обращения"
+  },
+  "ReserveObjectApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IReserveObjectApprovalAssignments"
+  },
+  "ReserveObjectApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IReserveObjectApprovalTaskObserverss"
+  },
+  "ReserveObjectApprovalTask": {
+    "properties": {
+      "ReserveEmployee": "Сотрудник"
+    },
+    "display_name": "Задача на согласование резервирования",
+    "collection_name": "Задачи на согласование резервирования",
+    "entity_set": "IReserveObjectApprovalTasks"
+  },
+  "ReserveObjectGettingAssignment": {
+    "properties": {},
+    "entity_set": "IReserveObjectGettingAssignments"
+  },
+  "ReserveObjectGiveOutAssignment": {
+    "properties": {
+      "ReplaceObject": "Заменяющее оборудование"
+    },
+    "entity_set": "IReserveObjectGiveOutAssignments"
+  },
+  "ReserveObjectGroup": {
+    "properties": {
+      "Name": "Имя"
+    }
+  },
+  "ReserveObject": {
+    "properties": {
+      "Name": "Имя",
+      "Department": "Для подразделения",
+      "UsingFor": "Применение",
+      "Description": "Характеристики"
+    }
+  },
+  "ReserveObjectTakeAssignment": {
+    "properties": {},
+    "entity_set": "IReserveObjectTakeAssignments"
+  },
+  "ReserveObjectsNotice": {
+    "properties": {},
+    "entity_set": "IReserveObjectsNotices"
+  },
+  "ReserveObjectsTaskObjects": {
+    "properties": {},
+    "entity_set": "IReserveObjectsTaskObjectss"
+  },
+  "ReserveObjectsTaskObservers": {
+    "properties": {},
+    "entity_set": "IReserveObjectsTaskObserverss"
+  },
+  "ReserveObjectsTask": {
+    "properties": {
+      "ReserveEmployee": "Сотрудник"
+    },
+    "display_name": "Задача на резервирование оборудования",
+    "collection_name": "Задачи на резервирование оборудования",
+    "entity_set": "IReserveObjectsTasks"
+  },
+  "ResignationApprovalAssignment": {
+    "properties": {},
+    "entity_set": "IResignationApprovalAssignments"
+  },
+  "ResignationApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IResignationApprovalTaskObserverss"
+  },
+  "ResignationApprovalTask": {
+    "properties": {
+      "ResignationDate": "Дата увольнения",
+      "Employee": "Сотрудник"
+    },
+    "display_name": "Задача на согласование увольнения",
+    "collection_name": "Задачи на согласование увольнения",
+    "entity_set": "IResignationApprovalTasks"
+  },
+  "ResignationEndorseAssignment": {
+    "properties": {},
+    "entity_set": "IResignationEndorseAssignments"
+  },
+  "ResignationReworkAssignment": {
+    "properties": {
+      "ResignationDate": "Дата увольнения"
+    },
+    "entity_set": "IResignationReworkAssignments"
+  },
+  "ResignationSignStatementAssignment": {
+    "properties": {},
+    "display_name": "Задание на подписание заявления об увольнении",
+    "entity_set": "IHRResignationSignStatementAssignments"
+  },
+  "ResignationSimpleAssignment": {
+    "properties": {
+      "Substitutive": "Замещающий",
+      "SubstitutionEnd": "Окончание замещения"
+    },
+    "display_name": "Задание по увольнению",
+    "collection_name": "Задания по увольнению",
+    "entity_set": "IResignationSimpleAssignments"
+  },
+  "ResignationStatementReport": {
+    "properties": {},
+    "display_name": "Заявление на увольнение"
+  },
+  "ResignationTranslateStatementReport": {
+    "properties": {},
+    "display_name": "Заявление на увольнение переводом"
+  },
+  "ResourceManagerPoolRecipientLinks": {
+    "properties": {},
+    "entity_set": "IResourceManagerPoolRecipientLinkss"
+  },
+  "ResourceManagerPool": {
+    "properties": {
+      "Description": "Название"
+    },
+    "entity_set": "IResourceManagerPools"
+  },
+  "ResponsibilityRole": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Роль ответственности",
+    "collection_name": "Роли ответственности"
+  },
+  "ResponsibleSubscribeAssignment": {
+    "properties": {
+      "SubscribeCode": "Код подписки"
+    },
+    "display_name": "Задание на выдачу кода подписки",
+    "collection_name": "Задания на выдачу кода подписки",
+    "entity_set": "IResponsibleSubscribeAssignments"
+  },
+  "ReviewClerkNotification": {
+    "properties": {},
+    "entity_set": "IReviewClerkNotifications"
+  },
+  "ReviewDraftResolutionAssignment": {
+    "properties": {},
+    "entity_set": "IReviewDraftResolutionAssignments"
+  },
+  "ReviewManagerAssignment": {
+    "properties": {},
+    "display_name": "Рассмотрение документа",
+    "collection_name": "Задания на рассмотрение документов",
+    "entity_set": "IReviewManagerAssignments"
+  },
+  "ReviewObserverNotification": {
+    "properties": {},
+    "entity_set": "IReviewObserverNotifications"
+  },
+  "ReviewObserversNotification": {
+    "properties": {},
+    "entity_set": "IReviewObserversNotifications"
+  },
+  "ReviewResolutionAssignment": {
+    "properties": {},
+    "display_name": "Обработка документа",
+    "collection_name": "Задания на обработку документов",
+    "entity_set": "IReviewResolutionAssignments"
+  },
+  "ReviewReworkAssignment": {
+    "properties": {},
+    "entity_set": "IReviewReworkAssignments"
+  },
+  "ReworkAssignment": {
+    "properties": {},
+    "entity_set": "IReworkAssignments"
+  },
+  "ReworkChangeRequests": {
+    "properties": {
+      "Estimate": "Трудоемкость к утверждению"
+    },
+    "entity_set": "IReworkChangeRequestss"
+  },
+  "ReworkCloseAssignment": {
+    "properties": {},
+    "entity_set": "IReworkCloseAssignments"
+  },
+  "ReworkDocumentsUploadAssignment": {
+    "properties": {},
+    "entity_set": "IReworkDocumentsUploadAssignments"
+  },
+  "ReworkNotice": {
+    "properties": {},
+    "entity_set": "IReworkNotices"
+  },
+  "ReworkProgressReportReviewers": {
+    "properties": {},
+    "entity_set": "IReworkProgressReportReviewerss"
+  },
+  "ReworkProgressReport": {
+    "properties": {},
+    "entity_set": "IReworkProgressReports"
+  },
+  "ReworkRequestAssigment": {
+    "properties": {
+      "Vacancies": "Требуемые сотрудники",
+      "Note": "Примечание к заявке"
+    },
+    "display_name": "Задание на доработку заявки на сотрудников",
+    "collection_name": "Задания на доработки заявок на сотрудников",
+    "entity_set": "IReworkRequestAssigments"
+  },
+  "ReworkRequestAssigmentVacancies": {
+    "properties": {
+      "JobPosition": "Должность",
+      "Minimal": "Минимум",
+      "Desirable": "Желательно",
+      "CandidateExperience": "Опыт",
+      "Requirement": "Требования"
+    },
+    "entity_set": "IReworkRequestAssigmentVacanciess"
+  },
+  "Room": {
+    "properties": {
+      "RoomNumber": "№ комнаты",
+      "WorkPlaces": "Максимум раб. мест",
+      "Department": "Подразделение",
+      "Phones": "Телефоны",
+      "Description": "Примечание"
+    },
+    "display_name": "Помещение",
+    "collection_name": "Помещения",
+    "entity_set": "IRooms"
+  },
+  "SearchForSellerAssignmentSellers": {
+    "properties": {
+      "Seller": "Продавец"
+    },
+    "entity_set": "ICRMSearchForSellerAssignmentSellerss"
+  },
+  "SearchForSellerAssignment": {
+    "properties": {
+      "Sellers": "Продавцы"
+    },
+    "display_name": "Задание на поиск продавца",
+    "collection_name": "Задания на поиск продавца",
+    "entity_set": "ICRMSearchForSellerAssignments"
+  },
+  "SellerActivity": {
+    "properties": {
+      "Deal": "Сделка",
+      "Created": "Дата создания",
+      "ResultString": "Результат",
+      "Deadline": "Срок",
+      "MaxPrice": "Начальная макс. цена",
+      "Trademark": "Торговая марка",
+      "ResultDate": "Дата подведения итогов",
+      "Partner": "Победитель"
+    },
+    "display_name": "Активность по продаже",
+    "collection_name": "Активности по продаже"
+  },
+  "SendMailTaskAttachDocuments": {
+    "properties": {},
+    "entity_set": "ISendMailTaskAttachDocumentss"
+  },
+  "SendMailTaskObservers": {
+    "properties": {},
+    "entity_set": "ISendMailTaskObserverss"
+  },
+  "SendMailTask": {
+    "properties": {},
+    "entity_set": "ISendMailTasks"
+  },
+  "SendingLNAAssignment": {
+    "properties": {},
+    "entity_set": "ISendingLNAAssignments"
+  },
+  "ServiceGroup": {
+    "properties": {
+      "Name": "Имя",
+      "Code": "Код"
+    },
+    "display_name": "Группа услуг",
+    "collection_name": "Группы услуг"
+  },
+  "Service": {
+    "properties": {
+      "Name": "Имя",
+      "Product": "Продукт"
+    },
+    "display_name": "Услуга",
+    "collection_name": "Услуги",
+    "entity_set": "IESMServicess"
+  },
+  "SetReasonClosedDealTaskObservers": {
+    "properties": {},
+    "entity_set": "ISalesSetReasonClosedDealTaskObserverss"
+  },
+  "SetReasonClosedDealTask": {
+    "properties": {},
+    "entity_set": "ISalesSetReasonClosedDealTasks"
+  },
+  "SetResponsibleTaskObservers": {
+    "properties": {},
+    "entity_set": "ISetResponsibleTaskObserverss"
+  },
+  "SetResponsibleTask": {
+    "properties": {},
+    "display_name": "Задача на квалификацию организации",
+    "collection_name": "Задачи на квалификацию организации",
+    "entity_set": "ISetResponsibleTasks"
+  },
+  "SettingsAIS": {
+    "properties": {
+      "Name": "Адрес сайта"
+    },
+    "display_name": "Настройки СИ",
+    "collection_name": "Настройки СИ"
+  },
+  "SickLeaveCheckAssignmentSickSertificate": {
+    "properties": {
+      "SertificateNumber": "Номер листка нетрудосопособности"
+    },
+    "entity_set": "ISickLeaveCheckAssignmentSickSertificates"
+  },
+  "SickLeaveCheckAssignment": {
+    "properties": {
+      "Instruction": "Инструкция",
+      "SickBegin": "С",
+      "SickEnd": "По"
+    },
+    "entity_set": "ISickLeaveCheckAssignments"
+  },
+  "SickLeaveNotice": {
+    "properties": {
+      "NoticeText": "Текст уведомления"
+    },
+    "entity_set": "ISickLeaveNotices"
+  },
+  "SickLeaveSimpleAssignmentSickSertificate": {
+    "properties": {
+      "SertificateNumber": "Номер листка нетрудосопособности"
+    },
+    "entity_set": "ISickLeaveSimpleAssignmentSickSertificates"
+  },
+  "SickLeaveSimpleAssignment": {
+    "properties": {
+      "Instruction": "Инструкция",
+      "SickBegin": "С",
+      "SickEnd": "По"
+    },
+    "entity_set": "ISickLeaveSimpleAssignments"
+  },
+  "SignatureSettingBusinessUnits": {
+    "properties": {},
+    "entity_set": "ISignatureSettingBusinessUnitss"
+  },
+  "SignatureSettingCategories": {
+    "properties": {},
+    "entity_set": "ISignatureSettingCategoriess"
+  },
+  "SignatureSettingDepartments": {
+    "properties": {},
+    "entity_set": "ISignatureSettingDepartmentss"
+  },
+  "SignatureSettingDocumentKinds": {
+    "properties": {},
+    "entity_set": "ISignatureSettingDocumentKindss"
+  },
+  "SignatureSetting": {
+    "properties": {},
+    "display_name": "Право подписи",
+    "entity_set": "ISignatureSettings"
+  },
+  "SigningDocumentsOnPaper": {
+    "properties": {},
+    "entity_set": "IHiringSigningDocumentsOnPapers"
+  },
+  "SimpleAcceptanceAssignment": {
+    "properties": {},
+    "display_name": "Задание на прием работ",
+    "collection_name": "Задания на прием работ",
+    "entity_set": "ICompanyServicesSimpleAcceptanceAssignments"
+  },
+  "SimpleAcquaintanceAssignment": {
+    "properties": {},
+    "display_name": "Ознакомление c приказом",
+    "collection_name": "Ознакомления c документами",
+    "entity_set": "ISimpleAcquaintanceAssignments"
+  },
+  "SimpleDocument": {
+    "properties": {},
+    "display_name": "Простой документ",
+    "entity_set": "ISimpleDocuments"
+  },
+  "SimpleDocumentTracking": {
+    "properties": {},
+    "entity_set": "ISimpleDocumentTrackings"
+  },
+  "SimpleDocumentVersions": {
+    "properties": {},
+    "entity_set": "ISimpleDocumentVersionss"
+  },
+  "SolveConflictAssignment": {
+    "properties": {},
+    "entity_set": "ISolveConflictAssignments"
+  },
+  "Speciality": {
+    "properties": {
+      "Name": "Наименование"
+    },
+    "display_name": "Специальность",
+    "collection_name": "Специальности",
+    "entity_set": "ISpecialities"
+  },
+  "SpecificationItem": {
+    "properties": {
+      "Name": "Имя",
+      "ProjectStage": "Этап проекта",
+      "Comment": "Примечание",
+      "IsTabl": "Табел. учет",
+      "Number": "№ п/п",
+      "IsTimeSheet": "По табелю",
+      "PlanHours": "План. часы",
+      "FactHours": "Факт. часы"
+    },
+    "display_name": "Пункт спецификации",
+    "collection_name": "Пункты спецификации",
+    "entity_set": "ISpecificationItems"
+  },
+  "StaffEventKind": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Вид кадрового события",
+    "collection_name": "Виды кадровых событий",
+    "entity_set": "IStaffEventKinds"
+  },
+  "StaffEvent": {
+    "properties": {
+      "Name": "Имя",
+      "Employee": "Сотрудник",
+      "DateEvent": "Дата",
+      "IsAbsence": "Отсутствие",
+      "IsStaffAbort": "Прерывать стаж",
+      "Department": "Подразделение",
+      "DepartmentGroup": "Группа",
+      "BusinessUnit": "Наша организация",
+      "JobTitle": "Должность",
+      "Category": "Категория",
+      "Mentor": "Наставник",
+      "StaffEventKind": "Событие",
+      "PreviousDepartment": "Из подразделения",
+      "PreviousDepartmentGroup": "Из группы подразделения",
+      "PreviousBusinessUnit": "Из нашей орг.",
+      "PreviousJobTitle": "Из должности",
+      "PreviousCategory": "Из категории",
+      "KasId": "КасИД",
+      "ProductionBusinessUnit": "Бизнес-единица",
+      "MainTeam": "Основная команда",
+      "PreviousProdBusinessUnit": "Из бизнес-единицы",
+      "PreviousMainTeam": "Из команды"
+    },
+    "display_name": "Кадровое событие",
+    "collection_name": "Кадровые события",
+    "entity_set": "IStaffEvents"
+  },
+  "StaffMovementApprovalAssignment": {
+    "properties": {},
+    "display_name": "Задание на согласование кадрового перемещения",
+    "collection_name": "Задания на согласование кадрового перемещения",
+    "entity_set": "IStaffMovementApprovalAssignments"
+  },
+  "StaffMovementApprovalNORAssignment": {
+    "properties": {},
+    "entity_set": "IStaffMovementApprovalNORAssignments"
+  },
+  "StaffMovementCheckVacationsAssignment": {
+    "properties": {},
+    "entity_set": "IStaffMovementCheckVacationsAssignments"
+  },
+  "StaffMovementGetTokenAssignment": {
+    "properties": {},
+    "entity_set": "IStaffMovementGetTokenAssignments"
+  },
+  "StaffMovementReworkAssignment": {
+    "properties": {
+      "Department": "Подразделение",
+      "DepartmentGroup": "Группа",
+      "JobTitle": "Должность",
+      "Date": "Дата",
+      "Category": "Категория",
+      "NeedApproveRate": "Утвердить ставку",
+      "NeedWriteNews": "Опубликовать новость",
+      "Mentor": "Наставник",
+      "AdditionalEquipment": "Оборудование",
+      "AdditionalUserGroups": "Группы пользователей",
+      "Room": "Помещение"
+    },
+    "display_name": "Задание на доработку кадрового перемещения",
+    "collection_name": "Задания на доработку кадрового перемещения",
+    "entity_set": "IStaffMovementReworkAssignments"
+  },
+  "StaffMovementSimpleAssignment": {
+    "properties": {
+      "Substitutive": "Замещающий",
+      "SubstitutionEnd": "Окончание замещения",
+      "BusinessUnit": "Наша организация"
+    },
+    "display_name": "Задание по кадровому перемещению",
+    "collection_name": "Задания по кадровому перемещению",
+    "entity_set": "IStaffMovementSimpleAssignments"
+  },
+  "StaffMovementStatementReport": {
+    "properties": {},
+    "display_name": "Заявление на кадровый перевод"
+  },
+  "StaffMovementTaskObservers": {
+    "properties": {},
+    "entity_set": "IStaffMovementTaskObserverss"
+  },
+  "StaffMovementTask": {
+    "properties": {
+      "Department": "Подразделение",
+      "DepartmentGroup": "Группа",
+      "JobTitle": "Должность",
+      "Date": "Дата",
+      "Category": "Категория",
+      "NeedApproveRate": "Утвердить ставку",
+      "NeedWriteNews": "Опубликовать новость",
+      "Type": "Событие",
+      "Mentor": "Наставник",
+      "AdditionalEquipment": "Оборудование",
+      "AdditionalUserGroups": "Группы пользователей",
+      "Room": "Помещение",
+      "NewBusinessUnit": "Наша организация"
+    },
+    "display_name": "Задача на кадровое перемещение",
+    "collection_name": "Задачи на кадровое перемещение",
+    "entity_set": "IStaffMovementTasks"
+  },
+  "StaffMovementWorkplaceAssignment": {
+    "properties": {},
+    "display_name": "Задание на спецоценку рабочего места",
+    "collection_name": "Задания на спецоценку рабочего места",
+    "entity_set": "IStaffMovementWorkplaceAssignments"
+  },
+  "StaffResponsibleAssignment": {
+    "properties": {},
+    "display_name": "Задание специалисту по кадрам",
+    "collection_name": "Задания специалисту по кадрам",
+    "entity_set": "IHRStaffResponsibleAssignments"
+  },
+  "StatementDocument": {
+    "properties": {},
+    "entity_set": "IHRDocFlowStatementDocuments"
+  },
+  "StatementDocumentTracking": {
+    "properties": {},
+    "entity_set": "IHRDocFlowStatementDocumentTrackings"
+  },
+  "StatementDocumentVersions": {
+    "properties": {},
+    "entity_set": "IHRDocFlowStatementDocumentVersionss"
+  },
+  "StatementVacationApprovalAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задание сотруднику на подписание заявления на отгул.",
+    "collection_name": "Задания сотруднику на подписание заявления на отгул.",
+    "entity_set": "IStatementVacationApprovalAssignments"
+  },
+  "StatementVacationWithoutSalaryTaskObservers": {
+    "properties": {},
+    "entity_set": "IStatementVacationWithoutSalaryTaskObserverss"
+  },
+  "StatementVacationWithoutSalaryTask": {
+    "properties": {
+      "Employee": "Сотрудник"
+    },
+    "display_name": "Задача на подписание заявления на отпуск без сохранения з/п ввиду недоработки нормы часов",
+    "collection_name": "Задачи на подписание заявления на отпуск без сохранения з/п ввиду недоработки нормы часов",
+    "entity_set": "IStatementVacationWithoutSalaryTasks"
+  },
+  "StatusReportRequestTaskObservers": {
+    "properties": {},
+    "entity_set": "IStatusReportRequestTaskObserverss"
+  },
+  "StatusReportRequestTask": {
+    "properties": {},
+    "entity_set": "IStatusReportRequestTasks"
+  },
+  "StopSalesReason": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Причина остановки продаж",
+    "collection_name": "Причины остановки продаж"
+  },
+  "SupAgreementMilestones": {
+    "properties": {},
+    "entity_set": "ISupAgreementMilestoness"
+  },
+  "SupAgreement": {
+    "properties": {},
+    "entity_set": "ISupAgreements"
+  },
+  "SupAgreementTracking": {
+    "properties": {},
+    "entity_set": "ISupAgreementTrackings"
+  },
+  "SupAgreementVersions": {
+    "properties": {},
+    "entity_set": "ISupAgreementVersionss"
+  },
+  "SupportAreaServiceLevelAgreement": {
+    "properties": {
+      "ConfidenceThreshold": "Порог достоверности"
+    },
+    "entity_set": "ISupportAreaServiceLevelAgreements"
+  },
+  "SupportArea": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "entity_set": "ISupportAreas"
+  },
+  "SurnameChangeNotificationTaskObservers": {
+    "properties": {},
+    "entity_set": "ISurnameChangeNotificationTaskObserverss"
+  },
+  "SurnameChangeNotificationTask": {
+    "properties": {
+      "Reason": "Причина"
+    },
+    "display_name": "Задача на уведомление о смене фамилии",
+    "entity_set": "ISurnameChangeNotificationTasks"
+  },
+  "SurnameChangeSimpleAssignment": {
+    "properties": {},
+    "entity_set": "ISurnameChangeSimpleAssignments"
+  },
+  "SurveyReport": {
+    "properties": {},
+    "display_name": "Отчет по опросу"
+  },
+  "SurveyTypeQuestionsCollection": {
+    "properties": {
+      "Number": "№",
+      "Question": "Вопрос"
+    }
+  },
+  "SurveyType": {
+    "properties": {
+      "Name": "Опросник",
+      "QuestionsCollection": "Список вопросов",
+      "Product": "Продукт"
+    },
+    "display_name": "Тип опросника",
+    "collection_name": "Типы опросника"
+  },
+  "TableBonusBonusDetails": {
+    "properties": {},
+    "entity_set": "ITableBonusBonusDetailss"
+  },
+  "TableBonus": {
+    "properties": {
+      "Plan": "План",
+      "PlanStage": "Этап плана"
+    },
+    "display_name": "Премия по табелю",
+    "collection_name": "Премии по табелю",
+    "entity_set": "ITableBonuss"
+  },
+  "TeamEmployeeParticipants": {
+    "properties": {
+      "MemberTypeSungero": "Тип участия"
+    },
+    "entity_set": "ITeamsCommonAPITeamEmployeeParticipantss"
+  },
+  "TeamOutstaffEmployeeParticipantsSungero": {
+    "properties": {
+      "Status": "Состояние",
+      "MemberType": "Тип участия",
+      "OutstaffEmployee": "Участник"
+    },
+    "entity_set": "ITeamsCommonAPITeamOutstaffEmployeeParticipantsSungeros"
+  },
+  "TeamPerformedWorksReport": {
+    "properties": {},
+    "display_name": "Сводная таблица по выполненным работам по командам"
+  },
+  "TeamPerformingDisciplineReport": {
+    "properties": {},
+    "display_name": "Выполнение заданий в срок по командам"
+  },
+  "TeamRecipientLinks": {
+    "properties": {
+      "MemberTypeSungero": "Тип участия",
+      "StatusSungero": "Состояние"
+    },
+    "entity_set": "ITeamsCommonAPITeamRecipientLinkss"
+  },
+  "Team": {
+    "properties": {
+      "EmployeeParticipants": "Сотрудники"
+    },
+    "display_name": "Производственная команда",
+    "collection_name": "Производственные команды",
+    "entity_set": "ITeamsCommonAPITeams"
+  },
+  "TechnologyDocumentOldSignedVersions": {
+    "properties": {
+      "Number": "Number"
+    },
+    "entity_set": "ICompanyServicesTechnologyDocumentOldSignedVersionss"
+  },
+  "TechnologyDocumentOld": {
+    "properties": {
+      "DocumentKind": "Вид документа",
+      "Note": "Примечание",
+      "IsSigned1": "Подписан",
+      "KasId": "ИД в ТехКАС",
+      "SignedVersions": "Подписанные версии"
+    },
+    "display_name": "Технологический документ старый",
+    "collection_name": "Технологические документы старый",
+    "entity_set": "ICompanyServicesTechnologyDocumentOlds"
+  },
+  "TechnologyDocumentOldVersions": {
+    "properties": {},
+    "entity_set": "ICompanyServicesTechnologyDocumentOldVersionss"
+  },
+  "TechnologyDocumentSignedVersions": {
+    "properties": {
+      "Number": "Номер"
+    },
+    "entity_set": "ICompanyServicesTechnologyDocumentSignedVersionss"
+  },
+  "TechnologyDocument": {
+    "properties": {},
+    "display_name": "Технологический документ",
+    "collection_name": "Технологические документы",
+    "entity_set": "ICompanyServicesTechnologyDocuments"
+  },
+  "TechnologyDocumentTracking": {
+    "properties": {},
+    "entity_set": "ICompanyServicesTechnologyDocumentTrackings"
+  },
+  "TechnologyDocumentVersions": {
+    "properties": {},
+    "entity_set": "ICompanyServicesTechnologyDocumentVersionss"
+  },
+  "TrainingGroupBase": {
+    "properties": {
+      "Name": "Имя",
+      "StartDate": "Дата начала",
+      "EndDate": "Дата окончания",
+      "City": "Город",
+      "Duration": "Длительность (ч.)",
+      "FormatForTraining": "Формат",
+      "Trainer": "Преподаватель",
+      "Note": "Примечание",
+      "LifeCycleState": "Состояние",
+      "Status": "Состояние записи"
+    },
+    "display_name": "Группа обучения (базовый)",
+    "collection_name": "Группы обучения (базовый)"
+  },
+  "TrainingGroup": {
+    "properties": {
+      "CourseBase": "Курсы",
+      "Coordinator": "Координатор",
+      "Room": "Помещение",
+      "ProductVersion": "Версия продукта",
+      "Capacity": "Вместимость",
+      "ExternalTrainerHours": "Часы внеш. препод.",
+      "VacantPlacesCount": "Свободно мест",
+      "DirectumPassword": "Пароль к Directum",
+      "LinkToWebConference": "Ссылка на вебинар",
+      "GatewayLogin": "Логин для шлюза",
+      "GatewayPassword": "Пароль для шлюза",
+      "StandLogin": "Логин для стенда",
+      "StandPassword": "Пароль для стенда",
+      "WebConferenceDateTime": "Дата и время орг. вебинара",
+      "TrainingTime": "Время обучения",
+      "LunchTime": "Время обеда",
+      "WorkingDocument": "Рабочий документ"
+    },
+    "display_name": "Группа обучения",
+    "collection_name": "Группы обучения"
+  },
+  "TrainingRequestBase": {
+    "properties": {
+      "Name": "Имя",
+      "TrainingGroup": "Группа обучения",
+      "LifeCycleState": "Статус",
+      "Department": "Подразделение",
+      "TrainingStartDate": "Дата начала обучения",
+      "Note": "Примечание",
+      "TrainingEndDate": "Дата завершения обучения",
+      "CreateDate": "Дата создания заявки",
+      "Reason": "Обоснование"
+    },
+    "display_name": "Заявка на обучение",
+    "collection_name": "Заявки на обучение"
+  },
+  "TrainingRequestProcessingTaskObservers": {
+    "properties": {},
+    "entity_set": "ITrainingTrainingRequestProcessingTaskObserverss"
+  },
+  "TrainingRequestProcessingTask": {
+    "properties": {},
+    "entity_set": "ITrainingTrainingRequestProcessingTasks"
+  },
+  "TransferLeadToPartnerAssignment": {
+    "properties": {},
+    "display_name": "Задание ответственному за передачу лида партнеру",
+    "collection_name": "Задания ответственному за передачу лида партнеру",
+    "entity_set": "ITransferLeadToPartnerAssignments"
+  },
+  "TransferLeadToSellerAcceptWorkAssignmentSellers": {
+    "properties": {},
+    "entity_set": "ICRMTransferLeadToSellerAcceptWorkAssignmentSellerss"
+  },
+  "TransferLeadToSellerAcceptWorkAssignment": {
+    "properties": {},
+    "collection_name": "Задания на приёмку работ по лиду",
+    "display_name": "Задание на приёмку работ по лиду",
+    "entity_set": "ICRMTransferLeadToSellerAcceptWorkAssignments"
+  },
+  "TransferLeadToSellerReworkAssignment": {
+    "properties": {},
+    "entity_set": "ICRMTransferLeadToSellerReworkAssignments"
+  },
+  "TransferLeadToSellerTaskObservers": {
+    "properties": {},
+    "entity_set": "ICRMTransferLeadToSellerTaskObserverss"
+  },
+  "TransferLeadToSellerTask": {
+    "properties": {},
+    "display_name": "Задача на передачу лида продавцу",
+    "collection_name": "Задачи на передачу лида продавцу",
+    "entity_set": "ICRMTransferLeadToSellerTasks"
+  },
+  "TransferPartnerLeadTaskObservers": {
+    "properties": {},
+    "entity_set": "ITransferPartnerLeadTaskObserverss"
+  },
+  "TransferPartnerLeadTask": {
+    "properties": {
+      "InWork": "Взял в работу",
+      "Performer": "Ответственный",
+      "Team": "Команда",
+      "IsPartnerAnswered": "Ответил ли партнер"
+    },
+    "display_name": "Задача по передаче лида партнеру",
+    "collection_name": "Задачи по передаче лида партнеру",
+    "entity_set": "ITransferPartnerLeadTasks"
+  },
+  "UnitRecipientLinks": {
+    "properties": {},
+    "entity_set": "IUnitRecipientLinkss"
+  },
+  "Unit": {
+    "properties": {},
+    "entity_set": "IUnits"
+  },
+  "UniversalTransferDocument": {
+    "properties": {},
+    "entity_set": "IUniversalTransferDocuments"
+  },
+  "UniversalTransferDocumentTracking": {
+    "properties": {},
+    "entity_set": "IUniversalTransferDocumentTrackings"
+  },
+  "UniversalTransferDocumentVersions": {
+    "properties": {},
+    "entity_set": "IUniversalTransferDocumentVersionss"
+  },
+  "VacancyClosingMethod": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "entity_set": "IHRVacancyClosingMethods"
+  },
+  "Vacancy": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "display_name": "Вакансия",
+    "collection_name": "Вакансии",
+    "entity_set": "IHRVacancies"
+  },
+  "VacationApprovalAssignment": {
+    "properties": {
+      "Substitutive": "Замещающий",
+      "ApprovalHint": "Инструкция",
+      "AbsenceKasId": "ИД"
+    },
+    "display_name": "Задание на согласование отпуска",
+    "collection_name": "Задания на согласование отпуска",
+    "entity_set": "IVacationApprovalAssignments"
+  },
+  "VacationApprovalTaskAbsenceNotify": {
+    "properties": {
+      "AbsenceEmployee": "Сотрудник"
+    },
+    "entity_set": "IHRVacationApprovalTaskAbsenceNotifies"
+  },
+  "VacationApprovalTaskObservers": {
+    "properties": {},
+    "entity_set": "IVacationApprovalTaskObserverss"
+  },
+  "VacationApprovalTask": {
+    "properties": {
+      "VacationBegin": "C",
+      "VacationEnd": "По",
+      "WithoutSalary": "Без сохранения з/п",
+      "Substitutive": "Замещающий",
+      "NoteSubstitution": "Примечание",
+      "Employee": "Сотрудник",
+      "AbsenceNotify": "Уведомить",
+      "VacactionInstruction": "Инструкция",
+      "OrderSent": "Приказ отправлен"
+    },
+    "display_name": "Задача на согласование отпуска",
+    "collection_name": "Задачи на согласование отпусков",
+    "entity_set": "IVacationApprovalTasks"
+  },
+  "VacationCorrectionApprovalAssignment": {
+    "properties": {
+      "ApprovalHint": "Инструкция"
+    },
+    "display_name": "Задание на согласование корректировки отпуска",
+    "collection_name": "Задания на согласование корректировки отпусков",
+    "entity_set": "IVacationCorrectionApprovalAssignments"
+  },
+  "VacationCorrectionApprovalStartAssignment": {
+    "properties": {},
+    "entity_set": "IVacationCorrectionApprovalStartAssignments"
+  },
+  "VacationCorrectionOrderReport": {
+    "properties": {},
+    "display_name": "Приказ на перенос отпуска"
+  },
+  "VacationCorrectionReworkAssignment": {
+    "properties": {
+      "NewVacationBegin": "С",
+      "NewVacationEnd": "По",
+      "ModifyVacation": "Изменить длительность отпуска",
+      "NewVacationBegin1": "С",
+      "NewVacationEnd1": "По"
+    },
+    "display_name": "Задание на доработку корректировки отпуска",
+    "collection_name": "Задания на доработку корректировки отпуска",
+    "entity_set": "IVacationCorrectionReworkAssignments"
+  },
+  "VacationCorrectionSignStatementAssignment": {
+    "properties": {},
+    "display_name": "Задание на подписание заявления на перенос отпуска",
+    "entity_set": "IHRVacationCorrectionSignStatementAssignments"
+  },
+  "VacationCorrectionSimpleAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задание по корректировке отпуска",
+    "collection_name": "Задания по корректировке отпуска",
+    "entity_set": "IVacationCorrectionSimpleAssignments"
+  },
+  "VacationCorrectionStatementReport": {
+    "properties": {},
+    "display_name": "Заявление на перенос отпуска"
+  },
+  "VacationCorrectionTaskObservers": {
+    "properties": {},
+    "entity_set": "IVacationCorrectionTaskObserverss"
+  },
+  "VacationCorrectionTask": {
+    "properties": {
+      "OldVacationBegin": "С",
+      "OldVacationEnd": "По",
+      "NewVacationBegin": "С",
+      "NewVacationEnd": "По",
+      "VacationStage": "Отпуск",
+      "ModifyVacation": "Изменить длительность отпуска",
+      "CloseVacation": "Закрыть отпуск",
+      "NewVacationBegin1": "С",
+      "NewVacationEnd1": "По"
+    },
+    "display_name": "Задача на корректировку отпуска",
+    "collection_name": "Задачи на корректировки отпусков",
+    "entity_set": "IVacationCorrectionTasks"
+  },
+  "VacationNotificationReport": {
+    "properties": {},
+    "display_name": "Уведомление о начале отпуска"
+  },
+  "VacationNotificationTask": {
+    "properties": {
+      "Deadline": "Срок"
+    },
+    "display_name": "Задача на подписание уведомления об отпуске",
+    "collection_name": "Задачи на подписание уведомления об отпуске"
+  },
+  "VacationNotifySimpleAssignment": {
+    "properties": {},
+    "display_name": "Задание по отпуску",
+    "collection_name": "Задания по отпуску"
+  },
+  "VacationPlanApprovalAssignment": {
+    "properties": {
+      "CurrentPerformer": "Текущий исполнитель"
+    },
+    "entity_set": "IVacationPlanApprovalAssignments"
+  },
+  "VacationPlanApprovalAssignmentVacations": {
+    "properties": {},
+    "entity_set": "IVacationPlanApprovalAssignmentVacationss"
+  },
+  "VacationPlanningAssignment": {
+    "properties": {
+      "Vacations": "Отпуска"
+    },
+    "entity_set": "IVacationPlanningAssignments"
+  },
+  "VacationPlanningAssignmentVacations": {
+    "properties": {},
+    "entity_set": "IVacationPlanningAssignmentVacationss"
+  },
+  "VacationPlanningNotice": {
+    "properties": {},
+    "entity_set": "IVacationPlanningNotices"
+  },
+  "VacationPlanningSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IVacationPlanningSimpleAssignments"
+  },
+  "VacationPlanningTaskEmployees": {
+    "properties": {},
+    "entity_set": "IVacationPlanningTaskEmployeess"
+  },
+  "VacationPlanningTaskObservers": {
+    "properties": {},
+    "entity_set": "IVacationPlanningTaskObserverss"
+  },
+  "VacationPlanningTask": {
+    "properties": {},
+    "entity_set": "IVacationPlanningTasks"
+  },
+  "VacationReworkAssignmentAbsenceNotify": {
+    "properties": {},
+    "entity_set": "IHRVacationReworkAssignmentAbsenceNotifies"
+  },
+  "VacationReworkAssignment": {
+    "properties": {
+      "VacationBegin": "С",
+      "VacationEnd": "По",
+      "WithoutSalary": "Без сохранения з/п",
+      "Substitutive": "Замещающий"
+    },
+    "display_name": "Задание на оформление отпуска",
+    "collection_name": "Задания на оформление отпуска",
+    "entity_set": "IVacationReworkAssignments"
+  },
+  "VacationShedulePlanningTaskObservers": {
+    "properties": {},
+    "entity_set": "IVacationShedulePlanningTaskObserverss"
+  },
+  "VacationShedulePlanningTask": {
+    "properties": {},
+    "entity_set": "IVacationShedulePlanningTasks"
+  },
+  "VacationSheduleSimpleAssignment": {
+    "properties": {},
+    "entity_set": "IVacationSheduleSimpleAssignments"
+  },
+  "VacationSickLeaveOrderReport": {
+    "properties": {},
+    "display_name": "Приказ на перенос отпуска"
+  },
+  "VacationSignStatementAssignment": {
+    "properties": {},
+    "display_name": "Задание на подписание заявления на отпуск",
+    "entity_set": "IHRVacationSignStatementAssignments"
+  },
+  "VacationSimpleAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "display_name": "Задание по отпуску",
+    "collection_name": "Задания по отпуску",
+    "entity_set": "IVacationSimpleAssignments"
+  },
+  "VacationStatementReport": {
+    "properties": {},
+    "display_name": "Заявление на отпуск"
+  },
+  "Vacation": {
+    "properties": {
+      "Name": "Имя"
+    },
+    "entity_set": "IVacations"
+  },
+  "VacationWithoutSalaryReport": {
+    "properties": {},
+    "display_name": "Заявление на отгул за недоработку нормы часов"
+  },
+  "VacationWithoutSalarySimpleAssignment": {
+    "properties": {
+      "Instruction": "Инструкция"
+    },
+    "entity_set": "IVacationWithoutSalarySimpleAssignments"
+  },
+  "VerificationAssignment": {
+    "properties": {},
+    "entity_set": "IVerificationAssignments"
+  },
+  "VerificationTaskObservers": {
+    "properties": {},
+    "entity_set": "IVerificationTaskObserverss"
+  },
+  "VerificationTask": {
+    "properties": {},
+    "entity_set": "IVerificationTasks"
+  },
+  "Waybill": {
+    "properties": {},
+    "entity_set": "IWaybills"
+  },
+  "WaybillTracking": {
+    "properties": {},
+    "entity_set": "IWaybillTrackings"
+  },
+  "WaybillVersions": {
+    "properties": {},
+    "entity_set": "IWaybillVersionss"
+  },
+  "WorkRuleMethodologies": {
+    "properties": {},
+    "entity_set": "ITargetsWorkRuleMethodologiess"
+  },
+  "WorkRuleRecipients": {
+    "properties": {},
+    "entity_set": "ITargetsWorkRuleRecipientss"
+  },
+  "WorkRule": {
+    "properties": {},
+    "entity_set": "ITargetsWorkRules"
+  },
+  "WorkingDocumentReport": {
+    "properties": {},
+    "display_name": "Рабочий документ"
+  },
+  "WorkplaceAssignment": {
+    "properties": {},
+    "entity_set": "IWorkplaceAssignments"
+  }
+}
