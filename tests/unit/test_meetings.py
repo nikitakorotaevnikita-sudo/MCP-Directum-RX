@@ -219,6 +219,8 @@ def test_get_action_item_details_returns_detail():
     call_type, entity_path = client.calls[0]
     assert call_type == "get_one"
     assert "42" in entity_path
+    assert "Assignee" in entity_path
+    assert "Performer(" not in entity_path
 
 
 def test_get_action_item_details_raises_on_404():
@@ -240,6 +242,31 @@ def test_get_action_item_details_performer_no_job_title():
 
     result = service.get_action_item_details(42)
     assert result.performer == "Иванова М.П."
+
+
+def test_get_action_item_details_maps_live_directum_fields():
+    row = {
+        "Id": 332,
+        "Subject": "Поручение: согласовать финансы",
+        "Status": "InProcess",
+        "Deadline": "2026-06-01T00:00:00+04:00",
+        "Created": "2024-06-18T15:01:16+04:00",
+        "ActionItem": "Рассчитать и согласовать требуемые финансы",
+        "PerformersGD": "Ардо Н.А.; ",
+        "Author": {"Id": 1165, "Name": "Петров А.С."},
+        "AssignedBy": {"Id": 1165, "Name": "Петров А.С."},
+        "Assignee": {"Id": 75, "Name": "Ардо Наталья Алексеевна"},
+    }
+    client = FakeGetOneClient(data=row)
+    service = MeetingsService(client=client, current_user_service=FakeCurrentUser())
+
+    result = service.get_action_item_details(332)
+
+    assert result.id == 332
+    assert result.text == "Рассчитать и согласовать требуемые финансы"
+    assert result.performer == "Ардо Наталья Алексеевна"
+    assert result.author == "Петров А.С."
+    assert result.deadline == date(2026, 6, 1)
 
 
 def test_get_action_item_details_raises_when_not_author():

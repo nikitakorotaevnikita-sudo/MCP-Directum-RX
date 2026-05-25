@@ -85,18 +85,8 @@ class MeetingsService:
         return str(value) if value is not None else ""
 
     def get_action_item_details(self, action_item_id: int) -> ActionItemDetail:
-        expand = (
-            "Performer($select=Id,Name,JobTitle),"
-            "Author($select=Id,Name),"
-            "ActionItemExecutionAssignments($select=Status,DeadLine,Note,ActualExecutionDate)"
-        )
-        entity_path = (
-            f"IActionItemExecutionTasks({action_item_id})"
-            f"?$expand={expand}"
-            f"&$select=Id,Subject,Text,Status,DeadLine,Created"
-        )
         try:
-            row = self.client.get_one(entity_path)
+            row = self._query_action_item_details(action_item_id)
         except DirectumError as exc:
             if exc.status_code == 404:
                 raise DirectumError(
@@ -105,7 +95,7 @@ class MeetingsService:
                 ) from exc
             raise
         current_user = self.current_user_service.get_current_user()
-        author_id = (row.get("Author") or {}).get("Id")
+        author_id = self._person_id(row, "Author", "AssignedBy")
         if author_id != current_user.id:
             raise DirectumError(
                 "Поручение найдено, но вы не являетесь его автором.",
@@ -113,17 +103,51 @@ class MeetingsService:
             )
         return self._to_action_item_detail(row)
 
+    def _query_action_item_details(self, action_item_id: int) -> dict[str, Any]:
+        live_expand = (
+            "Author($select=Id,Name),"
+            "AssignedBy($select=Id,Name),"
+            "Assignee($select=Id,Name),"
+            "Supervisor($select=Id,Name)"
+        )
+        live_select = (
+            "Id,Subject,Status,Deadline,Created,ActionItem,PerformersGD,"
+            "Report,ReportNote,ExecutionState"
+        )
+        legacy_expand = (
+            "Performer($select=Id,Name,JobTitle),"
+            "Author($select=Id,Name),"
+            "ActionItemExecutionAssignments($select=Status,DeadLine,Note,ActualExecutionDate)"
+        )
+        legacy_select = "Id,Subject,Text,Status,DeadLine,Created"
+        last_error: DirectumError | None = None
+        for expand, select in ((live_expand, live_select), (legacy_expand, legacy_select)):
+            entity_path = (
+                f"IActionItemExecutionTasks({action_item_id})"
+                f"?$expand={expand}"
+                f"&$select={select}"
+            )
+            try:
+                return self.client.get_one(entity_path)
+            except DirectumError as exc:
+                if exc.status_code != 400:
+                    raise
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        return {}
+
     def _to_action_item_detail(self, row: dict[str, Any]) -> ActionItemDetail:
         item_id = int(row["Id"])
         entity_path = f"IActionItemExecutionTasks({item_id})"
         card_url = self.client.build_client_card_url(entity_path) or ""
-        performer_info = row.get("Performer") or {}
-        performer_name = performer_info.get("Name") or ""
-        job_title = performer_info.get("JobTitle") or ""
+        performer_info = row.get("Assignee") or row.get("Performer") or {}
+        performer_name = performer_info.get("Name") or row.get("PerformersGD") or ""
+        job_title = self._person_job_title(performer_info)
         performer = f"{performer_name} ({job_title})" if job_title else performer_name
-        author_info = row.get("Author") or {}
+        author_info = row.get("Author") or row.get("AssignedBy") or {}
         author = author_info.get("Name") or ""
-        deadline_raw = row.get("DeadLine")
+        deadline_raw = self._first_value(row, "Deadline", "DeadLine", "FinalDeadline", "MaxDeadline")
         deadline = None
         if deadline_raw:
             try:
@@ -144,7 +168,7 @@ class MeetingsService:
         return ActionItemDetail(
             id=item_id,
             subject=row.get("Subject") or "",
-            text=row.get("Text") or None,
+            text=self._first_text(row, "ActionItem", "Text", "Report", "ReportNote") or None,
             performer=performer,
             author=author,
             deadline=deadline,
@@ -153,3 +177,18 @@ class MeetingsService:
             client_card_url=card_url,
             narrative="",
         )
+
+    def _person_id(self, row: dict[str, Any], *keys: str) -> int | None:
+        for key in keys:
+            person = row.get(key)
+            if isinstance(person, dict):
+                person_id = person.get("Id")
+                if isinstance(person_id, int):
+                    return person_id
+        return None
+
+    def _person_job_title(self, person: dict[str, Any]) -> str:
+        job_title = person.get("JobTitle") or ""
+        if isinstance(job_title, dict):
+            return str(job_title.get("Name") or "")
+        return str(job_title) if job_title else ""
