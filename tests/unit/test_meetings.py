@@ -1,5 +1,6 @@
 from datetime import date, datetime, timezone
-from src.models.schemas import ActionItemDetail, MeetingSummary
+from src.models.schemas import ActionItemDetail, DirectumUser, MeetingSummary
+from src.services.meetings import MeetingsService
 
 
 def test_meeting_summary_fields():
@@ -44,3 +45,123 @@ def test_action_item_detail_fields():
     )
     assert d.id == 42
     assert d.narrative == ""
+
+
+# ---------------------------------------------------------------------------
+# Task 3: MeetingsService.get_my_meetings
+# ---------------------------------------------------------------------------
+
+
+class FakeMeetingsClient:
+    def __init__(self, rows=None):
+        self.calls = []
+        self._rows = rows or []
+
+    def query(self, entity_set, **kwargs):
+        self.calls.append((entity_set, kwargs))
+        return self._rows
+
+    def build_client_card_url(self, entity_path):
+        eid = entity_path.split("(")[1].rstrip(")")
+        return f"https://rx.example/Client/#/card/meeting-guid/{eid}"
+
+
+class FakeCurrentUser:
+    def get_current_user(self):
+        return DirectumUser(id=1165, name="Test User", login="nt_work\\user")
+
+
+def test_get_my_meetings_returns_empty_list_when_no_rows():
+    service = MeetingsService(
+        client=FakeMeetingsClient(rows=[]),
+        current_user_service=FakeCurrentUser(),
+    )
+    result = service.get_my_meetings()
+    assert result == []
+
+
+def test_get_my_meetings_filters_by_date_and_member():
+    rows = [
+        {
+            "Id": 10,
+            "Subject": "Планёрка",
+            "StartDate": "2026-05-27T10:00:00Z",
+            "EndDate": "2026-05-27T11:00:00Z",
+            "Place": "Зал 1",
+            "Minutes": [],
+        }
+    ]
+    client = FakeMeetingsClient(rows=rows)
+    service = MeetingsService(client=client, current_user_service=FakeCurrentUser())
+
+    result = service.get_my_meetings(days=7)
+
+    assert len(result) == 1
+    m = result[0]
+    assert m.id == 10
+    assert m.subject == "Планёрка"
+    assert m.place == "Зал 1"
+    assert m.client_card_url == "https://rx.example/Client/#/card/meeting-guid/10"
+
+    entity_set, kwargs = client.calls[0]
+    assert entity_set == "IMeetings"
+    assert "Members/any" in kwargs["filter_"]
+    assert "1165" in kwargs["filter_"]
+
+
+def test_get_my_meetings_agenda_from_minutes():
+    rows = [
+        {
+            "Id": 11,
+            "Subject": "Тема совещания",
+            "StartDate": "2026-05-28T14:00:00Z",
+            "EndDate": None,
+            "Place": None,
+            "Minutes": [{"Description": "Обсуждение итогов квартала", "Subject": "Протокол"}],
+        }
+    ]
+    service = MeetingsService(
+        client=FakeMeetingsClient(rows=rows),
+        current_user_service=FakeCurrentUser(),
+    )
+    result = service.get_my_meetings()
+    assert result[0].agenda_summary == "Обсуждение итогов квартала"
+
+
+def test_get_my_meetings_agenda_falls_back_to_subject_when_no_minutes():
+    rows = [
+        {
+            "Id": 12,
+            "Subject": "Совещание по ЭДО",
+            "StartDate": "2026-05-28T14:00:00Z",
+            "EndDate": None,
+            "Place": None,
+            "Minutes": [],
+        }
+    ]
+    service = MeetingsService(
+        client=FakeMeetingsClient(rows=rows),
+        current_user_service=FakeCurrentUser(),
+    )
+    result = service.get_my_meetings()
+    assert result[0].agenda_summary == "Совещание по ЭДО"
+
+
+def test_get_my_meetings_agenda_truncated_to_200_chars():
+    long_description = "А" * 300
+    rows = [
+        {
+            "Id": 13,
+            "Subject": "Тема",
+            "StartDate": "2026-05-27T10:00:00Z",
+            "EndDate": None,
+            "Place": None,
+            "Minutes": [{"Description": long_description, "Subject": ""}],
+        }
+    ]
+    service = MeetingsService(
+        client=FakeMeetingsClient(rows=rows),
+        current_user_service=FakeCurrentUser(),
+    )
+    result = service.get_my_meetings()
+    assert len(result[0].agenda_summary) <= 200
