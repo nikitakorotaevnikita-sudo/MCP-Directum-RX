@@ -1,9 +1,14 @@
+import pytest
+from datetime import datetime, date, timezone
+
 from src.models.schemas import (
     ActionItemCreateRequest,
     ActionItemCreateResult,
+    ActionItemDetail,
     AssignmentSummary,
     DirectumUser,
     EmployeeSummary,
+    MeetingSummary,
     TaskCreateRequest,
 )
 from src.services.tool_registry import ToolRegistry
@@ -51,8 +56,40 @@ class FakeActionItems:
         return {"mode": "preview", "payload": request.model_dump(), "success": True}
 
 
+class FakeMeetingsService:
+    def get_my_meetings(self, days=7):
+        return [
+            MeetingSummary(
+                id=5,
+                subject="Планёрка",
+                start_date=datetime(2026, 5, 27, 10, 0, tzinfo=timezone.utc),
+                client_card_url="https://rx.example/Client/#/card/x/5",
+            )
+        ]
+
+    def get_action_item_details(self, action_item_id):
+        return ActionItemDetail(
+            id=action_item_id,
+            subject="Подготовить записку",
+            performer="Иванова М.П.",
+            author="Петров А.С.",
+            status="InProcess",
+            created_date=date(2026, 5, 20),
+            client_card_url="https://rx.example/Client/#/card/x/42",
+        )
+
+
+def make_registry_with_meetings():
+    return ToolRegistry(
+        FakeCurrentUser(),
+        FakeAssignments(),
+        FakeActionItems(),
+        FakeMeetingsService(),
+    )
+
+
 def test_tool_registry_lists_core_tools():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     names = [tool["function"]["name"] for tool in registry.openai_tools()]
 
@@ -63,7 +100,7 @@ def test_tool_registry_lists_core_tools():
 
 
 def test_tool_registry_dispatches_assignment_tool():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     result = registry.call("get_my_assignments", {})
 
@@ -71,7 +108,7 @@ def test_tool_registry_dispatches_assignment_tool():
 
 
 def test_tool_registry_create_action_item_schema_does_not_expose_confirm():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     create_tool = next(tool for tool in registry.openai_tools() if tool["function"]["name"] == "create_action_item")
 
@@ -79,7 +116,7 @@ def test_tool_registry_create_action_item_schema_does_not_expose_confirm():
 
 
 def test_tool_registry_describes_russian_create_tool_split():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     tools = {tool["function"]["name"]: tool["function"]["description"] for tool in registry.openai_tools()}
 
@@ -91,7 +128,7 @@ def test_tool_registry_describes_russian_create_tool_split():
 
 def test_tool_registry_create_action_item_forces_preview_mode():
     action_items = FakeActionItems()
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
 
     result = registry.call(
         "create_action_item",
@@ -108,7 +145,7 @@ def test_tool_registry_create_action_item_forces_preview_mode():
 
 
 def test_tool_registry_rejects_vague_model_generated_create_payload():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     try:
         registry.call(
@@ -137,7 +174,7 @@ def test_tool_registry_adds_confirmation_payload_to_pydantic_preview_result():
             )
 
     action_items = PydanticPreviewActionItems()
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
 
     result = registry.call(
         "create_action_item",
@@ -161,7 +198,7 @@ def test_tool_registry_adds_confirmation_payload_to_pydantic_preview_result():
 
 def test_tool_registry_normalizes_short_deadline_before_validation():
     action_items = FakeActionItems()
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
 
     registry.call(
         "create_action_item",
@@ -178,7 +215,7 @@ def test_tool_registry_normalizes_short_deadline_before_validation():
 
 def test_tool_registry_adds_timezone_to_naive_iso_deadline_before_payload():
     action_items = FakeActionItems()
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
 
     registry.call(
         "create_action_item",
@@ -195,7 +232,7 @@ def test_tool_registry_adds_timezone_to_naive_iso_deadline_before_payload():
 
 def test_tool_registry_normalizes_model_style_create_action_item_arguments():
     action_items = FakeActionItems()
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
 
     registry.call(
         "create_action_item",
@@ -221,7 +258,7 @@ def test_tool_registry_normalizes_model_style_create_action_item_arguments():
 
 
 def test_tool_registry_rejects_direct_create_confirmation():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     try:
         registry.call(
@@ -240,7 +277,7 @@ def test_tool_registry_rejects_direct_create_confirmation():
 
 
 def test_tool_registry_rejects_unknown_tool_with_value_error():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     try:
         registry.call("missing_tool", {})
@@ -251,7 +288,7 @@ def test_tool_registry_rejects_unknown_tool_with_value_error():
 
 
 def test_tool_registry_rejects_missing_required_argument():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     try:
         registry.call("search_employee", {})
@@ -262,7 +299,7 @@ def test_tool_registry_rejects_missing_required_argument():
 
 
 def test_tool_registry_wraps_invalid_create_action_item_arguments():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     try:
         registry.call(
@@ -282,7 +319,7 @@ def test_tool_registry_wraps_invalid_create_action_item_arguments():
 
 
 def test_tool_registry_rejects_non_object_arguments():
-    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
 
     try:
         registry.call("get_current_user", [])
@@ -290,3 +327,35 @@ def test_tool_registry_rejects_non_object_arguments():
         assert str(exc) == "Tool 'get_current_user' arguments must be an object"
     else:
         raise AssertionError("non-object arguments were accepted")
+
+
+def test_registry_has_get_my_meetings_tool():
+    registry = make_registry_with_meetings()
+    names = [t["function"]["name"] for t in registry.openai_tools()]
+    assert "get_my_meetings" in names
+
+
+def test_registry_has_get_action_item_details_tool():
+    registry = make_registry_with_meetings()
+    names = [t["function"]["name"] for t in registry.openai_tools()]
+    assert "get_action_item_details" in names
+
+
+def test_get_my_meetings_tool_call_returns_list():
+    registry = make_registry_with_meetings()
+    result = registry.call("get_my_meetings", {})
+    assert isinstance(result, list)
+    assert result[0]["id"] == 5
+
+
+def test_get_action_item_details_tool_call_returns_detail():
+    registry = make_registry_with_meetings()
+    result = registry.call("get_action_item_details", {"action_item_id": 42})
+    assert result["id"] == 42
+    assert result["subject"] == "Подготовить записку"
+
+
+def test_get_action_item_details_missing_id_raises():
+    registry = make_registry_with_meetings()
+    with pytest.raises(ValueError, match="missing required argument"):
+        registry.call("get_action_item_details", {})

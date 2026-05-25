@@ -8,6 +8,7 @@ from src.models.schemas import ActionItemCreateRequest, TaskCreateRequest
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
+from src.services.meetings import MeetingsService
 
 
 class ToolRegistry:
@@ -16,10 +17,12 @@ class ToolRegistry:
         current_user_service: CurrentUserService,
         assignments_service: AssignmentsService,
         action_item_service: ActionItemService,
+        meetings_service: MeetingsService,
     ):
         self.current_user_service = current_user_service
         self.assignments_service = assignments_service
         self.action_item_service = action_item_service
+        self.meetings_service = meetings_service
         self._handlers: dict[str, Callable[[dict[str, Any]], Any]] = {
             "get_current_user": lambda args: self.current_user_service.get_current_user(),
             "get_my_assignments": lambda args: self.assignments_service.get_my_assignments(),
@@ -32,12 +35,19 @@ class ToolRegistry:
             "search_documents": lambda args: self.action_item_service.search_documents(args.get("query", "")),
             "create_action_item": self._create_action_item,
             "create_task": self._create_task,
+            "get_my_meetings": lambda args: self.meetings_service.get_my_meetings(
+                days=int(args.get("days", 7))
+            ),
+            "get_action_item_details": lambda args: self.meetings_service.get_action_item_details(
+                int(args["action_item_id"])
+            ),
         }
         self._required_arguments: dict[str, list[str]] = {
             "search_employee": ["query"],
             "search_documents": ["query"],
             "create_action_item": ["subject", "performer_id", "action_text"],
             "create_task": ["subject", "performer_id", "action_text"],
+            "get_action_item_details": ["action_item_id"],
         }
 
     def openai_tools(self) -> list[dict[str, Any]]:
@@ -89,6 +99,17 @@ class ToolRegistry:
                     "deadline": {"type": "string"},
                 },
                 required=["subject", "performer_id", "action_text"],
+            ),
+            self._tool(
+                "get_my_meetings",
+                "Get the current user's upcoming meetings from Directum RX. Use for Russian requests containing 'совещания', 'встречи', 'заседания'.",
+                {"days": {"type": "integer", "description": "Number of days ahead (default 7)"}},
+            ),
+            self._tool(
+                "get_action_item_details",
+                "Get detailed info about a specific action item (поручение) by ID, for generating a report.",
+                {"action_item_id": {"type": "integer", "description": "Action item ID"}},
+                required=["action_item_id"],
             ),
         ]
 

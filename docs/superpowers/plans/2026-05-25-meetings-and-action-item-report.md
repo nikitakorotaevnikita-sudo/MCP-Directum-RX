@@ -602,13 +602,13 @@ git commit -m "feat: add MeetingsService.get_action_item_details"
 
 ---
 
-## Task 5: Register new tools in ToolRegistry
+## ✅ Task 5 COMPLETED: Register new tools in ToolRegistry
 
 **Files:**
 - Modify: `src/services/tool_registry.py`
 - Modify: `tests/unit/test_tool_registry.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add to `tests/unit/test_tool_registry.py`. First find the existing fake setup (there's likely a `FakeAssignmentsService`, etc.). Add tests:
 
@@ -673,14 +673,14 @@ def test_get_action_item_details_missing_id_raises(registry_with_meetings):
 
 Note: `registry_with_meetings` is a pytest fixture you'll add in the same file. Check the existing test file for the existing `registry` fixture and follow the same pattern — just add `meetings_service` parameter.
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_tool_registry.py -v -k "meetings or action_item_details"
 ```
 Expected: FAIL — fixture not found or tool not registered.
 
-- [ ] **Step 3: Update ToolRegistry to accept MeetingsService**
+- [x] **Step 3: Update ToolRegistry to accept MeetingsService**
 
 In `src/services/tool_registry.py`:
 
@@ -734,7 +734,7 @@ self._tool(
 ),
 ```
 
-- [ ] **Step 4: Add fixture to test file**
+- [x] **Step 4: Add fixture to test file**
 
 In `tests/unit/test_tool_registry.py`, find the existing fixture (likely named `registry`) and add a new one:
 
@@ -751,21 +751,21 @@ def registry_with_meetings(registry):
 
 Read the existing test file to see the exact fixture shape, then write `registry_with_meetings` following the same pattern but passing `meetings_service=FakeMeetingsService()`.
 
-- [ ] **Step 5: Run tests to confirm they pass**
+- [x] **Step 5: Run tests to confirm they pass**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_tool_registry.py -v -k "meetings or action_item_details"
 ```
 Expected: 5 PASSED.
 
-- [ ] **Step 6: Run full unit tests to check no regressions**
+- [x] **Step 6: Run full unit tests to check no regressions**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/ -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```
 git add src/services/tool_registry.py tests/unit/test_tool_registry.py
