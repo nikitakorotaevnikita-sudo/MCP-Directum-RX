@@ -1396,16 +1396,16 @@ git commit -m "feat: add clickable report links in action item analytics"
 
 ---
 
-## Task 11: Final verification
+## ✅ Task 11 COMPLETED: Final verification
 
-- [ ] **Step 1: Run full test suite**
+- [x] **Step 1: Run full test suite**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/ -v --cov=src --cov-report=term-missing
 ```
 Expected: all PASSED, coverage ≥70%.
 
-- [ ] **Step 2: Start the server and smoke-test manually**
+- [x] **Step 2: Start the server and smoke-test manually**
 
 ```
 .\launch.bat
@@ -1418,7 +1418,7 @@ Verify:
 3. Type "аналитика исходящих поручений" → each item has a 📋 icon
 4. Click 📋 icon → should trigger "отчёт поручение #ID" in chat → should show report card
 
-- [ ] **Step 3: Commit if any last-minute fixes were needed**
+- [x] **Step 3: Commit if any last-minute fixes were needed**
 
 ```
 git add -A
