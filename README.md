@@ -4,9 +4,24 @@
 
 ## Статус проекта
 
-**Работает:** просмотр заданий, просроченных заданий, поручений, поиск сотрудников, preview карточки с подтверждением, рендеринг Markdown в чате.
+**Работает:**
+- Просмотр заданий, просроченных заданий, поручений (входящих и исходящих)
+- Поиск сотрудников и документов (с fuzzy-fallback по токенам)
+- Preview-карточки с подтверждением перед созданием
+- Рендеринг Markdown в чате
+- Аналитика исходящих поручений по категориям (в работе / срок подходит / просроченные)
+- Кликабельные ссылки на карточки Directum в результатах
+- Автокоррекция текста поручения через LLM (повелительное наклонение, отглагольная тема)
+- Контекстный диалог: разрешение местоимений («для неё», «ей»), повтор предыдущего исполнителя
+- Создание через свободный текст с LLM-извлечением параметров
 
-**Заблокировано:** создание поручений/задач в Directum — API возвращает 400 с ошибкой `Не указан обязательный параметр "Кем"`. Требуется установка автора через OData navigation property.
+**Требует проверки:**
+- Создание поручений и задач в Directum — endpoint сменён на `RecordManagement/CreateActionItemExecution` и `Docflow/CreateSimpleTask`, но результат не верифицирован на реальной инсталляции Directum RX
+
+**Не реализовано:**
+- Прикрепление документа к поручению через UI (требует `document_id`)
+- Управление наблюдателями и соисполнителями
+- Отзыв/завершение поручений и задач через чат
 
 ## Возможности
 
@@ -14,6 +29,9 @@
 - Отправка сообщений на русском языке в чат
 - Ответы LLM с рендерингом Markdown (жирный, курсив, заголовки, списки, код, блок-цитаты, ссылки)
 - Потоковая передача ответов (StreamingResponse)
+- Быстрые команды без обращения к LLM: «мои задания», «просроченные», «назначенные мне», «созданные мной»
+- Аналитика исходящих поручений по категориям (в работе / срок подходит / просроченные) — фраза «аналитика исходящих поручений»
+- Контекстный диалог: местоимения («для неё», «ей»), повтор исполнителя и текста из предыдущего сообщения
 
 ### Preview карточки
 - Перед созданием поручения/задачи отображается preview-карточка
@@ -30,7 +48,7 @@
 
 ### Поиск сотрудников и документов
 - `search_employee` — поиск по IEmployees (автоматически пробует сокращённые токены)
-- `search_documents` — поиск по IOfficialDocuments
+- `search_documents` — поиск по IOfficialDocuments с fuzzy-fallback, стемминг суффиксов, расшифровка аббревиатур (МЦ → Минцифр)
 
 ### Backoffice (метрики)
 - Статистика чата: запросы, preview/confirmed, ошибки
@@ -39,36 +57,35 @@
 
 ## Архитектура
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Браузер                              │
-│  ┌──────────────┐   ┌──────────────────────────────┐   │
-│  │  Sidebar     │   │         Chat UI               │   │
-│  │  (Directum)   │   │  (Markdown + Preview cards)   │   │
-│  └──────┬───────┘   └──────────────┬───────────────┘   │
-│         │                          │                   │
-│         │    fetch /api/*           │ fetch /api/chat   │
-│         │                          │                   │
-└─────────┼──────────────────────────┼───────────────────┘
-          │                          │
-          ▼                          ▼
-┌─────────────────────┐   ┌─────────────────────────────────┐
-│  FastAPI (main.py)  │   │     LLMService (stream_chat)    │
-│                     │   │                                 │
-│  /api/directum/*    │   │  ┌─────────────────────────┐   │
-│  /api/diagnostics/* │   │  │   ToolRegistry          │   │
-│  /api/metrics       │   │  │   openai_tools()        │   │
-│  /backoffice        │   │  └──────────┬──────────────┘   │
-└─────────┬───────────┘   └────────────┼───────────────────┘
-          │                            │
-          ▼                            ▼
-┌─────────────────────┐   ┌─────────────────────────────────┐
-│  DirectumClient     │   │   OpenAI-compatible client      │
-│  (OData API)        │   │   (Ollama / OpenRouter / Groq)  │
-│                     │   └─────────────────────────────────┘
-│  GET /IAssignments                         │
-│  POST /IActionItemExecutionTasks
-└─────────────────────┘
+```mermaid
+graph TD
+    subgraph Browser["🌐 Браузер"]
+        SB["Sidebar\nзадания / поручения / аналитика"]
+        CH["Chat UI\nMarkdown · Preview cards · SSE"]
+    end
+
+    subgraph Backend["⚙️ FastAPI — main.py"]
+        API["Endpoints\n/api/directum/* · /api/chat\n/api/metrics · /backoffice"]
+        LLM["LLMService\nstreaming · tool calling · аналитика"]
+        TOOLS["ToolRegistry\n9 инструментов"]
+        DC["DirectumClient\nOData HTTP-клиент"]
+        DB["MetricsStorage\nSQLite"]
+    end
+
+    subgraph External["☁️ Внешние сервисы"]
+        LLMAPI["LLM\nOllama · OpenRouter · Groq"]
+        DRXAPI["Directum RX\nOData API"]
+    end
+
+    SB -->|"fetch /api/directum/*"| API
+    CH -->|"fetch /api/chat"| API
+    API --> LLM
+    API --> DC
+    API --> DB
+    LLM --> TOOLS
+    LLM -->|"OpenAI SDK"| LLMAPI
+    TOOLS --> DC
+    DC -->|"GET · POST OData"| DRXAPI
 ```
 
 ## Конфигурация
@@ -148,34 +165,35 @@ docker-compose up -d
 1. Пользователь в чате: "создай поручение для Наташи Ардо, тема Подготовка документов"
    ↓
 2. LLMService._direct_action_item_create_response() парсит сообщение
+   ├─ Regex-парсинг (quoted / natural / theme / performer-only форматы)
+   └─ Fallback: LLM-извлечение параметров (_extract_create_draft_via_llm)
    ↓
 3. search_employee("Наташа Ардо") → найден сотрудник (id=42)
    ↓
 4. create_action_item(subject, performer_id=42, action_text) → preview
    ↓
-5. В чат возвращается: текст + [[DIRECTUM_ACTION_ITEM_PREVIEW:{...}]]
+5. LLM корректирует текст: повелительное наклонение, отглагольная тема
    ↓
-6. app.js парсит маркер, рендерит preview-карточку с кнопками
+6. В чат возвращается: текст + [[DIRECTUM_ACTION_ITEM_PREVIEW:{...}]]
    ↓
-7. Пользователь нажимает "Создать поручение"
+7. app.js парсит маркер, рендерит preview-карточку с кнопками
    ↓
-8. POST /api/directum/action-items {"confirm": true, ...}
+8. Пользователь нажимает "Создать поручение"
    ↓
-9. ActionItemService.create_action_item() → POST в Directum
+9. POST /api/directum/action-items {"confirm": true, ...}
+   ↓
+10. ActionItemService.create_action_item() → POST RecordManagement/CreateActionItemExecution
+    → POST Docflow/StartTask (автостарт)
 ```
 
 ## Известные проблемы
 
-### Заблокировано: создание поручений/задач
+### Создание поручений/задач — требует проверки
 
-**Ошибка:** `POST /RecordManagement/CreateActionItemExecutionTask` возвращает 400:
-```
-Не указан обязательный параметр "Кем"
-```
+Endpoint сменён с `RecordManagement/CreateActionItemExecutionTask` на `RecordManagement/CreateActionItemExecution`.
+Автостарт через `Docflow/StartTask` добавлен. Результат на реальной инсталляции Directum RX **не верифицирован**.
 
-**Причина:** API требует установку автора (`AssignedBy` / `Author`) через OData navigation property `$ref`, а не просто как поле в теле. Поле `PerformersGD` также ожидает формат `IEmployee` reference, не строку.
-
-**Документация:** Подробный анализ в `handoff.md` (создан в предыдущей сессии).
+Если снова появится 400 `Не указан обязательный параметр "Кем"` — причина: API требует автора (`AssignedBy`) через OData navigation property `$ref`. Подробный анализ в `handoff.md`.
 
 ### LLM Tool Calling
 

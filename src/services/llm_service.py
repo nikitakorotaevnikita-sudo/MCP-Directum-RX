@@ -21,7 +21,9 @@ SYSTEM_PROMPT = (
     "and pass only the most stable part of the name — usually last name + first name. "
     "Do not include words like 'для', 'исполнитель', 'срок', or grammatical suffixes. "
     "If a full name search returns nothing, the tool will automatically try shorter tokens; "
-    "if that also returns nothing, tell the user the employee was not found and suggest a shorter name variant."
+    "if that also returns nothing, tell the user the employee was not found and suggest a shorter name variant.\n"
+    "Format final answers in Markdown. When showing lists of Directum items, use a numbered Markdown list instead "
+    "of a semicolon-separated line."
 )
 
 ACTION_ITEM_PREVIEW_MARKER = "DIRECTUM_ACTION_ITEM_PREVIEW"
@@ -245,7 +247,14 @@ class LLMService:
 
         normalized = message.lower()
         direct_tool: str | None = None
-        if "\u043f\u0440\u043e\u0441\u0440\u043e\u0447" in normalized:
+        wants_outgoing_action_item_analytics = (
+            "\u0430\u043d\u0430\u043b\u0438\u0442" in normalized
+            and "\u0438\u0441\u0445\u043e\u0434\u044f\u0449" in normalized
+            and "\u043f\u043e\u0440\u0443\u0447\u0435\u043d" in normalized
+        )
+        if wants_outgoing_action_item_analytics:
+            direct_tool = "get_action_items_created_by_me"
+        elif "\u043f\u0440\u043e\u0441\u0440\u043e\u0447" in normalized:
             direct_tool = "get_overdue_assignments"
         elif (
             "\u043c\u043e\u0438 \u0437\u0430\u0434\u0430\u043d\u0438\u044f" in normalized
@@ -284,6 +293,8 @@ class LLMService:
 
         try:
             result = self.tool_registry.call(direct_tool, {})
+            if wants_outgoing_action_item_analytics:
+                return self._format_outgoing_action_item_analytics(result)
             return self._format_tool_result(result)
         except Exception as exc:
             return self._safe_directum_error_message(exc)
@@ -938,17 +949,142 @@ class LLMService:
         if not items:
             return "\u041d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u043e."
 
-        lines = []
+        lines: list[dict[str, str]] = []
         for item in items:
             if hasattr(item, "model_dump"):
                 item = item.model_dump(mode="json")
             if isinstance(item, dict):
                 title = item.get("subject") or item.get("name") or item.get("message") or str(item)
                 status = item.get("status") or item.get("mode") or item.get("entity_type")
-                lines.append(f"{title} ({status})" if status else str(title))
+                deadline = item.get("deadline")
+                lines.append(
+                    {
+                        "title": str(title),
+                        "status": str(status) if status else "",
+                        "deadline": self._format_deadline_for_display(deadline),
+                        "url": item.get("url") or "",
+                    }
+                )
             else:
-                lines.append(str(item))
-        return f"\u041d\u0430\u0439\u0434\u0435\u043d\u043e {len(lines)}: " + "; ".join(lines) + "."
+                lines.append({"title": str(item), "status": "", "deadline": "", "url": ""})
+
+        if len(lines) == 1:
+            line = lines[0]
+            suffix = f" ({line['status']})" if line["status"] else ""
+            return f"\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1: {line['title']}{suffix}."
+
+        markdown_lines = [f"\u041d\u0430\u0439\u0434\u0435\u043d\u043e {len(lines)}:"]
+        for index, line in enumerate(lines, start=1):
+            details = []
+            if line["status"]:
+                details.append(f"\u0441\u0442\u0430\u0442\u0443\u0441: {line['status']}")
+            if line["deadline"]:
+                details.append(f"\u0441\u0440\u043e\u043a: {line['deadline']}")
+            details_text = f" — {', '.join(details)}" if details else ""
+            markdown_lines.append(f"{index}. {self._markdown_item_title(line['title'], line.get('url'))}{details_text}")
+        return "\n\n".join([markdown_lines[0], "\n".join(markdown_lines[1:])])
+
+    def _format_deadline_for_display(self, value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, datetime):
+            return value.strftime("%d.%m.%Y")
+        if isinstance(value, str) and value.strip():
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime("%d.%m.%Y")
+            except ValueError:
+                pass
+            parsed = self._parse_deadline(value)
+            if parsed is not None:
+                return parsed.strftime("%d.%m.%Y")
+            return value.strip()
+        return ""
+
+    def _escape_markdown_text(self, value: str) -> str:
+        return re.sub(r"([\\`*_{}\[\]()#])", r"\\\1", value)
+
+    def _markdown_item_title(self, title: str, url: Any = None) -> str:
+        escaped_title = self._escape_markdown_text(title)
+        if isinstance(url, str) and url.strip():
+            return f"[**{escaped_title}**](<{url.strip()}>)"
+        return f"**{escaped_title}**"
+
+    def _format_outgoing_action_item_analytics(self, result: Any) -> str:
+        items = self._normalize_tool_items(result)
+        now = datetime.now(timezone.utc)
+        due_soon_limit = now + timedelta(days=1)
+        categories: dict[str, list[dict[str, Any]]] = {
+            "work": [],
+            "due_soon": [],
+            "overdue": [],
+        }
+
+        for item in items:
+            deadline = self._deadline_from_item(item)
+            if deadline is not None and deadline < now:
+                categories["overdue"].append(item)
+            elif deadline is not None and deadline <= due_soon_limit:
+                categories["due_soon"].append(item)
+            else:
+                categories["work"].append(item)
+
+        sections = [
+            "## Аналитика по исходящим поручениям",
+            f"Всего исходящих поручений: **{len(items)}**.",
+            self._analytics_section("Поручения в работе", categories["work"], "work"),
+            self._analytics_section("Срок подходит к концу (остался один день)", categories["due_soon"], "due-soon"),
+            self._analytics_section("Просроченные поручения", categories["overdue"], "overdue"),
+        ]
+        return "\n\n".join(sections)
+
+    def _normalize_tool_items(self, result: Any) -> list[dict[str, Any]]:
+        raw_items = result if isinstance(result, list) else [result]
+        items: list[dict[str, Any]] = []
+        for item in raw_items:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump(mode="json")
+            if isinstance(item, dict):
+                items.append(item)
+            else:
+                items.append({"subject": str(item)})
+        return items
+
+    def _analytics_section(self, title: str, items: list[dict[str, Any]], tone: str) -> str:
+        heading = f'### <span class="analytics-heading analytics-heading-{tone}">{title}</span>'
+        if not items:
+            return f"{heading}\nНет поручений."
+        lines = [heading]
+        for index, item in enumerate(items, start=1):
+            lines.append(f"{index}. {self._format_analytics_item(item)}")
+        return "\n".join(lines)
+
+    def _format_analytics_item(self, item: dict[str, Any]) -> str:
+        title = str(item.get("subject") or item.get("name") or item.get("message") or item)
+        details = []
+        status = item.get("status") or item.get("mode") or item.get("entity_type")
+        if status:
+            details.append(f"статус: {status}")
+        deadline = self._format_deadline_for_display(item.get("deadline"))
+        details.append(f"срок: {deadline or 'не указан'}")
+        return f"{self._markdown_item_title(title, item.get('url'))} — {', '.join(details)}"
+
+    def _deadline_from_item(self, item: dict[str, Any]) -> datetime | None:
+        raw = item.get("deadline")
+        if raw is None:
+            return None
+        if isinstance(raw, datetime):
+            return raw if raw.tzinfo is not None and raw.utcoffset() is not None else raw.replace(tzinfo=timezone.utc)
+        if not isinstance(raw, str) or not raw.strip():
+            return None
+        try:
+            parsed = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+        except ValueError:
+            parsed = self._parse_deadline(raw)
+        if parsed is None:
+            return None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
 
     def _safe_directum_error_message(self, exc: Exception) -> str:
         message = str(exc)

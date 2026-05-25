@@ -6,6 +6,15 @@ from urllib.parse import urlencode
 import httpx
 
 
+DIRECTUM_TASK_CARD_GUID = "83f2a537-0cf0-4429-ae76-e9a386ca53aa"
+DIRECTUM_CARD_GUIDS_BY_ENTITY = {
+    "IAssignments": DIRECTUM_TASK_CARD_GUID,
+    "IActionItemExecutionAssignments": DIRECTUM_TASK_CARD_GUID,
+    "IActionItemExecutionTasks": DIRECTUM_TASK_CARD_GUID,
+    "ISimpleTasks": DIRECTUM_TASK_CARD_GUID,
+}
+
+
 class DirectumError(RuntimeError):
     def __init__(self, safe_message: str, status_code: int | None = None):
         super().__init__(safe_message)
@@ -41,6 +50,23 @@ class DirectumClient:
 
     def build_url(self, entity_set: str) -> str:
         return f"{self.base_url}/{entity_set.lstrip('/')}"
+
+    def build_client_card_url(self, entity_path: str) -> str | None:
+        match = re.match(r"^([A-Za-z0-9_]+)\((\d+)\)$", entity_path.strip())
+        if match is None:
+            return None
+        entity_set, entity_id = match.groups()
+        card_guid = DIRECTUM_CARD_GUIDS_BY_ENTITY.get(entity_set)
+        if card_guid is None:
+            return None
+        return f"{self._client_base_url()}/Client/#/card/{card_guid}/{entity_id}"
+
+    def _client_base_url(self) -> str:
+        marker = "/Integration/odata"
+        marker_index = self.base_url.lower().find(marker.lower())
+        if marker_index >= 0:
+            return self.base_url[:marker_index].rstrip("/")
+        return self.base_url.rstrip("/")
 
     def query(
         self,

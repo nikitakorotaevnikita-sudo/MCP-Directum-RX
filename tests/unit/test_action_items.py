@@ -32,6 +32,10 @@ class FakeClient:
     def build_url(self, entity_path):
         return f"https://rx.example/Integration/odata/{entity_path}"
 
+    def build_client_card_url(self, entity_path):
+        directum_id = entity_path.split("(", 1)[1].rstrip(")")
+        return f"https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/{directum_id}"
+
 
 def test_action_item_create_defaults_to_preview_mode():
     request = ActionItemCreateRequest(
@@ -156,7 +160,7 @@ def test_create_action_item_confirm_posts_to_directum():
     assert result.directum_id == 987
 
 
-def test_create_action_item_confirm_returns_directum_hyperlink():
+def test_create_action_item_confirm_returns_client_card_url_without_hyperlink_lookup():
     client = FakeClient(
         post_response={"value": 987},
         get_one_response={"Id": 987, "ClientHyperlink": "https://rx.example/action-item/987"},
@@ -172,11 +176,11 @@ def test_create_action_item_confirm_returns_directum_hyperlink():
 
     result = service.create_action_item(request)
 
-    assert client.get_one_calls == ["IActionItemExecutionTasks(987)"]
-    assert result.url == "https://rx.example/action-item/987"
+    assert client.get_one_calls == []
+    assert result.url == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/987"
 
 
-def test_create_action_item_confirm_falls_back_to_entity_url_when_hyperlink_lookup_fails():
+def test_create_action_item_confirm_falls_back_to_client_card_url_when_hyperlink_lookup_fails():
     client = FakeClient(
         post_response={"value": 987},
         get_one_error=DirectumError("Directum OData request failed with status 404", 404),
@@ -194,7 +198,7 @@ def test_create_action_item_confirm_falls_back_to_entity_url_when_hyperlink_look
 
     assert result.mode == "created"
     assert result.directum_id == 987
-    assert result.url == "https://rx.example/Integration/odata/IActionItemExecutionTasks(987)"
+    assert result.url == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/987"
 
 
 def test_create_action_item_confirm_accepts_numeric_string_id():
@@ -500,3 +504,4 @@ def test_create_task_confirm_uses_simple_task_actions():
     ]
     assert result.mode == "created"
     assert result.directum_id == 901
+    assert result.url == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/901"

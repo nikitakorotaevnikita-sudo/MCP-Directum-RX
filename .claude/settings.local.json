@@ -26,7 +26,16 @@
       "Bash(curl -s -X POST \"http://127.0.0.1:8005/api/chat\" -H \"Content-Type: application/json\" -d \"{\\\\\"message\\\\\": \\\\\"Выведи список в markdown: 1. Яблоко 2. Банан\\\\\"}\")",
       "Bash(echo '{\"message\": \"Выведи список в markdown: 1. Яблоко 2. Банан\"}')",
       "Bash(curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d @/tmp/chat.json)",
-      "Bash(echo '{\"message\": \"Напиши таблицу в markdown с двумя колонками Имя и Возраст, добавь две строки данных\"}' > /tmp/chat.json && curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d @/tmp/chat.json)"
+      "Bash(echo '{\"message\": \"Напиши таблицу в markdown с двумя колонками Имя и Возраст, добавь две строки данных\"}' > /tmp/chat.json && curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d @/tmp/chat.json)",
+      "Bash(cmd //c \"taskkill /PID 16308 /F\")",
+      "Bash(cmd //c \"taskkill /PID 19888 /F\")",
+      "Bash(cmd //c \"taskkill /PID 28056 /F\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Korotaev_NO\\\\Desktop\\\\Obsidian vault\\\\AI Agent Hub\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-ChildItem -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Korotaev_NO\\Desktop\\Проекты\\MCP-Directum-RX",

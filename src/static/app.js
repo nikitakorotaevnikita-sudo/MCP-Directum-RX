@@ -1,8 +1,29 @@
 const messages = document.querySelector("#messages");
 const results = document.querySelector("#results");
 const statusBox = document.querySelector("#status");
+const chatInput = document.querySelector("#chat-input");
+const promptChips = document.querySelector("#prompt-chips");
+const promptDialog = document.querySelector("#prompt-dialog");
+const promptEditorList = document.querySelector("#prompt-editor-list");
 const chatHistory = [];
 const previewMarkerPattern = /\n?\[\[DIRECTUM_ACTION_ITEM_PREVIEW:([\s\S]*?)\]\]\s*$/;
+const promptStorageKey = "directum.quickPrompts";
+const defaultPrompts = [
+  {
+    title: "Аналитика исходящих",
+    text: "Дай аналитику по исходящим поручениям",
+  },
+  {
+    title: "Исходящие поручения",
+    text: "Дай сводку по исходящим поручениям",
+  },
+  {
+    title: "Мои задания",
+    text: "Посмотри мои задания",
+  },
+];
+
+let quickPrompts = loadQuickPrompts();
 
 async function loadStatus() {
   try {
@@ -41,6 +62,96 @@ function looksLikeMarkdown(text) {
     /\[.+?\]\(.+?\)/, // [text](url) links
   ];
   return mdPatterns.some((p) => p.test(text));
+}
+
+function loadQuickPrompts() {
+  try {
+    const raw = localStorage.getItem(promptStorageKey);
+    if (!raw) {
+      return defaultPrompts;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return defaultPrompts;
+    }
+    const prompts = parsed
+      .map((item) => ({
+        title: String(item.title || "").trim(),
+        text: String(item.text || "").trim(),
+      }))
+      .filter((item) => item.title && item.text);
+    return prompts.length ? prompts : defaultPrompts;
+  } catch (error) {
+    return defaultPrompts;
+  }
+}
+
+function saveQuickPrompts(prompts) {
+  quickPrompts = prompts;
+  localStorage.setItem(promptStorageKey, JSON.stringify(quickPrompts));
+  renderPromptChips();
+}
+
+function renderPromptChips() {
+  promptChips.innerHTML = "";
+  quickPrompts.forEach((prompt) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "prompt-chip";
+    button.textContent = prompt.title;
+    button.title = prompt.text;
+    button.addEventListener("click", () => {
+      chatInput.value = prompt.text;
+      chatInput.focus();
+    });
+    promptChips.appendChild(button);
+  });
+}
+
+function promptEditorRow(prompt = {title: "", text: ""}) {
+  const row = document.createElement("div");
+  row.className = "prompt-editor-row";
+
+  const titleField = document.createElement("label");
+  titleField.className = "field";
+  titleField.innerHTML = "<span>Название</span>";
+  const titleInput = document.createElement("input");
+  titleInput.className = "prompt-title-input";
+  titleInput.value = prompt.title;
+  titleInput.maxLength = 48;
+  titleField.appendChild(titleInput);
+
+  const textField = document.createElement("label");
+  textField.className = "field prompt-text-field";
+  textField.innerHTML = "<span>Промпт</span>";
+  const textInput = document.createElement("textarea");
+  textInput.className = "prompt-text-input";
+  textInput.value = prompt.text;
+  textInput.rows = 3;
+  textField.appendChild(textInput);
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "btn btn-ghost prompt-delete";
+  deleteButton.textContent = "Удалить";
+  deleteButton.addEventListener("click", () => row.remove());
+
+  row.append(titleField, textField, deleteButton);
+  return row;
+}
+
+function renderPromptEditor() {
+  promptEditorList.innerHTML = "";
+  quickPrompts.forEach((prompt) => promptEditorList.appendChild(promptEditorRow(prompt)));
+}
+
+function collectPromptEditorItems() {
+  return Array.from(promptEditorList.querySelectorAll(".prompt-editor-row"))
+    .map((row) => ({
+      title: row.querySelector(".prompt-title-input").value.trim(),
+      text: row.querySelector(".prompt-text-input").value.trim(),
+    }))
+    .filter((item) => item.title && item.text);
 }
 
 function parseAssistantResponse(text) {
@@ -173,7 +284,19 @@ function renderResults(items) {
     card.className = "result-card";
     const title = item.subject || item.name || item.message || item.detail || "Result";
     const meta = item.status || item.mode || item.entity_type || "";
-    card.textContent = meta ? `${title} · ${meta}` : title;
+    if (item.url) {
+      const link = document.createElement("a");
+      link.href = item.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = title;
+      card.appendChild(link);
+      if (meta) {
+        card.append(` · ${meta}`);
+      }
+    } else {
+      card.textContent = meta ? `${title} · ${meta}` : title;
+    }
     results.appendChild(card);
   });
 }
@@ -206,15 +329,32 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   });
 });
 
+document.querySelector("#prompt-settings").addEventListener("click", () => {
+  renderPromptEditor();
+  promptDialog.showModal();
+});
+
+document.querySelector("#prompt-add").addEventListener("click", () => {
+  promptEditorList.appendChild(promptEditorRow());
+  promptEditorList.querySelector(".prompt-editor-row:last-child .prompt-title-input").focus();
+});
+
+promptDialog.addEventListener("submit", (event) => {
+  if (event.submitter?.id !== "prompt-save") {
+    return;
+  }
+  const prompts = collectPromptEditorItems();
+  saveQuickPrompts(prompts.length ? prompts : defaultPrompts);
+});
+
 document.querySelector("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const input = document.querySelector("#chat-input");
-  const text = input.value.trim();
+  const text = chatInput.value.trim();
   if (!text) {
     return;
   }
 
-  input.value = "";
+  chatInput.value = "";
   addMessage(text, "user");
   const response = await fetch("/api/chat", {
     method: "POST",
@@ -232,4 +372,5 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
   chatHistory.push({role: "assistant", content: answer});
 });
 
+renderPromptChips();
 loadStatus();

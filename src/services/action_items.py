@@ -164,13 +164,8 @@ class ActionItemService:
 
     def _action_item_url(self, directum_id: int) -> str | None:
         entity_path = f"IActionItemExecutionTasks({directum_id})"
-        try:
-            item = self.client.get_one(entity_path)
-            hyperlink = item.get("ClientHyperlink") or item.get("EntityHyperlink")
-            if isinstance(hyperlink, str) and hyperlink.strip():
-                return hyperlink.strip()
-        except DirectumError:
-            pass
+        if hasattr(self.client, "build_client_card_url"):
+            return self.client.build_client_card_url(entity_path)
         if hasattr(self.client, "build_url"):
             return self.client.build_url(entity_path)
         return None
@@ -218,13 +213,8 @@ class ActionItemService:
 
     def _task_url(self, directum_id: int) -> str | None:
         entity_path = f"ISimpleTasks({directum_id})"
-        try:
-            item = self.client.get_one(entity_path)
-            hyperlink = item.get("ClientHyperlink") or item.get("EntityHyperlink")
-            if isinstance(hyperlink, str) and hyperlink.strip():
-                return hyperlink.strip()
-        except DirectumError:
-            pass
+        if hasattr(self.client, "build_client_card_url"):
+            return self.client.build_client_card_url(entity_path)
         if hasattr(self.client, "build_url"):
             return self.client.build_url(entity_path)
         return None

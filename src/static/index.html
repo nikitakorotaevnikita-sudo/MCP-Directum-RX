@@ -15,7 +15,7 @@
     </a>
     <div class="app-title">
       <p class="eyebrow">демонстрационный прототип</p>
-      <h1>Умный ассистент Directum RX</h1>
+      <h1 aria-label="Directum RX Assistant">Умный ассистент Directum RX</h1>
     </div>
     <a class="btn btn-ghost" href="/backoffice">Backoffice</a>
   </header>
@@ -34,12 +34,32 @@
     </section>
   </aside>
   <main class="chat-shell">
+    <section class="prompt-panel" aria-label="Быстрые промпты">
+      <div class="prompt-panel-heading">
+        <h2>Быстрые промпты</h2>
+        <button class="btn btn-ghost" id="prompt-settings" type="button">Настроить</button>
+      </div>
+      <div id="prompt-chips" class="prompt-chips"></div>
+    </section>
     <section id="messages" class="messages" aria-live="polite"></section>
     <form id="chat-form" class="chat-form">
       <input id="chat-input" aria-label="Спросите про поручения" autocomplete="off">
       <button class="btn" type="submit">Отправить</button>
     </form>
   </main>
-  <script src="/static/app.js?v=20260524-task-preview"></script>
+  <dialog id="prompt-dialog" class="prompt-dialog">
+    <form method="dialog" class="prompt-dialog-shell">
+      <div class="prompt-dialog-header">
+        <h2>Настройка промптов</h2>
+        <button class="btn btn-ghost" value="cancel" type="submit">Закрыть</button>
+      </div>
+      <div id="prompt-editor-list" class="prompt-editor-list"></div>
+      <div class="prompt-dialog-actions">
+        <button class="btn btn-ghost" id="prompt-add" type="button">Добавить</button>
+        <button class="btn" id="prompt-save" value="default" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/static/app.js?v=20260525-prompts-analytics"></script>
 </body>
 </html>

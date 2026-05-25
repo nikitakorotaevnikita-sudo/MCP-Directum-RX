@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 import json
 
 import pytest
@@ -484,6 +485,117 @@ def test_stream_chat_routes_created_action_items_intent_without_model_tool_call(
     assert registry.calls == [("get_action_items_created_by_me", {})]
     assert chunks == ["Найдено 1: Task (InProcess)."]
     assert client.completions.requests == []
+
+
+def test_stream_chat_formats_multiple_directum_items_as_markdown_list():
+    class MultipleItemsRegistry(FakeToolRegistry):
+        def __init__(self):
+            self.calls = []
+
+        def call(self, name, arguments):
+            self.calls.append((name, arguments))
+            return [
+                {
+                    "subject": "Поручение: Подготовить ответ",
+                    "status": "InProcess",
+                    "deadline": "2026-06-27T23:59:00+00:00",
+                    "entity_type": "action_item_task",
+                    "url": "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/987",
+                },
+                {
+                    "subject": "Поручение: Проверить документы",
+                    "status": "InProcess",
+                    "deadline": None,
+                    "entity_type": "action_item_task",
+                },
+            ]
+
+    registry = MultipleItemsRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+
+    chunks = list(service.stream_chat("Дай сводку по моим исходящим поручениям", []))
+
+    assert registry.calls == [("get_action_items_created_by_me", {})]
+    assert chunks == [
+        (
+            "Найдено 2:\n\n"
+            "1. [**Поручение: Подготовить ответ**]"
+            "(<https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/987>)"
+            " — статус: InProcess, срок: 27.06.2026\n"
+            "2. **Поручение: Проверить документы** — статус: InProcess"
+        )
+    ]
+
+
+def test_stream_chat_formats_outgoing_action_item_analytics_by_deadline():
+    now = datetime.now(timezone.utc)
+    work_deadline = now + timedelta(days=3)
+    due_soon_deadline = now + timedelta(hours=12)
+    overdue_deadline = now - timedelta(hours=1)
+
+    class AnalyticsRegistry(FakeToolRegistry):
+        def __init__(self):
+            self.calls = []
+
+        def call(self, name, arguments):
+            self.calls.append((name, arguments))
+            return [
+                {
+                    "subject": "Поручение в работе",
+                    "status": "InProcess",
+                    "deadline": work_deadline.isoformat(),
+                    "entity_type": "action_item_task",
+                    "url": "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/101",
+                },
+                {
+                    "subject": "Скоро срок",
+                    "status": "InProcess",
+                    "deadline": due_soon_deadline.isoformat(),
+                    "entity_type": "action_item_task",
+                },
+                {
+                    "subject": "Просроченное поручение",
+                    "status": "InProcess",
+                    "deadline": overdue_deadline.isoformat(),
+                    "entity_type": "action_item_task",
+                },
+            ]
+
+    registry = AnalyticsRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+
+    chunks = list(service.stream_chat("Дай аналитику по исходящим поручениям", []))
+
+    assert registry.calls == [("get_action_items_created_by_me", {})]
+    assert len(chunks) == 1
+    assert "## Аналитика по исходящим поручениям" in chunks[0]
+    assert "Всего исходящих поручений: **3**." in chunks[0]
+    assert (
+        '### <span class="analytics-heading analytics-heading-work">Поручения в работе</span>'
+        "\n1. [**Поручение в работе**](<https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/101>)"
+    ) in chunks[0]
+    assert (
+        '### <span class="analytics-heading analytics-heading-due-soon">Срок подходит к концу (остался один день)</span>'
+        "\n1. **Скоро срок**"
+    ) in chunks[0]
+    assert (
+        '### <span class="analytics-heading analytics-heading-overdue">Просроченные поручения</span>'
+        "\n1. **Просроченное поручение**"
+    ) in chunks[0]
 
 
 def test_stream_chat_routes_in_progress_tasks_question_without_model_tool_call():

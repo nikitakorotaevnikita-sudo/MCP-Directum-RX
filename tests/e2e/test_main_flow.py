@@ -85,3 +85,25 @@ def test_chat_action_item_preview_requires_confirm_button(page, live_server_url)
             "confirm": True,
         }
     ]
+
+
+def test_quick_prompt_chip_fills_chat_input(page, live_server_url):
+    page.goto(live_server_url)
+
+    page.get_by_role("button", name="Аналитика исходящих").click()
+
+    expect(page.locator("#chat-input")).to_have_value("Дай аналитику по исходящим поручениям")
+
+
+def test_quick_prompts_can_be_configured(page, live_server_url):
+    page.goto(live_server_url)
+
+    page.get_by_role("button", name="Настроить").click()
+    page.get_by_role("button", name="Добавить").click()
+    page.locator(".prompt-editor-row").last.locator(".prompt-title-input").fill("Срочное")
+    page.locator(".prompt-editor-row").last.locator(".prompt-text-input").fill("Покажи срочные поручения")
+    page.get_by_role("button", name="Сохранить").click()
+
+    page.get_by_role("button", name="Срочное").click()
+
+    expect(page.locator("#chat-input")).to_have_value("Покажи срочные поручения")

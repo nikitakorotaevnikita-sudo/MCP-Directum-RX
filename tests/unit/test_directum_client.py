@@ -13,6 +13,23 @@ def test_build_url_strips_duplicate_slashes():
     assert client.build_url("IAssignments") == "https://rx.example/Integration/odata/IAssignments"
 
 
+def test_build_client_card_url_uses_client_route_for_task_entities():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata/",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"value": []})),
+    )
+
+    assert (
+        client.build_client_card_url("ISimpleTasks(1108)")
+        == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/1108"
+    )
+    assert (
+        client.build_client_card_url("IActionItemExecutionTasks(987)")
+        == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/987"
+    )
+
+
 def test_query_sends_odata_params_and_returns_value():
     seen = {}
 

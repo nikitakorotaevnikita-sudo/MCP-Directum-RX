@@ -43,7 +43,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -255,6 +256,129 @@ select {
   padding-top: var(--header-height);
 }
 
+.prompt-panel {
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.prompt-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.prompt-panel-heading h2,
+.prompt-dialog-header h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prompt-chip {
+  max-width: 260px;
+  min-height: 32px;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s, background .15s;
+}
+
+.prompt-chip:hover {
+  border-color: var(--orange);
+  background: var(--orange-light);
+  color: var(--orange);
+}
+
+.prompt-dialog {
+  width: min(820px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-hover);
+}
+
+.prompt-dialog::backdrop {
+  background: rgba(0, 14, 32, .32);
+}
+
+.prompt-dialog-shell {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.prompt-dialog-header,
+.prompt-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prompt-editor-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+}
+
+.prompt-editor-row {
+  display: grid;
+  grid-template-columns: minmax(130px, .35fr) minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+}
+
+.prompt-text-field {
+  min-width: 0;
+}
+
+.prompt-editor-row input,
+.prompt-editor-row textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.prompt-editor-row textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.prompt-editor-row input:focus,
+.prompt-editor-row textarea:focus {
+  border-color: var(--orange);
+  outline: 2px solid var(--orange-light);
+}
+
 .messages {
   flex: 1;
   padding: 24px;
@@ -340,10 +464,53 @@ select {
   color: var(--muted);
 }
 
+.message.assistant .analytics-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.message.assistant .analytics-heading::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.message.assistant .analytics-heading-work {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.message.assistant .analytics-heading-due-soon {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+
+.message.assistant .analytics-heading-overdue {
+  background: var(--red-light);
+  color: var(--red);
+}
+
 .message.assistant a,
-.preview-link {
+.preview-link,
+.result-card a {
   color: var(--blue);
   font-weight: 600;
+}
+
+.result-card a {
+  text-decoration: none;
+}
+
+.result-card a:hover {
+  text-decoration: underline;
 }
 
 .preview-card,
@@ -574,7 +741,9 @@ select {
 
   .chat-form,
   .section-heading,
-  .button-row {
+  .button-row,
+  .prompt-dialog-header,
+  .prompt-dialog-actions {
     align-items: stretch;
     flex-direction: column;
   }
@@ -588,5 +757,22 @@ select {
   .preview-row {
     grid-template-columns: 1fr;
     gap: 3px;
+  }
+
+  .prompt-panel {
+    padding: 14px 16px 12px;
+  }
+
+  .prompt-panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prompt-chip {
+    max-width: 100%;
+  }
+
+  .prompt-editor-row {
+    grid-template-columns: 1fr;
   }
 }

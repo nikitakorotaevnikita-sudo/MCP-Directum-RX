@@ -55,11 +55,28 @@ class AssignmentsService:
         return [self._assignment(row, "action_item_task") for row in rows]
 
     def _assignment(self, row: dict[str, Any], entity_type: str) -> AssignmentSummary:
+        directum_id = int(row["Id"])
+        entity_path = self._entity_path(entity_type, directum_id)
+        client_url = (
+            self.client.build_client_card_url(entity_path)
+            if entity_path and hasattr(self.client, "build_client_card_url")
+            else None
+        )
         return AssignmentSummary(
-            id=int(row["Id"]),
+            id=directum_id,
             subject=row.get("Subject") or row.get("Name") or "",
             status=row.get("Status"),
             deadline=row.get("Deadline"),
             entity_type=entity_type,
-            url=row.get("ClientHyperlink") or row.get("EntityHyperlink"),
+            url=client_url.strip() if isinstance(client_url, str) and client_url.strip() else None,
         )
+
+    def _entity_path(self, entity_type: str, directum_id: int) -> str | None:
+        entity_sets = {
+            "assignment": "IAssignments",
+            "overdue_assignment": "IAssignments",
+            "action_item_assignment": "IActionItemExecutionAssignments",
+            "action_item_task": "IActionItemExecutionTasks",
+        }
+        entity_set = entity_sets.get(entity_type)
+        return f"{entity_set}({directum_id})" if entity_set else None
