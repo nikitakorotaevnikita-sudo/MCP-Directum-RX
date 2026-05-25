@@ -322,7 +322,7 @@ function renderMeetingResults(items) {
     const subject = item.subject || "Совещание";
     const place = item.place || "";
     const heading = document.createElement("strong");
-    heading.textContent = `${startStr} — ${subject}`;
+    heading.textContent = startStr ? `${startStr} — ${subject}` : subject;
     card.appendChild(heading);
     if (place) {
       card.append(` · ${place}`);
@@ -357,6 +357,10 @@ async function quickAction(action) {
 
   const response = await fetch(endpoints[action]);
   const data = await response.json();
+  if (!response.ok) {
+    renderResults(data);
+    return;
+  }
   if (action === "meetings") {
     renderMeetingResults(data);
   } else {
