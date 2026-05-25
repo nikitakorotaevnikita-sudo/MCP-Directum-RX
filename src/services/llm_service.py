@@ -288,6 +288,30 @@ class LLMService:
             or "created by me" in normalized
         ):
             direct_tool = "get_action_items_created_by_me"
+        wants_action_item_report = (
+            (
+                "отчёт" in normalized
+                or "отчет" in normalized
+                or "расскажи" in normalized
+                or "детали" in normalized
+            )
+            and "поручени" in normalized
+        )
+        if wants_action_item_report:
+            return self._direct_action_item_report_response(message)
+
+        wants_meetings = (
+            "совещани" in normalized
+            or "встреч" in normalized
+            or "заседани" in normalized
+        )
+        if wants_meetings:
+            try:
+                result = self.tool_registry.call("get_my_meetings", {})
+                return self._format_meetings_list(result)
+            except Exception as exc:
+                return self._safe_directum_error_message(exc)
+
         if direct_tool is None:
             return None
 
@@ -1090,3 +1114,113 @@ class LLMService:
         message = str(exc)
         message = re.sub(r"Basic [A-Za-z0-9+/=]{8,}", "Basic [redacted]", message)
         return f"Directum RX request failed: {message}"
+
+    # ── Task 7: meetings formatting ───────────────────────────────────────────
+
+    def _format_meetings_list(self, result: Any) -> str:
+        items = result if isinstance(result, list) else []
+        if not items:
+            return "На ближайшие 7 дней совещаний не запланировано."
+        lines = ["📅 Ваши совещания на ближайшие 7 дней\n"]
+        for item in items:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump(mode="json")
+            if not isinstance(item, dict):
+                continue
+            start_str = self._format_meeting_datetime(item.get("start_date"))
+            subject = item.get("subject") or ""
+            place = item.get("place") or "не указано"
+            url = item.get("client_card_url") or ""
+            agenda = item.get("agenda_summary") or ""
+            link_part = f" · [Открыть карточку](<{url}>)" if url else ""
+            lines.append(f"**{start_str}** — {subject}")
+            lines.append(f"📍 {place}{link_part}")
+            if agenda:
+                lines.append(f"> Повестка: {agenda}")
+            lines.append("")
+        return "\n".join(lines).rstrip()
+
+    def _format_meeting_datetime(self, value: Any) -> str:
+        if not value:
+            return ""
+        if isinstance(value, datetime):
+            return value.strftime("%d.%m.%Y %H:%M")
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime("%d.%m.%Y %H:%M")
+            except ValueError:
+                return str(value)
+        return str(value)
+
+    # ── Task 8: action item report ────────────────────────────────────────────
+
+    def _direct_action_item_report_response(self, message: str) -> str:
+        action_item_id = self._extract_action_item_id(message)
+        if action_item_id is None:
+            return "Укажите номер поручения, например: «отчёт поручение #42» или «детали поручения 42»."
+        try:
+            detail = self.tool_registry.call("get_action_item_details", {"action_item_id": action_item_id})
+            if isinstance(detail, dict):
+                narrative = self._generate_narrative_for_action_item(detail)
+                return self._format_action_item_report(detail, narrative)
+            return "Не удалось получить данные по поручению."
+        except Exception as exc:
+            return self._safe_directum_error_message(exc)
+
+    def _extract_action_item_id(self, message: str) -> int | None:
+        match = re.search(r"#\s*(\d+)|\bпоручени[еяю]\s+(\d+)|(\d+)\s*$", message, re.IGNORECASE)
+        if match:
+            raw = match.group(1) or match.group(2) or match.group(3)
+            if raw and raw.isdigit():
+                return int(raw)
+        return None
+
+    def _generate_narrative_for_action_item(self, detail: dict[str, Any]) -> str:
+        subject = detail.get("subject") or ""
+        performer = detail.get("performer") or ""
+        deadline = detail.get("deadline") or "не указан"
+        status = detail.get("status") or ""
+        text = detail.get("text") or ""
+        prompt = (
+            f"Напиши краткий отчёт (2-4 предложения) о поручении для руководителя. "
+            f"Тема: {subject}. Исполнитель: {performer}. Срок: {deadline}. "
+            f"Статус: {status}. Текст задания: {text}."
+        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Ты пишешь краткий деловой отчёт для руководителя. Отвечай только текстом без markdown."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0,
+                max_tokens=300,
+            )
+            return (response.choices[0].message.content or "").strip()
+        except Exception:
+            return ""
+
+    def _format_action_item_report(self, detail: dict[str, Any], narrative: str) -> str:
+        item_id = detail.get("id", "")
+        subject = detail.get("subject") or ""
+        performer = detail.get("performer") or ""
+        deadline_raw = detail.get("deadline")
+        deadline_str = str(deadline_raw) if deadline_raw else "не указан"
+        status = detail.get("status") or ""
+        url = detail.get("client_card_url") or ""
+        link = f"[Открыть карточку](<{url}>)" if url else ""
+        lines = [
+            f"📋 Отчёт по поручению #{item_id}",
+            "",
+            f"**Тема:** {subject}",
+            f"**Исполнитель:** {performer}",
+            f"**Срок:** {deadline_str} · **Статус:** {status}",
+        ]
+        if link:
+            lines.append(link)
+        if narrative:
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+            lines.append(narrative)
+        return "\n".join(lines)

@@ -53,6 +53,31 @@ class RecordingToolRegistry(FakeToolRegistry):
                 "message": "Preview generated; confirm to create the task.",
                 "confirmation_payload": {**arguments, "confirm": False},
             }
+        if name == "get_my_meetings":
+            return [
+                {
+                    "id": 7,
+                    "subject": "Еженедельная планёрка",
+                    "start_date": "2026-05-27T10:00:00Z",
+                    "end_date": "2026-05-27T11:00:00Z",
+                    "place": "Конференц-зал А",
+                    "agenda_summary": "Обсуждение итогов",
+                    "client_card_url": "https://rx.example/Client/#/card/meeting-guid/7",
+                }
+            ]
+        if name == "get_action_item_details":
+            return {
+                "id": int(arguments.get("action_item_id", 42)),
+                "subject": "Подготовить записку",
+                "text": "Подготовить аналитическую записку по итогам квартала",
+                "performer": "Иванова М.П. (Главный специалист)",
+                "author": "Петров А.С.",
+                "deadline": "2026-05-30",
+                "status": "InProcess",
+                "created_date": "2026-05-20",
+                "client_card_url": "https://rx.example/Client/#/card/x/42",
+                "narrative": "",
+            }
         return [{"id": 1, "subject": "Task", "status": "InProcess", "entity_type": "assignment"}]
 
 
@@ -203,6 +228,30 @@ class ExtractDraftCompletions:
                 )
             ]
         )
+
+
+class NarrativeCompletions:
+    """Non-streaming completions for narrative generation."""
+    def __init__(self, narrative="Поручение выполняется в срок."):
+        self.narrative = narrative
+        self.requests = []
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=self.narrative)
+                )
+            ]
+        )
+
+
+class MixedNarrativeClient:
+    """Client where completions.create returns narrative for non-streaming calls."""
+    def __init__(self):
+        self.narrative_completions = NarrativeCompletions()
+        self.chat = SimpleNamespace(completions=self.narrative_completions)
 
 
 class MultiStepCreateCompletions:
@@ -1396,3 +1445,116 @@ def test_stream_chat_extracts_sentence_deadline_from_action_item_text_without_mo
     visible, preview = _split_action_item_preview_marker(chunks[0])
     assert "\u0421\u0440\u043e\u043a 25.06.2026" not in visible
     assert preview["payload"]["deadline"].startswith("2026-06-25T23:59:00")
+
+
+# \u2500\u2500 Task 7: meetings routing \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "\u043f\u043e\u043a\u0430\u0436\u0438 \u043c\u043e\u0438 \u0441\u043e\u0432\u0435\u0449\u0430\u043d\u0438\u044f",
+        "\u043a\u0430\u043a\u0438\u0435 \u0441\u043e\u0432\u0435\u0449\u0430\u043d\u0438\u044f \u043d\u0430 \u044d\u0442\u043e\u0439 \u043d\u0435\u0434\u0435\u043b\u0435",
+        "\u043c\u043e\u0438 \u0432\u0441\u0442\u0440\u0435\u0447\u0438 \u043d\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f",
+        "\u0431\u043b\u0438\u0436\u0430\u0439\u0448\u0438\u0435 \u0437\u0430\u0441\u0435\u0434\u0430\u043d\u0438\u044f",
+    ],
+)
+def test_stream_chat_routes_meetings_intent_without_model_tool_call(message):
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = ToolCallClient()
+    service.client = client
+
+    chunks = list(service.stream_chat(message, []))
+    response = "".join(chunks)
+
+    assert ("get_my_meetings", {}) in registry.calls
+    assert client.completions.requests == []  # LLM not called
+    assert "\u0415\u0436\u0435\u043d\u0435\u0434\u0435\u043b\u044c\u043d\u0430\u044f \u043f\u043b\u0430\u043d\u0451\u0440\u043a\u0430" in response
+    assert "\u041a\u043e\u043d\u0444\u0435\u0440\u0435\u043d\u0446-\u0437\u0430\u043b \u0410" in response
+
+
+def test_stream_chat_meetings_empty_returns_friendly_message():
+    class EmptyMeetingsRegistry(FakeToolRegistry):
+        def call(self, name, arguments):
+            if name == "get_my_meetings":
+                return []
+            return []
+
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=EmptyMeetingsRegistry(),
+    )
+    service.client = ToolCallClient()
+
+    response = "".join(service.stream_chat("\u0441\u043e\u0432\u0435\u0449\u0430\u043d\u0438\u044f", []))
+    assert "\u043d\u0435 \u0437\u0430\u043f\u043b\u0430\u043d\u0438\u0440\u043e\u0432\u0430\u043d\u043e" in response.lower()
+
+
+# \u2500\u2500 Task 8: action item report routing \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+
+def test_stream_chat_action_item_report_extracts_id_from_hash_notation():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = MixedNarrativeClient()
+
+    response = "".join(service.stream_chat("\u043e\u0442\u0447\u0451\u0442 \u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435 #42", []))
+
+    assert ("get_action_item_details", {"action_item_id": 42}) in registry.calls
+    assert "42" in response
+    assert "\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u0437\u0430\u043f\u0438\u0441\u043a\u0443" in response
+
+
+def test_stream_chat_action_item_report_missing_id_asks_clarification():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = ToolCallClient()
+
+    response = "".join(service.stream_chat("\u0434\u0430\u0439 \u043c\u043d\u0435 \u043e\u0442\u0447\u0451\u0442 \u043f\u043e \u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044e", []))
+
+    # Should ask for clarification, not call tool
+    assert "get_action_item_details" not in [c[0] for c in registry.calls]
+    assert response  # non-empty clarification message
+
+
+def test_stream_chat_action_item_report_includes_narrative():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = MixedNarrativeClient()
+
+    response = "".join(service.stream_chat("\u0440\u0430\u0441\u0441\u043a\u0430\u0436\u0438 \u043e \u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0438 42", []))
+
+    assert "\u041f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0432 \u0441\u0440\u043e\u043a." in response
