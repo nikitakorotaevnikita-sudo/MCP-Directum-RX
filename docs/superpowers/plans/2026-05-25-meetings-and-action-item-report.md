@@ -774,13 +774,13 @@ git commit -m "feat: register get_my_meetings and get_action_item_details tools 
 
 ---
 
-## Task 6: Wire MeetingsService into main.py + add meetings endpoint
+## ✅ Task 6 COMPLETED: Wire MeetingsService into main.py + add meetings endpoint
 
 **Files:**
 - Modify: `src/main.py`
 - Test: verify with existing test client (check test_main_flow.py or unit tests)
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Add to `tests/unit/test_meetings.py` (uses FastAPI TestClient):
 
@@ -797,14 +797,14 @@ def test_meetings_upcoming_endpoint_returns_list():
     assert isinstance(response.json(), list)
 ```
 
-- [ ] **Step 2: Run test to confirm it fails**
+- [x] **Step 2: Run test to confirm it fails**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py::test_meetings_upcoming_endpoint_returns_list -v
 ```
 Expected: FAIL — 404 (endpoint not registered).
 
-- [ ] **Step 3: Update main.py**
+- [x] **Step 3: Update main.py**
 
 1. Add import:
 ```python
@@ -856,21 +856,21 @@ if "IMeetings" in path:
 ```
 Add this before the final `return httpx.Response(200, json={"value": [...]})` line.
 
-- [ ] **Step 4: Run test to confirm it passes**
+- [x] **Step 4: Run test to confirm it passes**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_meetings.py::test_meetings_upcoming_endpoint_returns_list -v
 ```
 Expected: PASS.
 
-- [ ] **Step 5: Run all unit tests**
+- [x] **Step 5: Run all unit tests**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/ -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add src/main.py tests/unit/test_meetings.py
@@ -879,7 +879,7 @@ git commit -m "feat: add /api/directum/meetings/upcoming endpoint and wire Meeti
 
 ---
 
-## Task 7: Add direct routing for meetings in LLMService
+## ✅ Task 7 COMPLETED: LLMService direct routing for meetings
 
 **Files:**
 - Modify: `src/services/llm_service.py`
@@ -887,7 +887,7 @@ git commit -m "feat: add /api/directum/meetings/upcoming endpoint and wire Meeti
 
 Context: `_direct_rx_response()` is the dispatch method. Russian keywords are stored as Unicode escape sequences in the existing code. We follow the same pattern. Meeting keywords: "совещани" (`совещани`), "встреч" (`встреч`), "заседани" (`заседани`).
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 In `tests/unit/test_llm_service.py`, add a fake registry that supports the new tools, then add:
 
@@ -905,14 +905,14 @@ def test_stream_chat_meetings_format_contains_date(llm_with_meetings_registry):
 
 Note: `llm_with_meetings_registry` is a fixture you build following the existing `llm_service` fixture pattern — use a fake registry where `call("get_my_meetings", {})` returns a list with one `MeetingSummary`-like dict.
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_llm_service.py -v -k "meetings"
 ```
 Expected: FAIL.
 
-- [ ] **Step 3: Add _direct_meetings_response and format method to LLMService**
+- [x] **Step 3: Add _direct_meetings_response and format method to LLMService**
 
 In `src/services/llm_service.py`:
 
@@ -1002,21 +1002,21 @@ def _format_meetings_list(self, result: Any) -> str:
     return "\n".join(lines).rstrip()
 ```
 
-- [ ] **Step 4: Run tests to confirm they pass**
+- [x] **Step 4: Run tests to confirm they pass**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_llm_service.py -v -k "meetings"
 ```
 Expected: PASSED.
 
-- [ ] **Step 5: Run all unit tests**
+- [x] **Step 5: Run all unit tests**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/ -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add src/services/llm_service.py tests/unit/test_llm_service.py
@@ -1025,7 +1025,7 @@ git commit -m "feat: add direct meetings routing in LLMService"
 
 ---
 
-## Task 8: Add direct routing for action item report in LLMService
+## ✅ Task 8 COMPLETED: LLMService direct routing for action item report
 
 **Files:**
 - Modify: `src/services/llm_service.py`
@@ -1035,7 +1035,7 @@ Context: When user says "отчёт поручение #42" or "детали п�
 
 Report trigger keywords: "отчёт поручени", "отчет поручени", "расскажи о поручении", "детали поручения", "отчёт поручение #" (from analytics click).
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Add to `tests/unit/test_llm_service.py`:
 
@@ -1052,14 +1052,14 @@ def test_stream_chat_action_item_report_missing_id_asks_clarification(llm_with_m
     assert response  # non-empty, asking for ID
 ```
 
-- [ ] **Step 2: Run tests to confirm they fail**
+- [x] **Step 2: Run tests to confirm they fail**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_llm_service.py -v -k "action_item_report"
 ```
 Expected: FAIL — no routing for these keywords yet.
 
-- [ ] **Step 3: Implement _direct_action_item_report_response in LLMService**
+- [x] **Step 3: Implement _direct_action_item_report_response in LLMService**
 
 1. In `_direct_rx_response()`, add before `if direct_tool is None: return None`:
 
@@ -1161,21 +1161,21 @@ def _format_action_item_report(self, detail: dict[str, Any], narrative: str) -> 
     return "\n".join(lines)
 ```
 
-- [ ] **Step 4: Run tests to confirm they pass**
+- [x] **Step 4: Run tests to confirm they pass**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/test_llm_service.py -v -k "action_item_report"
 ```
 Expected: PASSED.
 
-- [ ] **Step 5: Run all unit tests**
+- [x] **Step 5: Run all unit tests**
 
 ```
 & ".venv\Scripts\python.exe" -m pytest tests/unit/ -v
 ```
 Expected: all PASSED.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 git add src/services/llm_service.py tests/unit/test_llm_service.py
