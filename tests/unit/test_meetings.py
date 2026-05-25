@@ -237,3 +237,19 @@ def test_get_action_item_details_performer_no_job_title():
 
     result = service.get_action_item_details(42)
     assert result.performer == "Иванова М.П."
+
+
+# ---------------------------------------------------------------------------
+# Task 6: Endpoint /api/directum/meetings/upcoming
+# ---------------------------------------------------------------------------
+
+
+def test_meetings_upcoming_endpoint_returns_list():
+    from fastapi.testclient import TestClient
+    from src.main import create_app
+
+    app = create_app(testing=True)
+    client_http = TestClient(app)
+    response = client_http.get("/api/directum/meetings/upcoming")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

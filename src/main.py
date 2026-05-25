@@ -17,6 +17,7 @@ from src.models.schemas import (
     DirectumUser,
     LLMConnectionRequest,
     LLMConnectionStatus,
+    MeetingSummary,
     TaskCreateRequest,
 )
 from src.services.action_items import ActionItemService
@@ -25,6 +26,7 @@ from src.services.current_user import CurrentUserService
 from src.services.directum_connection import build_basic_auth_token
 from src.services.directum_client import DirectumClient, DirectumError
 from src.services.llm_service import LLMService
+from src.services.meetings import MeetingsService
 from src.services.metrics_storage import MetricsStorage
 from src.services.tool_registry import ToolRegistry
 
@@ -181,6 +183,10 @@ def create_app(testing: bool = False, metrics_db_path: str | None = None) -> Fas
     def create_task(request: TaskCreateRequest):
         return current_services()["action_items"].create_task(request)
 
+    @app.get("/api/directum/meetings/upcoming", response_model=list[MeetingSummary])
+    def meetings_upcoming(days: int = 7):
+        return current_services()["meetings"].get_my_meetings(days=days)
+
     @app.post("/api/feedback")
     def feedback(payload: dict[str, Any]):
         current_services()["metrics"].record_feedback(str(payload.get("rating", "unknown")))
@@ -314,15 +320,17 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     current_user = CurrentUserService(client, auth_token)
     assignments = AssignmentsService(client, current_user)
     action_items = ActionItemService(client)
+    meetings = MeetingsService(client, current_user)
     metrics = MetricsStorage(settings.METRICS_DB_PATH)
     metrics.initialize()
-    registry = ToolRegistry(current_user, assignments, action_items)
+    registry = ToolRegistry(current_user, assignments, action_items, meetings)
     llm = build_llm_service(settings, registry, testing=testing)
     return {
         "directum": client,
         "current_user": current_user,
         "assignments": assignments,
         "action_items": action_items,
+        "meetings": meetings,
         "metrics": metrics,
         "registry": registry,
         "llm": llm,
@@ -373,6 +381,8 @@ def _mock_transport() -> httpx.MockTransport:
             return httpx.Response(200, json={"value": [{"Id": 1165, "Name": "Test User"}]})
         if "IEmployees" in path:
             return httpx.Response(200, json={"value": [{"Id": 42, "Name": "Ivanov Ivan", "Status": "Active"}]})
+        if "IMeetings" in path:
+            return httpx.Response(200, json={"value": []})
         if request.method == "POST":
             return httpx.Response(200, json={"Id": 9001})
         return httpx.Response(200, json={"value": [{"Id": 1, "Subject": "Task", "Status": "InProcess"}]})
