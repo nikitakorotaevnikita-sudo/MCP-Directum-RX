@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m uvicorn src.main:app --host 127.0.0.1 --port 8005)",
+      "Bash(curl -s http://127.0.0.1:8005/docs)",
+      "Bash(cp \"c:\\\\Users\\\\Korotaev_NO\\\\Desktop\\\\Проекты\\\\MCP-Directum-RX\\\\.env.example\" \"c:\\\\Users\\\\Korotaev_NO\\\\Desktop\\\\Проекты\\\\MCP-Directum-RX\\\\.env\")",
+      "Bash(curl -s http://127.0.0.1:8005/)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s http://127.0.0.1:8005/health)",
+      "Bash(curl -s -X POST https://gpt.ario.directum360.ru/v1/chat/completions -H 'Authorization: Bearer 100111ac-d413-4721-9357-5d04aaf7386d' -H 'Content-Type: application/json' -d '{\"model\": \"gpt-4o\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 10}')",
+      "Bash(curl -s -X POST https://gpt.ario.directum360.ru/v1/chat/completions -H 'Authorization: Bearer 100111ac-d413-4721-9357-5d04aaf7386d' -H 'Content-Type: application/json' -d '{\"model\": \"gpt-4\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 10}')",
+      "Bash(curl -s https://gpt.ario.directum360.ru/v1/models -H 'Authorization: Bearer 100111ac-d413-4721-9357-5d04aaf7386d')",
+      "Bash(curl -s -X POST https://gpt.ario.directum360.ru/v1/chat/completions -H 'Authorization: Bearer 100111ac-d413-4721-9357-5d04aaf7386d' -H 'Content-Type: application/json' -d '{\"model\": \"Qwen/Qwen3-32B-AWQ\", \"messages\": [{\"role\": \"user\", \"content\": \"ping\"}], \"max_tokens\": 10}')",
+      "Bash(curl -s http://127.0.0.1:8005/api/diagnostics/config)",
+      "Bash(curl -s -X POST http://127.0.0.1:8005/api/chat/chat -H 'Content-Type: application/json' -d '{\"message\": \"ping\", \"session_id\": \"test\"}')",
+      "Bash(curl -s http://127.0.0.1:8005/openapi.json)",
+      "Bash(curl -s -X POST http://127.0.0.1:8005/api/chat -H 'Content-Type: application/json' -d '{\"message\": \"ping\"}')",
+      "Bash(taskkill /PID 20308 /F)",
+      "Bash(cmd //c \"taskkill /PID 20308 /F\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d '{\"message\": \"ping\"}')",
+      "Bash(cmd //c \"taskkill /PID 17744 /F\")",
+      "Bash(cmd //c \"taskkill /PID 9080 /F\")",
+      "Bash(cmd //c \"taskkill /PID 17500 /F\")",
+      "Bash(cmd //c \"taskkill /PID 12480 /F\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d '{\"message\": \"Выведи список в markdown формате: 1. Яблоко 2. Банан 3. Груша\"}')",
+      "Bash(curl -s -X POST \"http://127.0.0.1:8005/api/chat\" -H \"Content-Type: application/json\" -d \"{\\\\\"message\\\\\": \\\\\"Выведи список в markdown: 1. Яблоко 2. Банан\\\\\"}\")",
+      "Bash(echo '{\"message\": \"Выведи список в markdown: 1. Яблоко 2. Банан\"}')",
+      "Bash(curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d @/tmp/chat.json)",
+      "Bash(echo '{\"message\": \"Напиши таблицу в markdown с двумя колонками Имя и Возраст, добавь две строки данных\"}' > /tmp/chat.json && curl -s -X POST http://127.0.0.1:8005/api/chat -H \"Content-Type: application/json\" -d @/tmp/chat.json)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Korotaev_NO\\Desktop\\Проекты\\MCP-Directum-RX",
+      "\\tmp"
+    ]
+  }
+}

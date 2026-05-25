@@ -33,6 +33,8 @@ FastAPI serves a Vanilla JS chat UI and backoffice. Python services implement Di
 
 LLM tool calls are preview-only: the tool registry does not expose `confirm` to the model and rejects direct confirmation attempts.
 
+Chat creation requests use a controlled draft-extraction step before tools are called. `LLMService` asks the configured model to return JSON with `entity_type`, `employee_query`, `subject`, `action_text`, `deadline`, and `missing_fields`; backend validation then chooses the Directum operation. Russian routing is strict: `поручение/поручения` maps to `create_action_item`, while `задача/задание` maps to `create_task`. If required fields are missing or the model invents placeholder text, the chat asks for clarification instead of creating a preview.
+
 ## LLM Profiles
 
 The app uses the OpenAI-compatible client for Ollama, OpenRouter, Ario, and generic OpenAI-compatible endpoints. The built-in OpenRouter profile uses `https://openrouter.ai/api/v1` with `google/gemma-4-26b-a4b-it:free`; the API key must stay in local `.env` or runtime backoffice settings.

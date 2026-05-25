@@ -1,4 +1,11 @@
-from src.models.schemas import ActionItemCreateRequest, AssignmentSummary, DirectumUser, EmployeeSummary, TaskCreateRequest
+from src.models.schemas import (
+    ActionItemCreateRequest,
+    ActionItemCreateResult,
+    AssignmentSummary,
+    DirectumUser,
+    EmployeeSummary,
+    TaskCreateRequest,
+)
 from src.services.tool_registry import ToolRegistry
 
 
@@ -71,6 +78,17 @@ def test_tool_registry_create_action_item_schema_does_not_expose_confirm():
     assert "confirm" not in create_tool["function"]["parameters"]["properties"]
 
 
+def test_tool_registry_describes_russian_create_tool_split():
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+
+    tools = {tool["function"]["name"]: tool["function"]["description"] for tool in registry.openai_tools()}
+
+    assert "'поручение'" in tools["create_action_item"]
+    assert "Do not use it for 'задача' or 'задание'" in tools["create_action_item"]
+    assert "'задача' or 'задание'" in tools["create_task"]
+    assert "Do not use create_action_item" in tools["create_task"]
+
+
 def test_tool_registry_create_action_item_forces_preview_mode():
     action_items = FakeActionItems()
     registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
@@ -87,6 +105,58 @@ def test_tool_registry_create_action_item_forces_preview_mode():
     assert result["mode"] == "preview"
     assert result["payload"]["confirm"] is False
     assert action_items.created_requests[0].confirm is False
+
+
+def test_tool_registry_rejects_vague_model_generated_create_payload():
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems())
+
+    try:
+        registry.call(
+            "create_action_item",
+            {
+                "subject": "Подготовить поручение",
+                "performer_id": 42,
+                "action_text": "Необходимо выполнить задачу согласно заданию.",
+            },
+        )
+    except ValueError as exc:
+        assert "needs concrete user-provided subject and action_text" in str(exc)
+    else:
+        raise AssertionError("vague generated create payload was accepted")
+
+
+def test_tool_registry_adds_confirmation_payload_to_pydantic_preview_result():
+    class PydanticPreviewActionItems(FakeActionItems):
+        def create_action_item(self, request: ActionItemCreateRequest):
+            self.created_requests.append(request)
+            return ActionItemCreateResult(
+                mode="preview",
+                payload={"assigneeId": request.performer_id},
+                success=True,
+                message="Preview generated.",
+            )
+
+    action_items = PydanticPreviewActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items)
+
+    result = registry.call(
+        "create_action_item",
+        {
+            "subject": "Prepare response",
+            "performer_id": 42,
+            "action_text": "Prepare a short response",
+        },
+    )
+
+    assert result["mode"] == "preview"
+    assert result["confirmation_payload"] == {
+        "subject": "Prepare response",
+        "performer_id": 42,
+        "action_text": "Prepare a short response",
+        "deadline": None,
+        "document_id": None,
+        "confirm": False,
+    }
 
 
 def test_tool_registry_normalizes_short_deadline_before_validation():

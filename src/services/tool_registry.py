@@ -61,7 +61,11 @@ class ToolRegistry:
             ),
             self._tool(
                 "create_action_item",
-                "Preview or create a document-bound Directum RX action item. Use confirm=false first.",
+                (
+                    "Preview a document-bound Directum RX action item. Use this only for Russian requests that say "
+                    "'поручение' or 'поручения'. Do not use it for 'задача' or 'задание'; use create_task for those. "
+                    "Use only concrete user-provided subject/action_text; never invent placeholder text."
+                ),
                 {
                     "subject": {"type": "string"},
                     "performer_id": {"type": "integer"},
@@ -73,7 +77,11 @@ class ToolRegistry:
             ),
             self._tool(
                 "create_task",
-                "Preview or create a Directum RX simple task without a document. Use confirm=false first.",
+                (
+                    "Preview a Directum RX simple task without a document. Use this for Russian requests that say "
+                    "'задача' or 'задание'. Do not use create_action_item for 'задача' or 'задание'. "
+                    "Use only concrete user-provided subject/action_text; never invent placeholder text."
+                ),
                 {
                     "subject": {"type": "string"},
                     "performer_id": {"type": "integer"},
@@ -103,24 +111,39 @@ class ToolRegistry:
         if safe_arguments.get("confirm") is True:
             raise ValueError("Tool 'create_action_item' cannot confirm creation directly; use preview mode first")
         safe_arguments = self._normalize_create_action_item_arguments(safe_arguments)
+        self._reject_vague_create_arguments("create_action_item", safe_arguments)
         self._validate_required_arguments("create_action_item", safe_arguments)
         try:
             request = ActionItemCreateRequest(**safe_arguments)
         except ValidationError as exc:
             raise ValueError(f"Tool 'create_action_item' invalid arguments: {exc}") from exc
-        return self.action_item_service.create_action_item(request)
+        result = self.action_item_service.create_action_item(request)
+        return self._with_confirmation_payload(result, request.model_dump(mode="json"))
 
     def _create_task(self, arguments: dict[str, Any]) -> Any:
         safe_arguments = self._unwrap_tool_arguments(arguments)
         if safe_arguments.get("confirm") is True:
             raise ValueError("Tool 'create_task' cannot confirm creation directly; use preview mode first")
         safe_arguments = self._normalize_create_task_arguments(safe_arguments)
+        self._reject_vague_create_arguments("create_task", safe_arguments)
         self._validate_required_arguments("create_task", safe_arguments)
         try:
             request = TaskCreateRequest(**safe_arguments)
         except ValidationError as exc:
             raise ValueError(f"Tool 'create_task' invalid arguments: {exc}") from exc
-        return self.action_item_service.create_task(request)
+        result = self.action_item_service.create_task(request)
+        return self._with_confirmation_payload(result, request.model_dump(mode="json"))
+
+    def _with_confirmation_payload(self, result: Any, payload: dict[str, Any]) -> Any:
+        if hasattr(result, "model_dump"):
+            data = result.model_dump(mode="json")
+        elif isinstance(result, dict):
+            data = result
+        else:
+            return result
+        if data.get("mode") != "preview":
+            return data
+        return {**data, "confirmation_payload": payload}
 
     def _normalize_create_action_item_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
         safe_arguments = {**self._unwrap_tool_arguments(arguments), "confirm": False}
@@ -163,6 +186,28 @@ class ToolRegistry:
             arguments["action_text"] = subject
         if not subject and isinstance(action_text, str) and action_text.strip():
             arguments["subject"] = action_text
+
+    def _reject_vague_create_arguments(self, name: str, arguments: dict[str, Any]) -> None:
+        subject = self._normalize_vague_text(arguments.get("subject"))
+        action_text = self._normalize_vague_text(arguments.get("action_text"))
+        vague_values = {
+            "подготовить поручение",
+            "поручение",
+            "подготовить задание",
+            "задание",
+            "задача",
+            "необходимо выполнить задачу согласно заданию",
+            "выполнить задачу согласно заданию",
+        }
+        if subject in vague_values or action_text in vague_values:
+            raise ValueError(
+                f"Tool '{name}' needs concrete user-provided subject and action_text; ask the user for the task text"
+            )
+
+    def _normalize_vague_text(self, value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        return re.sub(r"\s+", " ", value.strip().lower().rstrip(".")).strip()
 
     def _normalize_action_item_performer(self, arguments: dict[str, Any]) -> None:
         performer = arguments.get("performer_id")

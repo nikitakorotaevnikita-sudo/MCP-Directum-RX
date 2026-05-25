@@ -10,9 +10,13 @@ from openai import OpenAI
 
 
 SYSTEM_PROMPT = (
-    "You are an assistant for Directum RX assignments. You may use tools to inspect assignments and preview action item "
-    "creation. Final action item confirmation requires an explicit external, user-confirmed endpoint; do not confirm or "
-    "create action items yourself.\n"
+    "You are an assistant for Directum RX work items. Russian tool routing is strict: "
+    "'поручение'/'поручения' means create_action_item; 'задача'/'задание' means create_task. "
+    "Never use create_action_item for 'задача' or 'задание'. "
+    "Do not invent subject, action_text, deadline, or document_id when the user did not provide them. "
+    "If the user gives only a performer, ask for the concrete task text.\n"
+    "Final action item or task confirmation requires an explicit external, user-confirmed endpoint; do not confirm or "
+    "create items yourself.\n"
     "When calling search_employee, normalize the query first: remove punctuation (.,;:!?\"'), strip extra spaces, "
     "and pass only the most stable part of the name — usually last name + first name. "
     "Do not include words like 'для', 'исполнитель', 'срок', or grammatical suffixes. "
@@ -22,6 +26,7 @@ SYSTEM_PROMPT = (
 
 ACTION_ITEM_PREVIEW_MARKER = "DIRECTUM_ACTION_ITEM_PREVIEW"
 EMPLOYEE_QUERY_STRIP_CHARS = " \t\r\n.,;:!?\"'\u00ab\u00bb"
+CREATE_VERB_PATTERN = r"(?:создай|подготовь|поставь|сформируй|выдай)"
 
 
 class LLMService:
@@ -81,6 +86,7 @@ class LLMService:
 
     def _stream_chat_with_tools(self, messages: list[dict[str, Any]], max_tool_rounds: int = 4) -> Iterable[str]:
         tools = self.tools_for_request()
+        employee_names_by_id: dict[int, str] = {}
         for _ in range(max_tool_rounds):
             chunks, tool_calls = self._collect_stream(messages, tools)
             if chunks:
@@ -97,7 +103,22 @@ class LLMService:
             )
             for tool_call in tool_calls:
                 function = tool_call["function"]
-                result = self.tool_registry.call(function["name"], json.loads(function["arguments"] or "{}"))
+                tool_name = function["name"]
+                try:
+                    result = self.tool_registry.call(tool_name, json.loads(function["arguments"] or "{}"))
+                except ValueError as exc:
+                    if self._is_direct_confirmation_error(exc):
+                        yield self._confirmation_requires_button_message()
+                        return
+                    if self._is_vague_create_error(exc):
+                        yield self._create_request_needs_text_message(tool_name)
+                        return
+                    raise
+                self._remember_employee_names(tool_name, result, employee_names_by_id)
+                preview_response = self._tool_preview_response(tool_name, result, employee_names_by_id)
+                if preview_response is not None:
+                    yield preview_response
+                    return
                 messages.append(
                     {
                         "role": "tool",
@@ -107,6 +128,67 @@ class LLMService:
                 )
 
         yield "Tool processing stopped after too many steps."
+
+    def _is_direct_confirmation_error(self, exc: ValueError) -> bool:
+        message = str(exc)
+        return "cannot confirm creation directly" in message
+
+    def _is_vague_create_error(self, exc: ValueError) -> bool:
+        message = str(exc)
+        return "needs concrete user-provided subject and action_text" in message
+
+    def _create_request_needs_text_message(self, tool_name: str) -> str:
+        entity_label = "задачи" if tool_name == "create_task" else "поручения"
+        return f"Для подготовки {entity_label} нужен конкретный текст: что именно должен сделать исполнитель?"
+
+    def _confirmation_requires_button_message(self) -> str:
+        return (
+            "Подтверждение создания через чат отключено. "
+            "Нажмите кнопку создания в preview-карточке; если карточки нет, заново опишите поручение с исполнителем и текстом."
+        )
+
+    def _remember_employee_names(self, tool_name: str, result: Any, employee_names_by_id: dict[int, str]) -> None:
+        if tool_name != "search_employee":
+            return
+        employees = result if isinstance(result, list) else []
+        for employee in employees:
+            if not isinstance(employee, dict):
+                continue
+            employee_id = employee.get("id")
+            employee_name = employee.get("name")
+            if isinstance(employee_id, int) and isinstance(employee_name, str) and employee_name.strip():
+                employee_names_by_id[employee_id] = employee_name.strip()
+
+    def _tool_preview_response(
+        self,
+        tool_name: str,
+        result: Any,
+        employee_names_by_id: dict[int, str],
+    ) -> str | None:
+        if tool_name not in {"create_action_item", "create_task"}:
+            return None
+        if not isinstance(result, dict) or result.get("mode") != "preview":
+            return None
+        payload = result.get("confirmation_payload")
+        if not isinstance(payload, dict):
+            return None
+
+        performer_id = payload.get("performer_id")
+        performer_name = employee_names_by_id.get(performer_id) if isinstance(performer_id, int) else None
+        performer_name = performer_name or str(performer_id or "исполнитель")
+        preview_type = "task" if tool_name == "create_task" else "action_item"
+        entity_label = "задачи" if preview_type == "task" else "поручения"
+        subject = payload.get("subject") or payload.get("action_text") or ""
+        visible_response = (
+            f"Подготовлен preview {entity_label} для {performer_name}: {subject}. "
+            "Для фактического создания нажмите кнопку подтверждения."
+        )
+        return visible_response + "\n" + self._action_item_preview_marker(
+            payload,
+            performer_name,
+            preview_type,
+            correct_text=False,
+        )
 
     def _collect_stream(
         self,
@@ -153,6 +235,10 @@ class LLMService:
         return f"LLM request failed: {message}"
 
     def _direct_rx_response(self, message: str, history: Iterable[dict[str, str]] | None = None) -> str | None:
+        confirmation_response = self._direct_confirmation_response(message, history)
+        if confirmation_response is not None:
+            return confirmation_response
+
         create_response = self._direct_action_item_create_response(message, history)
         if create_response is not None:
             return create_response
@@ -172,9 +258,26 @@ class LLMService:
             or "my assignments" in normalized
         ):
             direct_tool = "get_my_assignments"
-        elif "\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u044b\u0435 \u043c\u043d\u0435" in normalized or "assigned to me" in normalized:
+        elif (
+            "\u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043d\u044b\u0435 \u043c\u043d\u0435" in normalized
+            or "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u043c\u043d\u0435" in normalized
+            or (
+                "\u0432\u0445\u043e\u0434\u044f\u0449" in normalized
+                and "\u043f\u043e\u0440\u0443\u0447\u0435\u043d" in normalized
+            )
+            or "assigned to me" in normalized
+        ):
             direct_tool = "get_action_items_assigned_to_me"
-        elif "\u0441\u043e\u0437\u0434\u0430\u043d\u043d\u044b\u0435 \u043c\u043d\u043e\u0439" in normalized or "created by me" in normalized:
+        elif (
+            "\u0441\u043e\u0437\u0434\u0430\u043d\u043d\u044b\u0435 \u043c\u043d\u043e\u0439" in normalized
+            or "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u044f \u043e\u0442 \u043c\u0435\u043d\u044f" in normalized
+            or "\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0439 \u043e\u0442 \u043c\u0435\u043d\u044f" in normalized
+            or (
+                "\u0438\u0441\u0445\u043e\u0434\u044f\u0449" in normalized
+                and "\u043f\u043e\u0440\u0443\u0447\u0435\u043d" in normalized
+            )
+            or "created by me" in normalized
+        ):
             direct_tool = "get_action_items_created_by_me"
         if direct_tool is None:
             return None
@@ -185,12 +288,39 @@ class LLMService:
         except Exception as exc:
             return self._safe_directum_error_message(exc)
 
+    def _direct_confirmation_response(
+        self,
+        message: str,
+        history: Iterable[dict[str, str]] | None = None,
+    ) -> str | None:
+        normalized = message.strip().lower()
+        if normalized not in {"да", "подтверждаю", "создать", "подтвердить", "ok", "okay", "yes"}:
+            return None
+        for item in reversed(list(history or [])[-4:]):
+            if item.get("role") != "assistant":
+                continue
+            content = item.get("content", "").lower()
+            if (
+                "preview" in content
+                or "предваритель" in content
+                or "подтверд" in content
+                or "черновик" in content
+            ) and ("поручен" in content or "задач" in content):
+                return self._confirmation_requires_button_message()
+        return None
+
     def _direct_action_item_create_response(
         self,
         message: str,
         history: Iterable[dict[str, str]] | None = None,
     ) -> str | None:
-        draft = self._parse_action_item_draft(message)
+        llm_draft = self._extract_create_draft_via_llm(message)
+        fallback_draft = self._parse_followup_create_draft(message, history) or self._parse_action_item_draft(message)
+        if llm_draft is not None and not llm_draft.get("missing_fields"):
+            draft = llm_draft
+        else:
+            draft = fallback_draft or llm_draft
+        draft = self._apply_context_to_create_draft(message, draft, history)
         action_text = self._parse_action_text_update(message)
         if draft is None and action_text:
             draft = self._latest_action_item_draft(history)
@@ -198,6 +328,10 @@ class LLMService:
                 draft["action_text"] = action_text
         if draft is None:
             return None
+
+        missing_message = self._missing_create_draft_message(draft)
+        if missing_message is not None:
+            return missing_message
 
         if not draft.get("action_text"):
             return (
@@ -223,9 +357,9 @@ class LLMService:
                 "performer_id": performer_id,
                 "action_text": draft["action_text"],
             }
-            deadline = self._parse_deadline(draft.get("deadline_text") or "")
-            if deadline is not None:
-                arguments["deadline"] = deadline.isoformat()
+            deadline = self._normalize_draft_deadline(draft)
+            if deadline:
+                arguments["deadline"] = deadline
 
             preview_type = draft.get("type", "action_item")
             is_task = preview_type == "task"
@@ -240,17 +374,315 @@ class LLMService:
                 f"\u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043d\u0443\u0436\u043d\u043e "
                 f"\u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435."
             )
-            return visible_response + "\n" + self._action_item_preview_marker(arguments, performer_name, preview_type)
+            return visible_response + "\n" + self._action_item_preview_marker(
+                arguments,
+                performer_name,
+                preview_type,
+                correct_text=draft.get("source") != "llm",
+            )
         except Exception as exc:
             return self._safe_directum_error_message(exc)
+
+    def _extract_create_draft_via_llm(self, message: str) -> dict[str, Any] | None:
+        if not self._looks_like_create_request(message):
+            return None
+
+        prompt = (
+            "Извлеки черновик создания задачи или поручения Directum RX из сообщения пользователя.\n"
+            "Верни только JSON без markdown.\n"
+            "Правила:\n"
+            "- entity_type: task для слов 'задача', 'задачу', 'задание', 'задания'; action_item для 'поручение', 'поручения'.\n"
+            "- Не придумывай subject, action_text, deadline или employee_query, если их нет в сообщении.\n"
+            "- Если есть только исполнитель без текста действия, action_text=null и добавь 'action_text' в missing_fields.\n"
+            "- employee_query должен быть коротким поисковым именем сотрудника, без слов 'для', 'на', 'срок'.\n"
+            "- subject: краткое существительное/фраза по смыслу действия, без даты.\n"
+            "- action_text: конкретное действие для исполнителя, без даты.\n"
+            "- deadline: если указана явная дата, верни ISO 8601 с timezone +00:00 и временем 23:59:00; "
+            "для dd.mm.yy используй 20yy. Если даты нет, null.\n"
+            "JSON schema: {"
+            "\"entity_type\":\"task|action_item|null\","
+            "\"employee_query\":\"string|null\","
+            "\"subject\":\"string|null\","
+            "\"action_text\":\"string|null\","
+            "\"deadline\":\"string|null\","
+            "\"missing_fields\":[\"employee_query\"|\"action_text\"|\"entity_type\"]"
+            "}\n"
+            f"Сообщение: {message}"
+        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Ты возвращаешь только валидный JSON без markdown-разметки."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0,
+                max_tokens=400,
+            )
+            raw = response.choices[0].message.content or "{}"
+            data = self._parse_json_object(raw)
+        except Exception:
+            return None
+        return self._normalize_llm_create_draft(data, message)
+
+    def _looks_like_create_request(self, message: str) -> bool:
+        normalized = message.lower()
+        has_create_verb = any(verb in normalized for verb in ("создай", "подготовь", "поставь", "сформируй", "выдай"))
+        has_entity = any(entity in normalized for entity in ("поручен", "задач", "задан"))
+        return has_create_verb and has_entity
+
+    def _parse_json_object(self, raw: str) -> dict[str, Any]:
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+            cleaned = re.sub(r"\s*```$", "", cleaned)
+        if not cleaned.startswith("{"):
+            match = re.search(r"\{[\s\S]*\}", cleaned)
+            if match is None:
+                return {}
+            cleaned = match.group(0)
+        data = json.loads(cleaned)
+        return data if isinstance(data, dict) else {}
+
+    def _normalize_llm_create_draft(self, data: dict[str, Any], message: str) -> dict[str, Any] | None:
+        entity_type = self._entity_type_from_message(message) or data.get("entity_type")
+        if entity_type not in {"task", "action_item"}:
+            return None
+
+        employee_query = self._clean_optional_text(data.get("employee_query"))
+        subject = self._clean_optional_text(data.get("subject"))
+        action_text = self._clean_optional_text(data.get("action_text"))
+        deadline = self._clean_optional_text(data.get("deadline"))
+        missing_fields = data.get("missing_fields") if isinstance(data.get("missing_fields"), list) else []
+        missing = {str(field) for field in missing_fields}
+
+        if action_text and not subject:
+            subject = action_text
+        if self._is_vague_generated_text(subject) or self._is_vague_generated_text(action_text):
+            action_text = ""
+            missing.add("action_text")
+        if not employee_query:
+            missing.add("employee_query")
+        if not action_text:
+            missing.add("action_text")
+
+        return {
+            "type": entity_type,
+            "employee_query": employee_query or "",
+            "subject": subject or action_text or ("Задача" if entity_type == "task" else "Поручение"),
+            "action_text": action_text or "",
+            "deadline": deadline or "",
+            "missing_fields": sorted(missing),
+            "source": "llm",
+        }
+
+    def _entity_type_from_message(self, message: str) -> str | None:
+        lowered = message.lower()
+        if re.search(r"\b(?:задач\w*|задани\w*)\b", lowered):
+            return "task"
+        if re.search(r"\bпоручен\w*\b", lowered):
+            return "action_item"
+        return None
+
+    def _clean_optional_text(self, value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        return re.sub(r"\s+", " ", value).strip(" \t\r\n.,;:!?\"'«»")
+
+    def _is_vague_generated_text(self, value: str | None) -> bool:
+        normalized = self._clean_optional_text(value).lower()
+        normalized = normalized.rstrip(".")
+        return normalized in {
+            "",
+            "подготовить поручение",
+            "поручение",
+            "подготовить задание",
+            "задание",
+            "задача",
+            "необходимо выполнить задачу согласно заданию",
+            "выполнить задачу согласно заданию",
+        }
+
+    def _missing_create_draft_message(self, draft: dict[str, Any]) -> str | None:
+        missing = set(draft.get("missing_fields") or [])
+        entity_label = "задачи" if draft.get("type") == "task" else "поручения"
+        if "employee_query" in missing:
+            return f"Для подготовки {entity_label} нужен исполнитель."
+        if "action_text" in missing or not draft.get("action_text"):
+            return f"Для подготовки {entity_label} нужен конкретный текст: что именно должен сделать исполнитель?"
+        return None
+
+    def _apply_context_to_create_draft(
+        self,
+        message: str,
+        draft: dict[str, Any] | None,
+        history: Iterable[dict[str, str]] | None,
+    ) -> dict[str, Any] | None:
+        if draft is None:
+            return None
+        if not self._needs_context_for_create_draft(message, draft):
+            return draft
+        previous = self._latest_create_context(history)
+        if previous is None:
+            return draft
+
+        merged = {**draft}
+        if not merged.get("employee_query") or self._uses_pronoun_employee(message):
+            merged["employee_query"] = previous.get("employee_query", "")
+        if not merged.get("action_text"):
+            merged["action_text"] = previous.get("action_text", "")
+        if self._is_vague_generated_text(merged.get("subject")) and previous.get("subject"):
+            merged["subject"] = previous["subject"]
+        if not merged.get("deadline") and not merged.get("deadline_text"):
+            merged["deadline"] = previous.get("deadline") or previous.get("deadline_text") or ""
+        missing = set(merged.get("missing_fields") or [])
+        if merged.get("employee_query"):
+            missing.discard("employee_query")
+        if merged.get("action_text"):
+            missing.discard("action_text")
+        merged["missing_fields"] = sorted(missing)
+        return merged
+
+    def _needs_context_for_create_draft(self, message: str, draft: dict[str, Any]) -> bool:
+        normalized = message.lower()
+        return (
+            "такое же" in normalized
+            or self._uses_pronoun_employee(message)
+            or not draft.get("employee_query")
+            or not draft.get("action_text")
+        )
+
+    def _uses_pronoun_employee(self, message: str) -> bool:
+        return re.search(r"\b(?:нее|ней|него|нему|ним|её|его)\b", message.lower()) is not None
+
+    def _latest_create_context(self, history: Iterable[dict[str, str]] | None) -> dict[str, Any] | None:
+        items = list(history or [])
+        for item in reversed(items):
+            if item.get("role") == "assistant":
+                draft = self._preview_draft_from_assistant_content(item.get("content", ""))
+                if draft is not None:
+                    return draft
+        for item in reversed(items):
+            if item.get("role") == "user":
+                draft = self._parse_action_item_draft(item.get("content", ""))
+                if draft is not None and draft.get("action_text"):
+                    return draft
+        return None
+
+    def _preview_draft_from_assistant_content(self, content: str) -> dict[str, Any] | None:
+        marker = self._preview_marker_payload(content)
+        if marker is not None:
+            payload = marker.get("payload") if isinstance(marker.get("payload"), dict) else {}
+            display = marker.get("display") if isinstance(marker.get("display"), dict) else {}
+            return {
+                "type": marker.get("type") or "action_item",
+                "employee_query": display.get("performer_name") or str(payload.get("performer_id") or ""),
+                "subject": payload.get("subject") or payload.get("action_text") or "",
+                "action_text": payload.get("action_text") or payload.get("subject") or "",
+                "deadline": payload.get("deadline") or "",
+                "source": "history",
+            }
+
+        match = re.search(
+            r"preview\s+(задачи|поручения)\s+для\s+(.+?):\s+(.+?)(?:\.\s+Для|\s*$)",
+            content,
+            flags=re.IGNORECASE,
+        )
+        if match is None:
+            return None
+        return {
+            "type": "task" if "задач" in match.group(1).lower() else "action_item",
+            "employee_query": self._clean_employee_query(match.group(2)),
+            "subject": match.group(3).strip(" ."),
+            "action_text": match.group(3).strip(" ."),
+            "deadline": "",
+            "source": "history",
+        }
+
+    def _preview_marker_payload(self, content: str) -> dict[str, Any] | None:
+        match = re.search(r"\[\[DIRECTUM_ACTION_ITEM_PREVIEW:([\s\S]*?)\]\]\s*$", content)
+        if match is None:
+            return None
+        try:
+            data = json.loads(match.group(1))
+        except ValueError:
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _parse_followup_create_draft(
+        self,
+        message: str,
+        history: Iterable[dict[str, str]] | None,
+    ) -> dict[str, Any] | None:
+        draft_type = self._pending_create_type_from_history(history)
+        if draft_type is None:
+            return None
+
+        employee_match = re.search(
+            r"(?:исполн?итель|испонитель)\s*[-–—:]?\s*(.+?)(?=\s*,?\s*(?:срок|$))",
+            message,
+            flags=re.IGNORECASE,
+        )
+        if employee_match is None:
+            return None
+        employee_query = re.split(r"\bсрок", employee_match.group(1), maxsplit=1, flags=re.IGNORECASE)[0]
+        employee_query = self._clean_employee_query(employee_query)
+
+        deadline_text = ""
+        deadline_match = re.search(r"\bсрок(?:ом)?\s*[-–—:]?\s*(.+?)\s*$", message, flags=re.IGNORECASE)
+        if deadline_match is not None:
+            deadline_text = deadline_match.group(1).strip()
+
+        theme_match = re.search(
+            r"\bтема\s*[-–—:]?\s*(.+?)(?=\s*,?\s*(?:исполн?итель|испонитель|срок|$))",
+            message,
+            flags=re.IGNORECASE,
+        )
+        if theme_match is not None:
+            subject = theme_match.group(1).strip(" .,;")
+        else:
+            subject = re.split(r"\b(?:исполн?итель|испонитель)\b", message, maxsplit=1, flags=re.IGNORECASE)[0]
+            subject = subject.strip(" .,;:-–—")
+
+        subject, inline_deadline = self._split_trailing_deadline(subject, deadline_text)
+        return {
+            "type": draft_type,
+            "employee_query": employee_query,
+            "subject": subject,
+            "action_text": subject,
+            "deadline_text": inline_deadline,
+            "source": "followup",
+        }
+
+    def _pending_create_type_from_history(self, history: Iterable[dict[str, str]] | None) -> str | None:
+        for item in reversed(list(history or [])[-6:]):
+            if item.get("role") != "assistant":
+                continue
+            content = item.get("content", "").lower()
+            if "нужен конкретный текст" in content or "укажите тему" in content:
+                if "поручен" in content:
+                    return "action_item"
+                if "задач" in content or "задан" in content:
+                    return "task"
+        return None
+
+    def _normalize_draft_deadline(self, draft: dict[str, Any]) -> str | None:
+        raw_deadline = draft.get("deadline") or draft.get("deadline_text") or ""
+        if not isinstance(raw_deadline, str) or not raw_deadline.strip():
+            return None
+        parsed = self._parse_deadline(raw_deadline)
+        if parsed is not None:
+            return parsed.isoformat()
+        return raw_deadline.strip()
 
     def _action_item_preview_marker(
         self,
         payload: dict[str, Any],
         performer_name: str,
         preview_type: str = "action_item",
+        correct_text: bool = True,
     ) -> str:
-        corrected = self._action_item_text_to_imperative(payload)
+        corrected = self._action_item_text_to_imperative(payload) if correct_text else payload
         preview = {
             "type": preview_type,
             "payload": corrected,
@@ -345,9 +777,9 @@ class LLMService:
     def _parse_action_item_draft(self, message: str) -> dict[str, str] | None:
         quoted_match = re.search(
             (
-                r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
-                r"\u0434\u043b\u044f\s+(.+?)\s+[\u0022\u00ab](.+?)[\u0022\u00bb]\s*"
+                CREATE_VERB_PATTERN + r"\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438[ея]|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438[ея])\s+"
+                r"(?:\u0434\u043b\u044f|\u043d\u0430)\s+(.+?)\s+[\u0022\u00ab](.+?)[\u0022\u00bb]\s*"
                 r"(?:,?\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
             ),
             message,
@@ -368,9 +800,9 @@ class LLMService:
 
         natural_match = re.search(
             (
-                r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
-                r"\u0434\u043b\u044f\s+([^,]+?),?\s+"
+                CREATE_VERB_PATTERN + r"\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438[ея]|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438[ея])\s+"
+                r"(?:\u0434\u043b\u044f|\u043d\u0430)\s+([^,]+?),?\s+"
                 r"\u0447\u0442\u043e\u0431\u044b\s+(?:\u043e\u043d|"
                 r"\u043e\u043d\u0430)\s+(.+?)\s+"
                 r"(?:(?:\u0441\u043e\s+)?\u0441\u0440\u043e\u043a(?:\u043e\u043c)?\s*[-\u2013\u2014:]?|\u043a)\s*(.+)$"
@@ -390,9 +822,9 @@ class LLMService:
 
         theme_match = re.search(
             (
-                r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
-                r"\u0434\u043b\u044f\s+([^,]+),\s*"
+                CREATE_VERB_PATTERN + r"\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438[ея]|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438[ея])\s+"
+                r"(?:\u0434\u043b\u044f|\u043d\u0430)\s+([^,]+),\s*"
                 r"\u0442\u0435\u043c\u0430\s*[-\u2013\u2014:]?\s*(.+?)"
                 r"(?:,\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
             ),
@@ -413,9 +845,9 @@ class LLMService:
 
         create_match = re.search(
             (
-                r"(?:\u0441\u043e\u0437\u0434\u0430\u0439|\u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u044c)\s+"
-                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438\u0435|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435)\s+"
-                r"\u0434\u043b\u044f\s+([^,]+),\s*(.+?)"
+                CREATE_VERB_PATTERN + r"\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438[ея]|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438[ея])\s+"
+                r"(?:\u0434\u043b\u044f|\u043d\u0430)\s+([^,]+),\s*(.+?)"
                 r"(?:,\s*\u0441\u0440\u043e\u043a\s*[-\u2013\u2014:]?\s*(.+))?$"
             ),
             message,
@@ -432,6 +864,23 @@ class LLMService:
                 "subject": subject,
                 "action_text": subject,
                 "deadline_text": deadline_text,
+            }
+
+        performer_only_match = re.search(
+            (
+                CREATE_VERB_PATTERN + r"\s+"
+                r"(\u0437\u0430\u0434\u0430\u0447\u0443|\u0437\u0430\u0434\u0430\u043d\u0438[ея]|\u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438[ея])\s+"
+                r"(?:\u0434\u043b\u044f|\u043d\u0430)\s+([^,]+?)\s*$"
+            ),
+            message,
+            flags=re.IGNORECASE,
+        )
+        if performer_only_match is not None:
+            return {
+                "type": self._draft_type(performer_only_match.group(1)),
+                "employee_query": self._clean_employee_query(performer_only_match.group(2)),
+                "subject": "\u041f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435",
+                "deadline_text": "",
             }
 
         performer_match = re.search(
@@ -452,7 +901,8 @@ class LLMService:
         return None
 
     def _draft_type(self, entity_word: str) -> str:
-        return "task" if "\u0437\u0430\u0434\u0430\u0447" in entity_word.lower() else "action_item"
+        lowered = entity_word.lower()
+        return "task" if "\u0437\u0430\u0434\u0430\u0447" in lowered or "\u0437\u0430\u0434\u0430\u043d" in lowered else "action_item"
 
     def _parse_action_text_update(self, message: str) -> str | None:
         match = re.search(

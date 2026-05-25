@@ -146,7 +146,7 @@ async function confirmActionItemPreview(preview, card, status) {
     }
 
     const idText = result.directum_id ? ` ID: ${result.directum_id}` : "";
-    status.textContent = `${isTask ? "Задача" : "Поручение"} создано.${idText}`;
+    status.textContent = `${isTask ? "Задача создана" : "Поручение создано"}.${idText}`;
     if (result.url) {
       const link = document.createElement("a");
       link.className = "preview-link";
@@ -199,6 +199,13 @@ document.querySelectorAll("[data-action]").forEach((button) => {
   button.addEventListener("click", () => quickAction(button.dataset.action));
 });
 
+document.querySelectorAll(".nav-item").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
+    button.classList.add("active");
+  });
+});
+
 document.querySelector("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const input = document.querySelector("#chat-input");
@@ -222,7 +229,7 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
     renderActionItemPreview(parsedAnswer.preview, assistantMessage);
   }
   chatHistory.push({role: "user", content: text});
-  chatHistory.push({role: "assistant", content: parsedAnswer.text});
+  chatHistory.push({role: "assistant", content: answer});
 });
 
 loadStatus();

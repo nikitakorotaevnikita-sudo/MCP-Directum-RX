@@ -38,6 +38,7 @@ class RecordingToolRegistry(FakeToolRegistry):
                 },
                 "success": True,
                 "message": "Preview generated; confirm to create the action item.",
+                "confirmation_payload": {**arguments, "confirm": False},
             }
         if name == "create_task":
             return {
@@ -49,6 +50,7 @@ class RecordingToolRegistry(FakeToolRegistry):
                 },
                 "success": True,
                 "message": "Preview generated; confirm to create the task.",
+                "confirmation_payload": {**arguments, "confirm": False},
             }
         return [{"id": 1, "subject": "Task", "status": "InProcess", "entity_type": "assignment"}]
 
@@ -56,6 +58,41 @@ class RecordingToolRegistry(FakeToolRegistry):
 class FailingToolRegistry(FakeToolRegistry):
     def call(self, name, arguments):
         raise RuntimeError("DIRECTUM_AUTH_TOKEN must be a valid Basic token")
+
+
+class RejectingCreateConfirmationRegistry(FakeToolRegistry):
+    def openai_tools(self):
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_action_item",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ]
+
+    def call(self, name, arguments):
+        raise ValueError("Tool 'create_action_item' cannot confirm creation directly; use preview mode first")
+
+
+class RejectingVagueCreateRegistry(FakeToolRegistry):
+    def openai_tools(self):
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_action_item",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ]
+
+    def call(self, name, arguments):
+        raise ValueError(
+            "Tool 'create_action_item' needs concrete user-provided subject and action_text; "
+            "ask the user for the task text"
+        )
 
 
 class FakeCompletions:
@@ -110,6 +147,58 @@ class ToolCallCompletions:
                     choices=[
                         SimpleNamespace(delta=SimpleNamespace(content="Found 1 assignment: Task."))
                     ]
+                )
+            ]
+        )
+
+
+class ConfirmingCreateCompletions:
+    def __init__(self):
+        self.requests = []
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        return iter(
+            [
+                SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            delta=SimpleNamespace(
+                                tool_calls=[
+                                    SimpleNamespace(
+                                        index=0,
+                                        id="call_confirm",
+                                        type="function",
+                                        function=SimpleNamespace(
+                                            name="create_action_item",
+                                            arguments=(
+                                                '{"subject":"Проверить документы",'
+                                                '"performer_id":42,'
+                                                '"action_text":"Проверить документы",'
+                                                '"confirm":true}'
+                                            ),
+                                        ),
+                                    )
+                                ]
+                            )
+                        )
+                    ]
+                )
+            ]
+        )
+
+
+class ExtractDraftCompletions:
+    def __init__(self, draft):
+        self.draft = draft
+        self.requests = []
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=json.dumps(self.draft, ensure_ascii=False))
                 )
             ]
         )
@@ -199,6 +288,18 @@ class FailingClient:
 class ToolCallClient:
     def __init__(self):
         self.completions = ToolCallCompletions()
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+class ConfirmingCreateClient:
+    def __init__(self):
+        self.completions = ConfirmingCreateCompletions()
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+class ExtractDraftClient:
+    def __init__(self, draft):
+        self.completions = ExtractDraftCompletions(draft)
         self.chat = SimpleNamespace(completions=self.completions)
 
 
@@ -358,6 +459,33 @@ def test_stream_chat_routes_my_assignments_intent_without_model_tool_call():
     assert client.completions.requests == []
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Дай сводку по моим исходящим поручениям",
+        "Поручения от меня",
+    ],
+)
+def test_stream_chat_routes_created_action_items_intent_without_model_tool_call(message):
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = ToolCallClient()
+    service.client = client
+
+    chunks = list(service.stream_chat(message, []))
+
+    assert registry.calls == [("get_action_items_created_by_me", {})]
+    assert chunks == ["Найдено 1: Task (InProcess)."]
+    assert client.completions.requests == []
+
+
 def test_stream_chat_routes_in_progress_tasks_question_without_model_tool_call():
     registry = RecordingToolRegistry()
     service = LLMService(
@@ -399,6 +527,111 @@ def test_stream_chat_reports_directum_error_for_direct_rx_intent():
     assert chunks == ["Directum RX request failed: DIRECTUM_AUTH_TOKEN must be a valid Basic token"]
 
 
+def test_stream_chat_routes_performer_only_action_item_request_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = ToolCallClient()
+    service.client = client
+
+    chunks = list(service.stream_chat("Создай поручение на Ардо Наталью", []))
+
+    assert chunks == ["Для подготовки поручения нужен конкретный текст: что именно должен сделать исполнитель?"]
+    assert registry.calls == []
+    assert len(client.completions.requests) == 1
+
+
+def test_stream_chat_routes_plural_performer_only_action_item_request_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = ToolCallClient()
+    service.client = client
+
+    chunks = list(service.stream_chat("Подготовь поручения для Ардо", []))
+
+    assert chunks == ["Для подготовки поручения нужен конкретный текст: что именно должен сделать исполнитель?"]
+    assert registry.calls == []
+    assert len(client.completions.requests) == 1
+
+
+def test_stream_chat_rejects_text_confirmation_after_preview_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    client = ToolCallClient()
+    service.client = client
+
+    chunks = list(
+        service.stream_chat(
+            "Да",
+            [
+                {
+                    "role": "assistant",
+                    "content": (
+                        "Подготовлен preview поручения для Ардо Наталья: Проверить документы. "
+                        "Для фактического создания нажмите кнопку подтверждения."
+                    ),
+                }
+            ],
+        )
+    )
+
+    assert chunks == [service._confirmation_requires_button_message()]
+    assert registry.calls == []
+    assert client.completions.requests == []
+
+
+def test_stream_chat_turns_model_direct_confirmation_tool_call_into_button_instruction():
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=RejectingCreateConfirmationRegistry(),
+    )
+    service.client = ConfirmingCreateClient()
+
+    chunks = list(service.stream_chat("Да", []))
+
+    assert chunks == [service._confirmation_requires_button_message()]
+
+
+def test_stream_chat_turns_model_vague_create_tool_call_into_text_request():
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=RejectingVagueCreateRegistry(),
+    )
+    service.client = ConfirmingCreateClient()
+
+    chunks = list(service.stream_chat("Use the create tool with vague generated text", []))
+
+    assert chunks == ["Для подготовки поручения нужен конкретный текст: что именно должен сделать исполнитель?"]
+
+
 def test_stream_chat_handles_search_then_create_tool_calls():
     registry = RecordingToolRegistry()
     service = LLMService(
@@ -414,10 +647,20 @@ def test_stream_chat_handles_search_then_create_tool_calls():
 
     chunks = list(service.stream_chat("Use tools to prepare an action item", []))
 
-    assert chunks == [
-        "I found Ардо Наталья Алексеевна. ",
-        "Preview generated for Ардо Наталья Алексеевна; confirmation is required.",
-    ]
+    assert chunks[0] == "I found Ардо Наталья Алексеевна. "
+    visible, preview = _split_action_item_preview_marker(chunks[1])
+    assert visible == (
+        "Подготовлен preview поручения для Ардо Наталья Алексеевна: "
+        "Проверить документы по Минцифре. "
+        "Для фактического создания нажмите кнопку подтверждения."
+    )
+    assert preview["type"] == "action_item"
+    assert preview["payload"] == {
+        "subject": "Проверить документы по Минцифре",
+        "performer_id": 42,
+        "action_text": "Проверить документы по Минцифре",
+        "confirm": False,
+    }
     assert registry.calls == [
         ("search_employee", {"query": "Ардо"}),
         (
@@ -429,10 +672,10 @@ def test_stream_chat_handles_search_then_create_tool_calls():
             },
         ),
     ]
-    assert len(client.completions.requests) == 3
+    assert len(client.completions.requests) == 2
 
 
-def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
+def test_stream_chat_routes_explicit_assignment_word_to_task_without_model():
     class CreateCompletions:
         def __init__(self):
             self.call_count = 0
@@ -473,16 +716,247 @@ def test_stream_chat_routes_explicit_create_action_item_intent_without_model():
     )
 
     assert registry.calls[0] == ("search_employee", {"query": "Ардо"})
-    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][0] == "create_task"
     assert registry.calls[1][1]["performer_id"] == 42
     assert "deadline" in registry.calls[1][1]
     visible, preview = _split_action_item_preview_marker(chunks[0])
     assert visible.startswith("Подготовлен preview")
-    assert preview["type"] == "action_item"
-    assert preview["payload"]["subject"] == "Проверка документов по Минцифре"
+    assert preview["type"] == "task"
+    assert preview["payload"]["subject"] == "Проверить документы по Минцифре"
     assert preview["payload"]["performer_id"] == 42
-    assert preview["payload"]["action_text"] == "Проверьте документы по Минцифре."
+    assert preview["payload"]["action_text"] == "Проверить документы по Минцифре"
     assert preview["payload"]["deadline"].endswith("+00:00")
+
+
+def test_stream_chat_routes_user_assignment_example_to_task_without_model():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = MultiStepCreateClient()
+
+    chunks = list(service.stream_chat("Подготовь задание для Ардо, Ей нужно вынести мусор, срок 25.05.2026", []))
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо"})
+    assert registry.calls[1][0] == "create_task"
+    assert registry.calls[1][1]["subject"] == "Ей нужно вынести мусор"
+    assert registry.calls[1][1]["action_text"] == "Ей нужно вынести мусор"
+    assert registry.calls[1][1]["deadline"].startswith("2026-05-25T23:59:00")
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview задачи")
+    assert preview["type"] == "task"
+
+
+def test_stream_chat_uses_llm_draft_for_task_with_dot_after_employee():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = ExtractDraftClient(
+        {
+            "entity_type": "task",
+            "employee_query": "Ардо Н",
+            "subject": "Вынос мусора из коридора",
+            "action_text": "Вынесите мусор из коридора",
+            "deadline": "2026-06-27T23:59:00+00:00",
+            "missing_fields": [],
+        }
+    )
+
+    chunks = list(service.stream_chat("Создай задачу для Ардо Н. пусть вынесет мусор из корридора срок 27.06.26", []))
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо Н"})
+    assert registry.calls[1] == (
+        "create_task",
+        {
+            "subject": "Вынос мусора из коридора",
+            "performer_id": 42,
+                "action_text": "Вынесите мусор из коридора",
+            "deadline": "2026-06-27T23:59:00+00:00",
+        },
+    )
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview задачи")
+    assert preview["type"] == "task"
+    assert preview["payload"]["deadline"] == "2026-06-27T23:59:00+00:00"
+
+
+def test_stream_chat_uses_llm_draft_for_assignment_with_sentence_after_employee():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = ExtractDraftClient(
+        {
+            "entity_type": "task",
+            "employee_query": "Ардо Н",
+            "subject": "Вынос мусора из кабинета",
+            "action_text": "Вынесите мусор из кабинета.",
+            "deadline": "2027-06-26T23:59:00+00:00",
+            "missing_fields": [],
+        }
+    )
+
+    chunks = list(service.stream_chat("Создай задание для Ардо Н. Вынести мусор из кабинета. Срок 26.06.27", []))
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо Н"})
+    assert registry.calls[1][0] == "create_task"
+    assert registry.calls[1][1]["deadline"] == "2027-06-26T23:59:00+00:00"
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview задачи")
+    assert preview["type"] == "task"
+    assert preview["payload"]["action_text"] == "Вынесите мусор из кабинета"
+
+
+def test_stream_chat_reuses_previous_preview_for_same_action_item_request():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    previous_marker = service._action_item_preview_marker(
+        {
+            "subject": "Вынести мусор",
+            "performer_id": 42,
+            "action_text": "Вынести мусор",
+            "deadline": "2026-06-26T23:59:00+00:00",
+        },
+        "Ардо Наталья Алексеевна",
+        "task",
+        correct_text=False,
+    )
+    service.client = ExtractDraftClient(
+        {
+            "entity_type": "action_item",
+            "employee_query": None,
+            "subject": None,
+            "action_text": None,
+            "deadline": None,
+            "missing_fields": ["employee_query", "action_text"],
+        }
+    )
+
+    chunks = list(
+        service.stream_chat(
+            "Создай такое же поручение для нее",
+            [{"role": "assistant", "content": f"Подготовлен preview задачи для Ардо Наталья Алексеевна: Вынести мусор.\n{previous_marker}"}],
+        )
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо Наталья Алексеевна"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["subject"] == "Вынести мусор"
+    assert registry.calls[1][1]["action_text"] == "Вынести мусор"
+    assert registry.calls[1][1]["deadline"] == "2026-06-26T23:59:00+00:00"
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview поручения")
+    assert preview["type"] == "action_item"
+
+
+def test_stream_chat_completes_pending_action_item_from_executor_followup():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = ToolCallClient()
+
+    chunks = list(
+        service.stream_chat(
+            "Вынести мусор, исполнитель Ардо срок 26.06.2026",
+            [{"role": "assistant", "content": "Для подготовки поручения нужен конкретный текст: что именно должен сделать исполнитель?"}],
+        )
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["subject"] == "Вынести мусор"
+    assert registry.calls[1][1]["deadline"].startswith("2026-06-26T23:59:00")
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview поручения")
+    assert preview["type"] == "action_item"
+
+
+def test_stream_chat_completes_pending_action_item_from_topic_followup_with_typo():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = ToolCallClient()
+
+    chunks = list(
+        service.stream_chat(
+            "Тема - документы от МЦ РФ, испонитель - Ардо, срок - 28.06.2026",
+            [{"role": "assistant", "content": "Укажите тему, исполнителя и текст поручения в чате. Сначала будет подготовлен preview."}],
+        )
+    )
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["subject"] == "документы от МЦ РФ"
+    assert registry.calls[1][1]["deadline"].startswith("2026-06-28T23:59:00")
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview поручения")
+    assert preview["type"] == "action_item"
+
+
+def test_stream_chat_uses_llm_draft_for_give_action_item_request():
+    registry = RecordingToolRegistry()
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=registry,
+    )
+    service.client = ExtractDraftClient(
+        {
+            "entity_type": "action_item",
+            "employee_query": "Ардо Н",
+            "subject": "Подготовить документы для МЦ РФ",
+            "action_text": "Подготовить документы для МЦ РФ",
+            "deadline": "2027-06-27T23:59:00+00:00",
+            "missing_fields": [],
+        }
+    )
+
+    chunks = list(service.stream_chat("Выдай поручение для Ардо Н. Подготовить документы для МЦ РФ. Срок 27.06.2027", []))
+
+    assert registry.calls[0] == ("search_employee", {"query": "Ардо Н"})
+    assert registry.calls[1][0] == "create_action_item"
+    assert registry.calls[1][1]["deadline"] == "2027-06-27T23:59:00+00:00"
+    visible, preview = _split_action_item_preview_marker(chunks[0])
+    assert visible.startswith("Подготовлен preview поручения")
+    assert preview["type"] == "action_item"
 
 
 def test_stream_chat_completes_action_item_draft_from_history_without_model():

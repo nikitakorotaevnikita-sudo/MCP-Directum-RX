@@ -3,23 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Directum RX Assistant</title>
+  <title>Умный ассистент Directum RX</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-  <aside class="sidebar" aria-label="Directum RX">
-    <div class="brand">
-      <p class="eyebrow">Directum RX</p>
-      <h1>Directum RX</h1>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="Directum RX Assistant">
+      <img class="brand-logo" src="/static/logo.svg" alt="Directum" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+      <span class="brand-fallback">Directum</span>
+    </a>
+    <div class="app-title">
+      <p class="eyebrow">демонстрационный прототип</p>
+      <h1>Умный ассистент Directum RX</h1>
     </div>
+    <a class="btn btn-ghost" href="/backoffice">Backoffice</a>
+  </header>
+  <aside class="sidebar" aria-label="Directum RX">
     <div id="status" class="status">Проверка...</div>
-    <nav class="action-list" aria-label="Разделы Directum">
-      <button type="button" data-action="my">Мои задания</button>
-      <button type="button" data-action="overdue">Просроченные</button>
-      <button type="button" data-action="assigned">Поручения мне</button>
-      <button type="button" data-action="created">Поручения от меня</button>
-      <button type="button" data-action="create">Создать поручение</button>
+    <nav class="nav-list" aria-label="Разделы Directum">
+      <button class="nav-item active" type="button" data-action="my">Мои задания</button>
+      <button class="nav-item" type="button" data-action="overdue">Просроченные</button>
+      <button class="nav-item" type="button" data-action="assigned">Поручения мне</button>
+      <button class="nav-item" type="button" data-action="created">Поручения от меня</button>
+      <button class="nav-item" type="button" data-action="create">Создать поручение</button>
     </nav>
     <section class="result-section" aria-label="Результаты Directum">
       <h2>Результаты</h2>
@@ -27,17 +34,10 @@
     </section>
   </aside>
   <main class="chat-shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">LLM workspace</p>
-        <h2>Directum RX Assistant</h2>
-      </div>
-      <a class="link-button" href="/backoffice">Backoffice</a>
-    </header>
     <section id="messages" class="messages" aria-live="polite"></section>
     <form id="chat-form" class="chat-form">
       <input id="chat-input" aria-label="Спросите про поручения" autocomplete="off">
-      <button type="submit">Отправить</button>
+      <button class="btn" type="submit">Отправить</button>
     </form>
   </main>
   <script src="/static/app.js?v=20260524-task-preview"></script>

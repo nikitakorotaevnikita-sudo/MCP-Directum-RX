@@ -7,14 +7,18 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="Directum RX Assistant">
+      <img class="brand-logo" src="/static/logo.svg" alt="Directum" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+      <span class="brand-fallback">Directum</span>
+    </a>
+    <div class="app-title">
+      <p class="eyebrow">Operations</p>
+      <h1>Backoffice</h1>
+    </div>
+    <a class="btn btn-ghost" href="/">Assistant</a>
+  </header>
   <main class="backoffice">
-    <header class="backoffice-header">
-      <div>
-        <p class="eyebrow">Operations</p>
-        <h1>Backoffice</h1>
-      </div>
-      <a class="link-button" href="/">Assistant</a>
-    </header>
     <section class="connection-panel" aria-label="LLM runtime connection">
       <div class="section-heading">
         <h2>LLM connection</h2>
@@ -89,21 +93,21 @@
       </form>
     </section>
     <section class="metrics-grid" aria-label="Product metrics">
-      <article>
-        <h2>Chat requests</h2>
-        <p id="chat-requests">0</p>
+      <article class="kpi accent-orange">
+        <h2 class="kpi-label">Chat requests</h2>
+        <p class="kpi-value" id="chat-requests">0</p>
       </article>
-      <article>
-        <h2>Preview</h2>
-        <p id="previews">0</p>
+      <article class="kpi accent-amber">
+        <h2 class="kpi-label">Preview</h2>
+        <p class="kpi-value" id="previews">0</p>
       </article>
-      <article>
-        <h2>Confirmed</h2>
-        <p id="confirmed">0</p>
+      <article class="kpi accent-green">
+        <h2 class="kpi-label">Confirmed</h2>
+        <p class="kpi-value" id="confirmed">0</p>
       </article>
-      <article>
-        <h2>Errors</h2>
-        <p id="errors">0</p>
+      <article class="kpi accent-red">
+        <h2 class="kpi-label">Errors</h2>
+        <p class="kpi-value" id="errors">0</p>
       </article>
     </section>
     <section class="tool-section">
