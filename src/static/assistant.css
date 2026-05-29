@@ -18,6 +18,19 @@ html { scroll-behavior: smooth; }
   border: 0;
 }
 
+/* ============================== SIDEBAR NAV ================================ */
+
+/* DS .nav-item is designed for <a> tags.
+   Reset browser button defaults so <button class="nav-item"> looks identical. */
+button.nav-item {
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  width: 100%;
+  text-align: left;
+}
+
 /* ============================== SIDEBAR STATUS ============================ */
 
 .status {
@@ -53,7 +66,7 @@ html { scroll-behavior: smooth; }
   gap: 10px;
 }
 
-.chat-shell > .prompt-panel .section-heading {
+.chat-shell > .prompt-panel .prompt-panel-heading {
   margin-bottom: 0;
   align-items: center;
 }
