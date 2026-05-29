@@ -18,6 +18,15 @@ html { scroll-behavior: smooth; }
   border: 0;
 }
 
+/* ============================== HEADER ACTIONS ============================= */
+
+/* Группа справа в хедере: LLM-статус + кнопка Backoffice */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* ============================== SIDEBAR NAV ================================ */
 
 /* DS .nav-item is designed for <a> tags.

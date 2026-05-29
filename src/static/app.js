@@ -1,6 +1,7 @@
 const messages = document.querySelector("#messages");
 const results = document.querySelector("#results");
 const statusBox = document.querySelector("#status");
+const llmHeaderStatus = document.querySelector("#llm-header-status");
 const chatInput = document.querySelector("#chat-input");
 const promptChips = document.querySelector("#prompt-chips");
 const promptDialog = document.querySelector("#prompt-dialog");
@@ -30,8 +31,10 @@ async function loadStatus() {
     const response = await fetch("/health");
     const data = await response.json();
     statusBox.textContent = `${data.status} · ${data.llm.provider} · ${data.llm.model}`;
+    if (llmHeaderStatus) llmHeaderStatus.textContent = `${data.llm.provider} / ${data.llm.model}`;
   } catch (error) {
     statusBox.textContent = "offline";
+    if (llmHeaderStatus) llmHeaderStatus.textContent = "LLM: нет связи";
   }
 }
 
