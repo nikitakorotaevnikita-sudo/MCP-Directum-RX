@@ -1,0 +1,414 @@
+/* =========================================================================
+   MCP-Directum-RX — кастомные стили поверх Directum DS
+   Все значения через var(--…) из tokens.css.
+   Никаких hex-цветов. Подключать ПОСЛЕ styles.css.
+   ========================================================================= */
+
+/* ============================== UTILITIES ================================= */
+
+html { scroll-behavior: smooth; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================== SIDEBAR STATUS ============================ */
+
+.status {
+  margin: 0 16px 0 20px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.status.ok    { background: var(--green-soft); color: #1F7A1D; border-color: transparent; }
+.status.error { background: var(--red-soft);   color: var(--red); border-color: transparent; }
+
+/* ============================== CHAT SHELL ================================ */
+
+/* Override DS .appeal-shell для страницы чата */
+.chat-shell {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* Prompt-panel внутри чата отстоит от краёв на content-pad */
+.chat-shell > .prompt-panel {
+  margin: var(--content-pad) var(--content-pad) 0;
+  flex-shrink: 0;
+  /* Внутри: heading-row (заголовок + кнопка) + chips */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-shell > .prompt-panel .section-heading {
+  margin-bottom: 0;
+  align-items: center;
+}
+
+/* Область сообщений + форма */
+.chat-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================== MESSAGES ================================== */
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px var(--content-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  padding: 11px 15px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+  max-width: 80%;
+}
+
+.message.user {
+  background: var(--accent-soft);
+  color: var(--text);
+  align-self: flex-end;
+  max-width: 70%;
+  border-radius: var(--radius) var(--radius-sm) var(--radius) var(--radius);
+}
+
+.message.assistant {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  align-self: flex-start;
+  border-radius: var(--radius-sm) var(--radius) var(--radius) var(--radius);
+}
+
+.message.system {
+  background: var(--amber-soft);
+  color: var(--amber);
+  align-self: center;
+  font-size: 13px;
+  text-align: center;
+  max-width: 60%;
+  border-radius: var(--radius);
+}
+
+/* Markdown-контент внутри сообщений */
+.message p  { margin: 0 0 8px; }
+.message p:last-child { margin-bottom: 0; }
+.message ul, .message ol { margin: 6px 0; padding-left: 20px; }
+.message li { margin-bottom: 4px; }
+.message code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.message pre code {
+  display: block;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+}
+.message h3, .message h4 { margin: 10px 0 6px; color: var(--title); }
+.message strong { color: var(--title); }
+.message a { color: var(--accent); border-bottom: 1px solid transparent; }
+.message a:hover { border-bottom-color: var(--accent); }
+
+/* ============================== CHAT FORM ================================= */
+
+.chat-form {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px var(--content-pad);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* Обёртка input через .field — убираем лишний отступ */
+.chat-input-field {
+  flex: 1;
+  margin-top: 0 !important; /* override .field + .field */
+}
+
+.chat-input-field input {
+  width: 100%;
+}
+
+/* ============================== PROMPT CHIPS ============================== */
+
+.prompt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prompt-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1.3;
+  transition: border-color .15s, background .15s;
+}
+
+.prompt-chip:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.prompt-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ============================== PROMPT DIALOG ============================= */
+
+.prompt-dialog {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0;
+  max-width: 640px;
+  width: 100%;
+  box-shadow: var(--shadow-md);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.prompt-dialog::backdrop {
+  background: rgba(1, 12, 28, .4);
+}
+
+.prompt-dialog-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.prompt-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.prompt-dialog-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--title);
+  letter-spacing: -.005em;
+}
+
+.prompt-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.prompt-editor-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+/* Поле textarea промпта — на всю ширину */
+.prompt-text-field {
+  grid-column: 1 / -1;
+}
+
+.prompt-delete {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.prompt-dialog-actions {
+  justify-content: flex-end;
+}
+
+/* ============================== PREVIEW CARD ============================== */
+
+/* Карточка safe-create (черновик поручения/задачи) */
+.preview-card {
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--amber);
+  padding: var(--card-pad);
+  box-shadow: var(--shadow-sm);
+}
+
+.preview-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--title);
+  margin: 0 0 12px;
+  letter-spacing: -.005em;
+}
+
+.preview-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block: 12px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  font-size: 13px;
+  align-items: baseline;
+}
+
+.preview-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding-top: 1px;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.preview-confirm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.preview-confirm:hover { filter: brightness(1.08); }
+.preview-confirm:disabled { opacity: .6; cursor: not-allowed; filter: none; }
+
+.preview-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.preview-cancel:hover { border-color: var(--accent); color: var(--accent); }
+.preview-cancel:disabled { opacity: .6; cursor: not-allowed; }
+
+.preview-status {
+  margin-top: 10px;
+  padding: 9px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  min-height: 0;
+}
+
+.preview-status:empty { display: none; }
+
+.preview-status.success {
+  background: var(--green-soft);
+  color: #1F7A1D;
+}
+
+.preview-status.error {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.preview-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  font-weight: 500;
+}
+
+.preview-link:hover { border-bottom-color: var(--accent); }
+
+/* ============================== BACKOFFICE ================================ */
+
+/* Форма connection двумя колонками */
+.connection-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+
+/* .field + .field из DS добавляет margin-top: 14px, но в grid это не нужно */
+.connection-form .field + .field { margin-top: 0; }
+
+.connection-form .button-row {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Версия прототипа в sidebar backoffice */
+.result-card.version { color: var(--subtle); font-size: 12px; }
+
+/* ============================== RESPONSIVE ================================ */
+
+@media (max-width: 1200px) {
+  .connection-form { grid-template-columns: 1fr; }
+}

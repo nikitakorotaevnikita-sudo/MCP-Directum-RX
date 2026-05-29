@@ -1,0 +1,185 @@
+/* =========================================================================
+   Platform.OGV — Design Tokens
+   Единый источник цветов, размеров, теней. Не дублировать значения в стилях
+   компонентов — всё через var(--...).
+
+   Подключать ПЕРВЫМ перед остальной таблицей стилей:
+     <link rel="stylesheet" href="tokens.css">
+     <link rel="stylesheet" href="styles.css">
+   ========================================================================= */
+
+:root {
+  /* ─── Brand / Accent ──────────────────────────────────────────────────── */
+  --accent:        #0B5FAE;   /* основной — кнопки, ссылки, фокус */
+  --accent-hover:  #1B72C4;
+  --accent-soft:   #E6F0FB;   /* фон активной nav, soft-кнопки */
+  --accent-strong: #084B89;
+
+  /* ─── Surfaces ────────────────────────────────────────────────────────── */
+  --bg:            #F4F4F4;   /* фон страницы */
+  --surface:       #FFFFFF;   /* фон карточек */
+  --surface-2:     #F8F8F8;   /* вложенные блоки, dropzone */
+  --border:        #E0E0E0;
+  --border-strong: #C8C8C8;
+
+  /* ─── Text ────────────────────────────────────────────────────────────── */
+  --text:          #000E20;
+  --title:         #05184A;   /* h2/h3 крупные */
+  --navy:          #000E20;   /* uppercase section-headings */
+  --muted:         #625F6A;   /* подписи, hints */
+  --subtle:        #9C9BA8;   /* placeholders, dividers */
+
+  /* ─── Status ──────────────────────────────────────────────────────────── */
+  --green:         #3AC436;   --green-soft:  #E6F8E6;
+  --red:           #D32F2F;   --red-soft:    #FBE6E6;
+  --amber:         #F5A623;   --amber-soft:  #FFF1D6;
+  --blue:          #3C65CC;   --blue-soft:   #EEF2FF;
+
+  /* ─── Chrome ──────────────────────────────────────────────────────────── */
+  --header-bg:     #FFFFFF;
+  --header-text:   #000E20;
+  --header-border: var(--border);
+  --logo-filter:   none;
+
+  --sidebar-bg:          #FFFFFF;
+  --sidebar-text:        #625F6A;
+  --sidebar-text-active: var(--accent);
+  --sidebar-active-bg:   var(--accent-soft);
+  --sidebar-border:      var(--border);
+  --sidebar-rail:        var(--accent);
+
+  /* ─── Geometry ────────────────────────────────────────────────────────── */
+  --radius:        10px;      /* карточки, dropdowns */
+  --radius-sm:     6px;       /* кнопки, поля */
+  --radius-pill:   999px;     /* badges */
+
+  /* ─── Shadows — only rgba(1,12,28, ...) ──────────────────────────────── */
+  --shadow-sm:     0 1px 3px rgba(1, 12, 28, .07);
+  --shadow-md:     0 4px 12px rgba(1, 12, 28, .08);
+  --shadow-hover:  0 8px 24px rgba(1, 12, 28, .10);
+
+  /* ─── Type ───────────────────────────────────────────────────────────── */
+  --font:          'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', Consolas, 'Courier New', monospace;
+                   /* mono НЕ использовать для кодов классификатора, ID, IP —
+                      они идут Inter + font-variant-numeric: tabular-nums.   */
+
+  /* ─── Layout ─────────────────────────────────────────────────────────── */
+  --header-h:           56px;
+  --sidebar-w:          224px;
+  --content-pad:        24px;
+  --card-pad:           22px;
+  --card-border-width:  1px;
+  --kpi-pad:            18px 20px;
+}
+
+/* =========================================================================
+   THEMES — переопределяют только нужные токены поверх :root.
+   ========================================================================= */
+
+/* ─── state-1 · Госуслуги (default) ──────────────────────────────────── */
+[data-theme="state-1"],
+[data-theme="state"] {
+  /* совпадает с :root */
+}
+
+/* ─── state-2 · Корпоративный (мягкий синий, холодный фон) ───────────── */
+[data-theme="state-2"] {
+  --accent:        #1E63D4;
+  --accent-hover:  #2A6FDB;
+  --accent-soft:   #E8F0FE;
+  --accent-strong: #1A4FAB;
+
+  --bg:            #F4F7FB;
+  --surface-2:     #F0F4FA;
+  --border:        #D8E0EC;
+  --border-strong: #B8C5D8;
+
+  --sidebar-bg:    #FAFCFE;
+  --sidebar-text-active: #1E63D4;
+  --sidebar-active-bg:   #E8F0FE;
+  --sidebar-rail:        #1E63D4;
+  --blue:          #1E63D4;
+  --blue-soft:     #E8F0FE;
+}
+
+/* ─── state-3 · Министерский (тёмная навигация) ──────────────────────── */
+[data-theme="state-3"] {
+  --accent:        #2A6FDB;
+  --accent-hover:  #3D7FE5;
+  --accent-soft:   rgba(42, 111, 219, .14);
+  --accent-strong: #1E5FC9;
+
+  --header-bg:     #102444;
+  --header-text:   #F4F7FB;
+  --header-border: #1B3258;
+  --logo-filter:   invert(1) hue-rotate(180deg) saturate(.85) brightness(1.1);
+
+  --sidebar-bg:    #102444;
+  --sidebar-text:  #93A3BE;
+  --sidebar-text-active: #FFFFFF;
+  --sidebar-active-bg:   rgba(42, 111, 219, .22);
+  --sidebar-border:      #1B3258;
+  --sidebar-rail:        #2A6FDB;
+
+  --blue:          #2A6FDB;
+  --blue-soft:     #E5EEFB;
+}
+
+/* ─── state-4 · Sky (outlined, просторно, белый фон) ─────────────────── */
+[data-theme="state-4"] {
+  --accent:        #006FBE;
+  --accent-hover:  #1A86D1;
+  --accent-soft:   #E5F2FB;
+  --accent-strong: #005795;
+
+  --bg:            #FFFFFF;
+  --surface:       #FFFFFF;
+  --surface-2:     #F8F9FB;
+  --border:        #DCE2EA;
+  --border-strong: #B7C0CC;
+
+  --sidebar-bg:    #FFFFFF;
+  --sidebar-text:  #4A5468;
+  --sidebar-text-active: #006FBE;
+  --sidebar-active-bg:   #E5F2FB;
+  --sidebar-rail:        #006FBE;
+  --blue:          #006FBE;
+  --blue-soft:     #E5F2FB;
+
+  --content-pad:        32px;
+  --card-pad:           28px;
+  --kpi-pad:            22px 24px;
+  --card-border-width:  1.5px;
+  --shadow-sm:          none;
+  --shadow-md:          0 4px 12px rgba(1, 12, 28, .04);
+}
+
+/* ─── state-5 · Indigo (dense, тонированный) ─────────────────────────── */
+[data-theme="state-5"] {
+  --accent:        #1E3A8A;
+  --accent-hover:  #2A4BA3;
+  --accent-soft:   #E0E6F4;
+  --accent-strong: #162C68;
+
+  --bg:            #ECF1F8;
+  --surface:       #FFFFFF;
+  --surface-2:     #E5EBF4;
+  --border:        #D2DAE8;
+  --border-strong: #B0BCD0;
+
+  --sidebar-bg:    #FFFFFF;
+  --sidebar-text:  #475569;
+  --sidebar-text-active: #1E3A8A;
+  --sidebar-active-bg:   #E0E6F4;
+  --sidebar-rail:        #1E3A8A;
+  --blue:          #1E3A8A;
+  --blue-soft:     #E0E6F4;
+
+  --content-pad:        16px;
+  --card-pad:           16px;
+  --kpi-pad:            14px 16px;
+  --card-border-width:  1px;
+  --shadow-sm:          0 2px 6px rgba(30, 58, 138, .07), 0 1px 2px rgba(1, 12, 28, .04);
+  --shadow-md:          0 8px 20px rgba(30, 58, 138, .10);
+}

@@ -3,118 +3,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Backoffice</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>Платформа.ОГВ — Backoffice</title>
+  <link rel="stylesheet" href="/static/fonts.css?v=20260528">
+  <link rel="stylesheet" href="/static/tokens.css?v=20260528">
+  <link rel="stylesheet" href="/static/styles.css?v=20260528">
+  <link rel="stylesheet" href="/static/assistant.css?v=20260528">
 </head>
-<body>
+<body data-theme="state-1">
+
   <header class="app-header">
-    <a class="brand" href="/" aria-label="Directum RX Assistant">
-      <img class="brand-logo" src="/static/logo.svg" alt="Directum" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
-      <span class="brand-fallback">Directum</span>
+    <a class="brand" href="/" aria-label="Directum">
+      <img class="brand-logo" src="/static/logo.svg" alt="Directum RX">
     </a>
     <div class="app-title">
-      <p class="eyebrow">Operations</p>
       <h1>Backoffice</h1>
     </div>
-    <a class="btn btn-ghost" href="/">Assistant</a>
+    <a class="btn btn-ghost btn-sm" href="/">Ассистент</a>
   </header>
-  <main class="backoffice">
-    <section class="connection-panel" aria-label="LLM runtime connection">
-      <div class="section-heading">
-        <h2>LLM connection</h2>
-        <p id="llm-status">Loading current model...</p>
+
+  <aside class="app-sidebar" aria-label="Разделы backoffice">
+    <nav class="nav-list" aria-label="Навигация">
+      <a href="#metrics-section"    class="nav-item active">Метрики</a>
+      <a href="#llm-conn-section"   class="nav-item">LLM connection</a>
+      <a href="#rx-conn-section"    class="nav-item">Directum RX connection</a>
+      <a href="#tool-calls-section" class="nav-item">Tool calls</a>
+    </nav>
+    <section class="result-section" aria-label="Статус">
+      <h2>Статус</h2>
+      <div class="result-list">
+        <div class="result-card version">Прототип MCP-Directum-RX</div>
       </div>
-      <form id="llm-form" class="connection-form llm-form">
-        <div class="field">
-          <label for="llm-provider">LLM provider</label>
-          <select id="llm-provider" name="provider" required>
-            <option value="ollama">Ollama</option>
-            <option value="openrouter">OpenRouter</option>
-            <option value="openai-compatible">OpenAI compatible</option>
-            <option value="ario">Ario</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="llm-base-url">LLM base URL</label>
-          <input id="llm-base-url" name="base_url" type="url" autocomplete="url" required>
-        </div>
-
-        <div class="field">
-          <label for="llm-api-key">LLM API key</label>
-          <input id="llm-api-key" name="api_key" type="password" autocomplete="off" placeholder="Keep current">
-        </div>
-
-        <div class="field">
-          <label for="llm-model">LLM model</label>
-          <input id="llm-model" name="model" required>
-        </div>
-
-        <div class="field">
-          <label for="llm-tool-calling">Tool calling</label>
-          <select id="llm-tool-calling" name="tool_calling" required>
-            <option value="auto">Auto</option>
-            <option value="enabled">Enabled</option>
-            <option value="disabled">Disabled</option>
-          </select>
-        </div>
-
-        <div class="button-row">
-          <button type="button" id="llm-test">Проверить</button>
-          <button type="submit">Применить</button>
-        </div>
-      </form>
     </section>
-    <section class="connection-panel" aria-label="Directum RX runtime connection">
+  </aside>
+
+  <main class="appeal-shell">
+
+    <section class="prompt-panel" aria-label="Сводка">
       <div class="section-heading">
-        <h2>Directum RX connection</h2>
-        <p id="rx-status">Loading current connection...</p>
+        <h2>Метрики прототипа</h2>
+        <p>Использование чата и tool calls Directum</p>
       </div>
-      <form id="connection-form" class="connection-form">
-        <div class="field">
-          <label for="rx-url">Server URL</label>
-          <input id="rx-url" name="base_url" type="url" autocomplete="url" required>
-        </div>
-
-        <div class="field">
-          <label for="rx-login">Login</label>
-          <input id="rx-login" name="username" autocomplete="username" required>
-        </div>
-
-        <div class="field">
-          <label for="rx-password">Password</label>
-          <input id="rx-password" name="password" type="password" autocomplete="current-password" required>
-        </div>
-
-        <div class="button-row">
-          <button type="button" id="rx-test">Проверить</button>
-          <button type="submit">Применить</button>
-        </div>
-      </form>
     </section>
-    <section class="metrics-grid" aria-label="Product metrics">
-      <article class="kpi accent-orange">
-        <h2 class="kpi-label">Chat requests</h2>
-        <p class="kpi-value" id="chat-requests">0</p>
-      </article>
-      <article class="kpi accent-amber">
-        <h2 class="kpi-label">Preview</h2>
-        <p class="kpi-value" id="previews">0</p>
-      </article>
-      <article class="kpi accent-green">
-        <h2 class="kpi-label">Confirmed</h2>
-        <p class="kpi-value" id="confirmed">0</p>
-      </article>
-      <article class="kpi accent-red">
-        <h2 class="kpi-label">Errors</h2>
-        <p class="kpi-value" id="errors">0</p>
-      </article>
+
+    <section class="backoffice-workspace">
+
+      <section id="metrics-section" class="kpi-grid" aria-label="Ключевые показатели">
+        <article class="kpi accent-orange">
+          <h2 class="kpi-label">Chat requests</h2>
+          <p class="kpi-value" id="chat-requests">0</p>
+        </article>
+        <article class="kpi accent-amber">
+          <h2 class="kpi-label">Preview</h2>
+          <p class="kpi-value" id="previews">0</p>
+        </article>
+        <article class="kpi accent-green">
+          <h2 class="kpi-label">Confirmed</h2>
+          <p class="kpi-value" id="confirmed">0</p>
+        </article>
+        <article class="kpi accent-red">
+          <h2 class="kpi-label">Errors</h2>
+          <p class="kpi-value" id="errors">0</p>
+        </article>
+      </section>
+
+      <section id="llm-conn-section" class="tool-section connection-panel" aria-label="LLM runtime connection">
+        <div class="section-heading">
+          <h2>LLM connection</h2>
+          <p id="llm-status">Loading current model...</p>
+        </div>
+        <form id="llm-form" class="connection-form llm-form">
+          <label class="field">
+            <span>LLM provider</span>
+            <select id="llm-provider" name="provider" required>
+              <option value="ollama">Ollama</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai-compatible">OpenAI compatible</option>
+              <option value="ario">Ario</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>LLM base URL</span>
+            <input id="llm-base-url" name="base_url" type="url" autocomplete="url" required>
+          </label>
+          <label class="field">
+            <span>LLM API key</span>
+            <input id="llm-api-key" name="api_key" type="password" autocomplete="off" placeholder="Keep current">
+          </label>
+          <label class="field">
+            <span>LLM model</span>
+            <input id="llm-model" name="model" required>
+          </label>
+          <label class="field">
+            <span>Tool calling</span>
+            <select id="llm-tool-calling" name="tool_calling" required>
+              <option value="auto">Auto</option>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </label>
+          <div class="button-row">
+            <button class="btn btn-ghost" type="button" id="llm-test">Проверить</button>
+            <button class="btn" type="submit">Применить</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="rx-conn-section" class="tool-section connection-panel" aria-label="Directum RX runtime connection">
+        <div class="section-heading">
+          <h2>Directum RX connection</h2>
+          <p id="rx-status">Loading current connection...</p>
+        </div>
+        <form id="connection-form" class="connection-form">
+          <label class="field">
+            <span>Server URL</span>
+            <input id="rx-url" name="base_url" type="url" autocomplete="url" required>
+          </label>
+          <label class="field">
+            <span>Login</span>
+            <input id="rx-login" name="username" autocomplete="username" required>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input id="rx-password" name="password" type="password" autocomplete="current-password" required>
+          </label>
+          <div class="button-row">
+            <button class="btn btn-ghost" type="button" id="rx-test">Проверить</button>
+            <button class="btn" type="submit">Применить</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="tool-calls-section" class="tool-section" aria-label="Tool calls">
+        <div class="section-heading">
+          <h2>Tool calls</h2>
+          <p>Последние вызовы инструментов LLM</p>
+        </div>
+        <div id="tool-calls" class="result-list"></div>
+      </section>
+
     </section>
-    <section class="tool-section">
-      <h2>Tool calls</h2>
-      <div id="tool-calls" class="result-list"></div>
-    </section>
+
   </main>
-  <script src="/static/backoffice.js"></script>
+
+  <script src="/static/backoffice.js?v=20260528"></script>
 </body>
 </html>

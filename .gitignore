@@ -9,3 +9,5 @@ __pycache__/
 data/
 output/
 uv.lock
+.superpowers/
+tmp/

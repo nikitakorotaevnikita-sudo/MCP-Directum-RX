@@ -157,3 +157,22 @@ llmProviderInput.addEventListener("change", applyProviderDefaults);
 loadLlmConnectionStatus();
 loadRxConnectionStatus();
 loadMetrics();
+
+// Подсветка активного пункта sidebar при скролле
+(function initSidebarActiveLink() {
+  const sections = document.querySelectorAll("main section[id]");
+  const links    = document.querySelectorAll(".app-sidebar .nav-item[href^='#']");
+  if (!sections.length || !links.length) return;
+  const map = new Map(Array.from(links).map(l => [l.getAttribute("href").slice(1), l]));
+  const io  = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      const link = map.get(e.target.id);
+      if (!link) return;
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove("active"));
+        link.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-30% 0px -60% 0px", threshold: 0 });
+  sections.forEach(s => io.observe(s));
+})();

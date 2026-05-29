@@ -3,23 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Умный ассистент Directum RX</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <title>Платформа.ОГВ — Умный ассистент Directum RX</title>
+  <link rel="stylesheet" href="/static/fonts.css?v=20260528">
+  <link rel="stylesheet" href="/static/tokens.css?v=20260528">
+  <link rel="stylesheet" href="/static/styles.css?v=20260528">
+  <link rel="stylesheet" href="/static/assistant.css?v=20260528">
+  <script src="/static/marked.min.js"></script>
 </head>
-<body>
+<body data-theme="state-1">
+
   <header class="app-header">
-    <a class="brand" href="/" aria-label="Directum RX Assistant">
-      <img class="brand-logo" src="/static/logo.svg" alt="Directum" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
-      <span class="brand-fallback">Directum</span>
+    <a class="brand" href="/" aria-label="Directum">
+      <img class="brand-logo" src="/static/logo.svg" alt="Directum RX">
     </a>
     <div class="app-title">
-      <p class="eyebrow">демонстрационный прототип</p>
-      <h1 aria-label="Directum RX Assistant">Умный ассистент Directum RX</h1>
+      <h1>Умный ассистент Directum RX</h1>
     </div>
-    <a class="btn btn-ghost" href="/backoffice">Backoffice</a>
+    <a class="btn btn-ghost btn-sm" href="/backoffice">Backoffice</a>
   </header>
-  <aside class="sidebar" aria-label="Directum RX">
+
+  <aside class="app-sidebar" aria-label="Directum RX">
     <div id="status" class="status">Проверка...</div>
     <nav class="nav-list" aria-label="Разделы Directum">
       <button class="nav-item active" type="button" data-action="my">Мои задания</button>
@@ -34,33 +37,44 @@
       <div id="results" class="result-list"></div>
     </section>
   </aside>
-  <main class="chat-shell">
+
+  <main class="appeal-shell chat-shell">
+
     <section class="prompt-panel" aria-label="Быстрые промпты">
-      <div class="prompt-panel-heading">
+      <div class="section-heading">
         <h2>Быстрые промпты</h2>
-        <button class="btn btn-ghost" id="prompt-settings" type="button">Настроить</button>
+        <button class="btn btn-ghost btn-sm" id="prompt-settings" type="button">Настроить</button>
       </div>
       <div id="prompt-chips" class="prompt-chips"></div>
     </section>
-    <section id="messages" class="messages" aria-live="polite"></section>
-    <form id="chat-form" class="chat-form">
-      <input id="chat-input" aria-label="Спросите про поручения" autocomplete="off">
-      <button class="btn" type="submit">Отправить</button>
-    </form>
+
+    <section class="chat-workspace">
+      <section id="messages" class="messages" aria-live="polite"></section>
+      <form id="chat-form" class="chat-form">
+        <label class="field chat-input-field">
+          <span class="sr-only">Спросите про поручения</span>
+          <input id="chat-input" type="text" placeholder="Спросите про поручения..." autocomplete="off">
+        </label>
+        <button class="btn" type="submit">Отправить</button>
+      </form>
+    </section>
+
   </main>
+
   <dialog id="prompt-dialog" class="prompt-dialog">
     <form method="dialog" class="prompt-dialog-shell">
       <div class="prompt-dialog-header">
         <h2>Настройка промптов</h2>
-        <button class="btn btn-ghost" value="cancel" type="submit">Закрыть</button>
+        <button class="btn btn-ghost btn-sm" value="cancel" type="submit">Закрыть</button>
       </div>
       <div id="prompt-editor-list" class="prompt-editor-list"></div>
-      <div class="prompt-dialog-actions">
+      <div class="prompt-dialog-actions button-row">
         <button class="btn btn-ghost" id="prompt-add" type="button">Добавить</button>
         <button class="btn" id="prompt-save" value="default" type="submit">Сохранить</button>
       </div>
     </form>
   </dialog>
-  <script src="/static/app.js?v=20260525-meetings"></script>
+
+  <script src="/static/app.js?v=20260528"></script>
 </body>
 </html>
