@@ -10,6 +10,8 @@ OLLAMA_BASE_URL = "http://localhost:11434/v1"
 OLLAMA_MODEL = "qwen3:8b"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODEL = "google/gemma-4-26b-a4b-it:free"
+ARIO_BASE_URL = "https://llm.ario.directum360.ru/v1"
+ARIO_MODEL = "Qwen/Qwen3.6-35B-A3B"
 
 
 class Settings(BaseSettings):
@@ -19,10 +21,10 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
     APP_ENV: str = "development"
 
-    LLM_PROVIDER: Literal["ario", "openai-compatible", "ollama", "openrouter"] = "ollama"
-    OPENAI_BASE_URL: str = OLLAMA_BASE_URL
-    OPENAI_API_KEY: SecretStr = SecretStr("ollama")
-    OPENAI_MODEL: str = OLLAMA_MODEL
+    LLM_PROVIDER: Literal["ario", "openai-compatible", "ollama", "openrouter"] = "ario"
+    OPENAI_BASE_URL: str = ARIO_BASE_URL
+    OPENAI_API_KEY: SecretStr = SecretStr("")
+    OPENAI_MODEL: str = ARIO_MODEL
     LLM_TOOL_CALLING: Literal["auto", "enabled", "disabled"] = "auto"
 
     DIRECTUM_BASE_URL: str
@@ -41,6 +43,11 @@ class Settings(BaseSettings):
                 self.OPENAI_BASE_URL = OPENROUTER_BASE_URL
             if self.OPENAI_MODEL == OLLAMA_MODEL:
                 self.OPENAI_MODEL = OPENROUTER_MODEL
+        elif self.LLM_PROVIDER == "ario":
+            if self.OPENAI_BASE_URL.rstrip("/") == OLLAMA_BASE_URL:
+                self.OPENAI_BASE_URL = ARIO_BASE_URL
+            if self.OPENAI_MODEL == OLLAMA_MODEL:
+                self.OPENAI_MODEL = ARIO_MODEL
         return self
 
     @property

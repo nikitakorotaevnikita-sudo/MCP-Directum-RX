@@ -15,6 +15,10 @@ const llmToolCallingInput = document.querySelector("#llm-tool-calling");
 const llmTestButton = document.querySelector("#llm-test");
 
 const providerDefaults = {
+  ario: {
+    base_url: "https://llm.ario.directum360.ru/v1",
+    model: "Qwen/Qwen3.6-35B-A3B",
+  },
   openrouter: {
     base_url: "https://openrouter.ai/api/v1",
     model: "google/gemma-4-26b-a4b-it:free",
