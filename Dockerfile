@@ -5,11 +5,11 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# Зависимости отдельным слоем — кешируются при изменениях src/
 COPY pyproject.toml ./
-COPY src ./src
-
 RUN pip install --no-cache-dir -e ".[dev]"
 
+COPY src ./src
 COPY tests ./tests
 
 EXPOSE 8000
