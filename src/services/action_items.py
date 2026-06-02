@@ -130,6 +130,17 @@ class ActionItemService:
             for row in rows
         ]
 
+    def get_document(self, document_id: int) -> DocumentSummary | None:
+        rows = self.client.query(
+            "IOfficialDocuments",
+            filter_=f"Id eq {int(document_id)}",
+            select="Id,Name,Subject,RegistrationNumber,RegistrationDate",
+            top=1,
+        )
+        if not rows:
+            return None
+        return self._document_summary(rows[0], "IOfficialDocuments")
+
     def _query_documents(self, query: str, top: int) -> list[dict[str, Any]]:
         escaped_query = query.replace("'", "''")
         return self.client.query(

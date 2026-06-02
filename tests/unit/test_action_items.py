@@ -794,3 +794,39 @@ def test_create_task_confirm_uses_simple_task_actions():
     assert result.mode == "created"
     assert result.directum_id == 901
     assert result.url == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/901"
+
+
+class _DocClient:
+    def __init__(self, rows):
+        self._rows = rows
+        self.calls = []
+
+    def query(self, entity_set, **kwargs):
+        self.calls.append((entity_set, kwargs))
+        return self._rows
+
+    def build_client_card_url(self, entity_path):
+        return f"https://rx.example/Client/#/card/guid/{entity_path.split('(')[1].rstrip(')')}"
+
+
+def test_get_document_returns_summary_by_id():
+    client = _DocClient([
+        {"Id": 555, "Name": "Письмо №7", "Subject": "О поставке",
+         "RegistrationNumber": "7", "RegistrationDate": "2026-05-30T00:00:00Z"}
+    ])
+    service = ActionItemService(client)
+
+    doc = service.get_document(555)
+
+    assert doc is not None
+    assert doc.id == 555
+    assert doc.name == "Письмо №7"
+    assert doc.registration_number == "7"
+    entity_set, kwargs = client.calls[0]
+    assert entity_set == "IOfficialDocuments"
+    assert "Id eq 555" in kwargs["filter_"]
+
+
+def test_get_document_returns_none_when_absent():
+    service = ActionItemService(_DocClient([]))
+    assert service.get_document(999) is None
