@@ -970,7 +970,7 @@ class LLMService:
         if performer_match is not None:
             action_text = performer_match.group(1).strip()
             return {
-                "type": self._draft_type(action_text),
+                "type": "action_item" if "поручен" in message.lower() else "task",
                 "employee_query": self._clean_employee_query(performer_match.group(2)),
                 "subject": action_text,
                 "action_text": action_text,

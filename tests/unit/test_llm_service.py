@@ -1963,3 +1963,57 @@ def test_create_route_links_document_from_hash_token():
     payload = json.loads(text.split("[[DIRECTUM_ACTION_ITEM_PREVIEW:", 1)[1].rsplit("]]", 1)[0])
     assert payload["payload"]["document_id"] == 555
     assert payload["display"]["document"]["name"] == "Письмо №7"
+
+
+def test_performer_phrasing_routes_task_without_porucheniye_keyword():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    draft = service._parse_action_item_draft("Вынести мусор, исполнитель Ардо")
+    assert draft is not None
+    assert draft["type"] == "task"
+
+
+def test_performer_phrasing_routes_action_item_with_porucheniye_keyword():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    draft = service._parse_action_item_draft("Поручение: подготовить ответ, исполнитель Ардо")
+    assert draft is not None
+    assert draft["type"] == "action_item"
+
+
+def test_resolve_document_display_through_real_tool_registry():
+    from src.services.tool_registry import ToolRegistry
+    from src.models.schemas import DocumentSummary
+    from datetime import datetime, timezone
+
+    class _FakeAISvc:
+        def get_document(self, document_id):
+            return DocumentSummary(
+                id=document_id, name="Письмо №7", subject="О поставке",
+                registration_number="7",
+                registration_date=datetime(2026, 5, 30, tzinfo=timezone.utc),
+                url="https://rx.example/card/555",
+            )
+
+    registry = ToolRegistry(
+        current_user_service=None,
+        assignments_service=None,
+        action_item_service=_FakeAISvc(),
+        meetings_service=None,
+    )
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=registry,
+    )
+    display = service._resolve_document_display(555)
+    assert display is not None
+    assert display["name"] == "Письмо №7"
+    assert display["number"] == "7"
+    assert display["url"] == "https://rx.example/card/555"
