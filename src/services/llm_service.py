@@ -1040,6 +1040,9 @@ class LLMService:
 
         if len(lines) == 1:
             line = lines[0]
+            if line.get("doc_id"):
+                action = f" \u00b7 [\u0412\u044b\u0434\u0430\u0442\u044c \u043f\u043e\u0440\u0443\u0447\u0435\u043d\u0438\u0435](#document-{line['doc_id']})"
+                return f"\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1: {self._markdown_item_title(line['title'], line.get('url'))}{action}"
             suffix = f" ({line['status']})" if line["status"] else ""
             return f"\u041d\u0430\u0439\u0434\u0435\u043d\u043e 1: {line['title']}{suffix}."
 

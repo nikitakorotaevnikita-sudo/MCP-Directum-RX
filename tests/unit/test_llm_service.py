@@ -2035,3 +2035,30 @@ def test_format_tool_result_adds_issue_action_item_link_for_documents():
     assert "#document-555" in text
     assert "#document-556" in text
     assert "Выдать поручение" in text
+
+
+def test_format_tool_result_single_document_has_issue_action_link():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    text = service._format_tool_result([
+        {"id": 555, "name": "Письмо №7", "registration_number": "7",
+         "registration_date": "2026-05-30T00:00:00Z", "url": "https://rx.example/card/555"}
+    ])
+    assert "#document-555" in text
+    assert "Выдать поручение" in text
+
+
+def test_format_tool_result_single_non_document_unchanged():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    text = service._format_tool_result([
+        {"subject": "Task A", "status": "InProcess", "entity_type": "assignment"}
+    ])
+    assert "#document-" not in text
+    assert text.startswith("Найдено 1:")
