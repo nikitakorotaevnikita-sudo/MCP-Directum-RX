@@ -20,6 +20,13 @@ EMPLOYEE_QUERY_STRIP_CHARS = " \t\r\n.,;:!?\"'\u00ab\u00bb"
 # \u041e\u0431\u0438\u0445\u043e\u0434\u043d\u044b\u0435 \u0441\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u0438\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u0439 \u2192 \u043f\u043e\u0434\u0441\u0442\u0440\u043e\u043a\u0430 \u0434\u043b\u044f contains(Name,...).
 COUNTERPARTY_ABBREVIATIONS = {"\u043c\u0446": "\u041c\u0438\u043d\u0446\u0438\u0444\u0440"}
 
+# \u0428\u0443\u043c\u043e\u0432\u044b\u0435 \u0442\u043e\u043a\u0435\u043d\u044b: \u0441\u0442\u0440\u0430\u043d\u0430 \u0438 \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u043e\u043d\u043d\u043e-\u043f\u0440\u0430\u0432\u043e\u0432\u044b\u0435 \u0444\u043e\u0440\u043c\u044b. \u0412\u0441\u0442\u0440\u0435\u0447\u0430\u044e\u0442\u0441\u044f \u0432\u043e \u043c\u043d\u043e\u0433\u0438\u0445
+# \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f\u0445, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u043a\u0430\u043a fallback-\u0442\u043e\u043a\u0435\u043d \u0434\u0430\u044e\u0442 \u043b\u043e\u0436\u043d\u044b\u0435 \u0441\u043e\u0432\u043f\u0430\u0434\u0435\u043d\u0438\u044f (\u00ab\u0420\u0424\u00bb \u2192 \u043b\u044e\u0431\u0430\u044f \u00ab\u2026 \u0420\u0424\u00bb).
+COUNTERPARTY_STOPWORD_TOKENS = {
+    "\u0440\u0444", "\u0440\u043e", "\u0430\u043e", "\u043e\u0430\u043e", "\u0437\u0430\u043e", "\u043f\u0430\u043e", "\u043e\u043e\u043e", "\u0438\u043f",
+    "\u0444\u0433\u0443\u043f", "\u0433\u0443\u043f", "\u0444\u0433\u0431\u0443", "\u0433\u0431\u0443", "\u043d\u043a\u043e", "\u0443\u043a", "\u043f\u043a",
+}
+
 # \u041d\u0430\u0431\u043e\u0440\u044b \u043f\u0438\u0441\u0435\u043c \u043f\u043e \u043d\u0430\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044e.
 LETTER_ENTITY_SETS = {
     "incoming": "IIncomingLetters",
@@ -114,7 +121,13 @@ class ActionItemService:
             expanded = COUNTERPARTY_ABBREVIATIONS.get(token.lower())
             if expanded and expanded not in expansions:
                 expansions.append(expanded)
-        candidates = [token for token in tokens if len(token) > 1 and token != query]
+        candidates = [
+            token
+            for token in tokens
+            if len(token) > 1
+            and token != query
+            and token.lower() not in COUNTERPARTY_STOPWORD_TOKENS
+        ]
         indexed = list(enumerate(candidates))
         indexed.sort(key=lambda item: (-len(item[1]), -item[0]))
         ordered = [token for _, token in indexed]

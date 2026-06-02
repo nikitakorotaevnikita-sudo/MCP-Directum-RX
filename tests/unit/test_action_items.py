@@ -859,3 +859,41 @@ def test_get_employee_returns_summary_by_id():
 def test_get_employee_returns_none_when_absent():
     service = ActionItemService(_EmpClient([]))
     assert service.get_employee(123) is None
+
+
+class _ContainsClient:
+    """Фейк: возвращает контрагента, только если его имя содержит искомую подстроку."""
+    def __init__(self, name):
+        self.name = name
+        self.calls = []
+
+    def query(self, entity_set, **kwargs):
+        import re
+        self.calls.append(kwargs)
+        f = kwargs.get("filter_", "")
+        m = re.search(r"contains\(Name,'(.*?)'\)", f)
+        needle = m.group(1) if m else ""
+        if needle and needle in self.name:
+            return [{"Id": 1498, "Name": self.name, "TIN": None}]
+        return []
+
+
+def test_counterparty_fallback_excludes_noise_tokens():
+    service = ActionItemService(_DocClient([]))
+    tokens = service._fallback_counterparty_tokens("Минкульта РФ")
+    assert "РФ" not in tokens
+    assert "Минкульта" in tokens
+
+
+def test_counterparty_fallback_excludes_legal_forms():
+    service = ActionItemService(_DocClient([]))
+    tokens = service._fallback_counterparty_tokens("ООО Ромашка")
+    assert "ООО" not in tokens
+    assert "Ромашка" in tokens
+
+
+def test_search_counterparty_not_matched_by_noise_token():
+    # «Минкульт» не зарегистрирован → не должны ложно матчить «...Президента РФ» по «РФ».
+    client = _ContainsClient("Администрация Президента РФ (УРОГ)")
+    service = ActionItemService(client)
+    assert service.search_counterparty("Минкульта РФ") == []
