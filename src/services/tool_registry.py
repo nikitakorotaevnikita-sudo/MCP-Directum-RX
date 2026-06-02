@@ -36,6 +36,7 @@ class ToolRegistry:
                 self._normalize_search_query(args.get("query", ""))
             ),
             "search_documents": lambda args: self.action_item_service.search_documents(args.get("query", "")),
+            "get_document": lambda args: self.action_item_service.get_document(int(args["document_id"])),
             "search_documents_by_counterparty": lambda args: self.action_item_service.search_documents_by_counterparty(
                 self._normalize_search_query(args.get("query", ""))
             ),

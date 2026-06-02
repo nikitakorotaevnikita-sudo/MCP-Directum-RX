@@ -432,6 +432,11 @@ class LLMService:
 
             preview_type = draft.get("type", "action_item")
             is_task = preview_type == "task"
+            document_display = None
+            document_id = self._extract_document_id(message)
+            if document_id is not None and not is_task:
+                arguments["document_id"] = document_id
+                document_display = self._resolve_document_display(document_id)
             tool_name = "create_task" if is_task else "create_action_item"
             self.tool_registry.call(tool_name, arguments)
             entity_label = "задачи" if is_task else "поручения"
@@ -448,6 +453,7 @@ class LLMService:
                 performer_name,
                 preview_type,
                 correct_text=draft.get("source") != "llm",
+                document=document_display,
             )
         except Exception as exc:
             return self._safe_directum_error_message(exc)
@@ -964,7 +970,7 @@ class LLMService:
         if performer_match is not None:
             action_text = performer_match.group(1).strip()
             return {
-                "type": "task",
+                "type": self._draft_type(action_text),
                 "employee_query": self._clean_employee_query(performer_match.group(2)),
                 "subject": action_text,
                 "action_text": action_text,
@@ -1295,6 +1301,28 @@ class LLMService:
             if raw:
                 return int(raw)
         return None
+
+    def _extract_document_id(self, message: str) -> int | None:
+        match = re.search(r"документ\w*\s*#?\s*(\d+)|#document-(\d+)", message, re.IGNORECASE)
+        if match:
+            raw = match.group(1) or match.group(2)
+            if raw:
+                return int(raw)
+        return None
+
+    def _resolve_document_display(self, document_id: int) -> dict[str, Any] | None:
+        try:
+            doc = self.tool_registry.call("get_document", {"document_id": document_id})
+        except Exception:
+            return None
+        if not isinstance(doc, dict):
+            return None
+        return {
+            "name": doc.get("name") or "",
+            "number": doc.get("registration_number") or "",
+            "date": self._format_deadline_for_display(doc.get("registration_date")),
+            "url": doc.get("url") or "",
+        }
 
     def _generate_narrative_for_action_item(self, detail: dict[str, Any]) -> str:
         subject = detail.get("subject") or ""

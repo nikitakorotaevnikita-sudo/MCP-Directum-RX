@@ -1931,3 +1931,35 @@ def test_action_item_preview_marker_includes_document_display():
     payload = json.loads(marker.split("[[DIRECTUM_ACTION_ITEM_PREVIEW:", 1)[1].rsplit("]]", 1)[0])
     assert payload["display"]["document"]["name"] == "Письмо №7"
     assert payload["display"]["document"]["url"] == "https://rx.example/card/555"
+
+
+class DocCreateRegistry(FakeToolRegistry):
+    def __init__(self):
+        self.calls = []
+
+    def call(self, name, arguments):
+        self.calls.append((name, arguments))
+        if name == "search_employee":
+            return [{"id": 5, "name": "Иванов И.И."}]
+        if name == "get_document":
+            return {"id": 555, "name": "Письмо №7", "registration_number": "7",
+                    "registration_date": "2026-05-30T00:00:00Z",
+                    "url": "https://rx.example/card/555"}
+        if name == "create_action_item":
+            return {"mode": "preview", "confirmation_payload": {**arguments, "confirm": False}}
+        return None
+
+
+def test_create_route_links_document_from_hash_token():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=DocCreateRegistry(),
+    )
+    text = service._direct_rx_response(
+        "Выдай поручение по документу #555: подготовить ответ, исполнитель Иванов", []
+    )
+    assert text is not None
+    payload = json.loads(text.split("[[DIRECTUM_ACTION_ITEM_PREVIEW:", 1)[1].rsplit("]]", 1)[0])
+    assert payload["payload"]["document_id"] == 555
+    assert payload["display"]["document"]["name"] == "Письмо №7"
