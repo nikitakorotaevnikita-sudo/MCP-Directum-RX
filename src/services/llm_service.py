@@ -750,12 +750,16 @@ class LLMService:
         performer_name: str,
         preview_type: str = "action_item",
         correct_text: bool = True,
+        document: dict[str, Any] | None = None,
     ) -> str:
         corrected = self._action_item_text_to_imperative(payload) if correct_text else payload
+        display: dict[str, Any] = {"performer_name": performer_name}
+        if document:
+            display["document"] = document
         preview = {
             "type": preview_type,
             "payload": corrected,
-            "display": {"performer_name": performer_name},
+            "display": display,
         }
         return f"[[{ACTION_ITEM_PREVIEW_MARKER}:{json.dumps(preview, ensure_ascii=False, default=str)}]]"
 

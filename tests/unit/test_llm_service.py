@@ -1909,3 +1909,25 @@ def test_discipline_keyword_routes_to_tool_path_not_overdue_shortcut():
 
     # «дисциплина» не должна перехватываться прямым маршрутом (например, get_overdue_assignments).
     assert service._direct_rx_response("Аналитика по исполнительской дисциплине просрочки", []) is None
+
+
+def test_action_item_preview_marker_includes_document_display():
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    marker = service._action_item_preview_marker(
+        {"subject": "Тема", "action_text": "Сделать", "performer_id": 5, "document_id": 555},
+        "Иванов И.И.",
+        "action_item",
+        correct_text=False,
+        document={"name": "Письмо №7", "number": "7", "date": "30.05.2026",
+                  "url": "https://rx.example/card/555"},
+    )
+    payload = json.loads(marker.split("[[DIRECTUM_ACTION_ITEM_PREVIEW:", 1)[1].rsplit("]]", 1)[0])
+    assert payload["display"]["document"]["name"] == "Письмо №7"
+    assert payload["display"]["document"]["url"] == "https://rx.example/card/555"
