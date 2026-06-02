@@ -131,7 +131,24 @@ class ActionItemService:
         indexed = list(enumerate(candidates))
         indexed.sort(key=lambda item: (-len(item[1]), -item[0]))
         ordered = [token for _, token in indexed]
-        return expansions + [token for token in ordered if token not in expansions]
+        result = expansions + [token for token in ordered if token not in expansions]
+        # Стемминг для устойчивости к словоформам: «Минцифра» → «Минцифр»
+        # находит «Минцифры …» (LLM иногда меняет окончание запроса).
+        stemmed: list[str] = []
+        for token in result:
+            for stem in self._stem_variants(token):
+                if stem not in result and stem not in stemmed:
+                    stemmed.append(stem)
+        return result + stemmed
+
+    def _stem_variants(self, token: str) -> list[str]:
+        # Отсекаем 1–2 финальных символа, но оставляем стем не короче 5 символов,
+        # чтобы короткие стемы не давали ложных совпадений.
+        variants = []
+        for cut in (1, 2):
+            if len(token) - cut >= 5:
+                variants.append(token[:-cut])
+        return variants
 
     def search_documents(self, query: str, top: int = 10) -> list[DocumentSummary]:
         cleaned = self._clean_employee_query(query)

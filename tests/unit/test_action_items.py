@@ -897,3 +897,19 @@ def test_search_counterparty_not_matched_by_noise_token():
     client = _ContainsClient("Администрация Президента РФ (УРОГ)")
     service = ActionItemService(client)
     assert service.search_counterparty("Минкульта РФ") == []
+
+
+def test_search_counterparty_matches_word_form_variation():
+    # LLM может передать иную словоформу («Минцифра» вместо «Минцифры»).
+    # Стемминг fallback-токена должен находить «Минцифры России» по «Минцифр».
+    client = _ContainsClient("Минцифры России")
+    service = ActionItemService(client)
+    result = service.search_counterparty("Минцифра РФ")
+    assert result
+    assert result[0].name == "Минцифры России"
+
+
+def test_counterparty_fallback_includes_stem_variant():
+    service = ActionItemService(_DocClient([]))
+    tokens = service._fallback_counterparty_tokens("Минцифра РФ")
+    assert "Минцифр" in tokens  # стем без окончания
