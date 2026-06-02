@@ -706,7 +706,9 @@ def test_search_documents_by_counterparty_returns_empty_when_no_counterparty():
     assert all(c[0] == "ICompanies" for c in client.query_calls)
 
 
-def test_create_action_item_confirm_auto_resolves_document_from_text():
+def test_create_action_item_confirm_does_not_auto_resolve_document_from_text():
+    # Раньше документ угадывался поиском по теме/тексту — это прикрепляло чужой
+    # документ. Теперь без явного document_id создание не выполняется.
     class DocumentResolvingClient(FakeClient):
         def query(self, entity_set, **kwargs):
             self.query_calls.append((entity_set, kwargs))
@@ -721,20 +723,13 @@ def test_create_action_item_confirm_auto_resolves_document_from_text():
         confirm=True,
     )
 
-    service.create_action_item(request)
-
-    assert client.post_calls[0] == (
-        "RecordManagement/CreateActionItemExecution",
-        {
-            "documentId": 576,
-            "assigneeId": 42,
-            "isUnderControl": False,
-            "supervisorId": None,
-            "coassigneeId": None,
-            "deadline": None,
-            "activeText": "Проверь документы по Минцифре",
-        },
-    )
+    try:
+        service.create_action_item(request)
+    except DirectumError as exc:
+        assert "документ" in exc.safe_message.lower()
+        assert client.post_calls == []
+    else:
+        raise AssertionError("action item was created without an explicit document_id")
 
 
 def test_create_task_preview_never_posts():
@@ -913,3 +908,27 @@ def test_counterparty_fallback_includes_stem_variant():
     service = ActionItemService(_DocClient([]))
     tokens = service._fallback_counterparty_tokens("Минцифра РФ")
     assert "Минцифр" in tokens  # стем без окончания
+
+
+def test_create_action_item_confirm_does_not_guess_document_by_subject():
+    # Без явного document_id НЕ угадываем документ нечётким поиском по теме/тексту —
+    # иначе привязывается чужой документ (баг с Иннополисом). Должна быть ошибка.
+    client = FakeClient(
+        query_rows=[{"Id": 999, "Name": "Совсем другой документ", "Subject": "X",
+                     "RegistrationNumber": "1", "RegistrationDate": "2026-01-01T00:00:00Z"}],
+        post_response={"value": 987},
+    )
+    service = ActionItemService(client)
+    request = ActionItemCreateRequest(
+        subject="Проведение культурной акции",
+        performer_id=42,
+        action_text="Организуйте проведение культурной акции",
+        confirm=True,
+    )
+    try:
+        service.create_action_item(request)
+    except DirectumError as exc:
+        assert "документ" in exc.safe_message.lower()
+        assert client.post_calls == []
+    else:
+        raise AssertionError("guessed a document instead of requiring explicit document_id")

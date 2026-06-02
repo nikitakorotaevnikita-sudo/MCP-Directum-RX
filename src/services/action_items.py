@@ -370,7 +370,10 @@ class ActionItemService:
                 message="Preview generated; confirm to create the action item.",
             )
 
-        document_id = request.document_id or self._resolve_document_id(request)
+        # Документ привязываем ТОЛЬКО по явному id (из ссылки «Выдать поручение»
+        # #document-<id>). Никакого угадывания нечётким поиском по теме/тексту —
+        # иначе можно прикрепить чужой документ.
+        document_id = request.document_id
         if document_id is None:
             raise DirectumError(
                 "Поручение в Directum RX создаётся по документу. Найдите документ и нажмите "
@@ -390,10 +393,6 @@ class ActionItemService:
             url=url,
             message="Action item created.",
         )
-
-    def _resolve_document_id(self, request: ActionItemCreateRequest) -> int | None:
-        documents = self.search_documents(f"{request.subject} {request.action_text}", top=1)
-        return documents[0].id if documents else None
 
     def _payload(self, request: ActionItemCreateRequest, document_id: int | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {
