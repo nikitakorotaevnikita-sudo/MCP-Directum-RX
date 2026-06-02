@@ -547,6 +547,29 @@ function renderActionItemPreview(preview, messageElement) {
     previewRow("Срок", payload.deadline)
   );
 
+  const doc = display.document;
+  if (doc && (doc.name || doc.number)) {
+    const docLabel = [doc.name, doc.number ? `№ ${doc.number}` : "", doc.date]
+      .filter(Boolean).join(" · ");
+    if (doc.url) {
+      const docRow = document.createElement("div");
+      docRow.className = "preview-row";
+      const lab = document.createElement("span");
+      lab.className = "preview-label";
+      lab.textContent = "Документ";
+      const link = document.createElement("a");
+      link.className = "preview-link";
+      link.href = doc.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = docLabel || "Документ";
+      docRow.append(lab, link);
+      rows.appendChild(docRow);
+    } else {
+      rows.appendChild(previewRow("Документ", docLabel));
+    }
+  }
+
   const actions = document.createElement("div");
   actions.className = "preview-actions";
 
@@ -645,6 +668,18 @@ function attachActionItemReportLinks(container) {
             const text = `отчёт поручение #${id}`;
             chatInput.value = text;
             document.querySelector("#chat-form").dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
+        });
+    });
+}
+
+function attachDocumentActionLinks(container) {
+    container.querySelectorAll('a[href^="#document-"]').forEach((link) => {
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            const id = link.getAttribute("href").replace("#document-", "");
+            // Подставляем формулировку — пользователь дописывает текст и исполнителя, затем отправляет.
+            chatInput.value = `Выдай поручение по документу #${id}: `;
+            chatInput.focus();
         });
     });
 }
@@ -764,6 +799,7 @@ document.querySelector("#chat-form").addEventListener("submit", async (event) =>
   const isMd = looksLikeMarkdown(parsedAnswer.text);
   const assistantMessage = addMessage(parsedAnswer.text, "assistant", isMd);
   attachActionItemReportLinks(assistantMessage);
+  attachDocumentActionLinks(assistantMessage);
   if (parsedAnswer.analytics) {
     // Гистограмма идёт перед списком/разбором.
     assistantMessage.insertBefore(renderAnalytics(parsedAnswer.analytics), assistantMessage.firstChild);
