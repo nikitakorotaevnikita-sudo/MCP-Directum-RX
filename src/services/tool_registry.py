@@ -8,6 +8,7 @@ from src.models.schemas import ActionItemCreateRequest, TaskCreateRequest
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
+from src.services.discipline_analytics import DisciplineAnalyticsService
 from src.services.meetings import MeetingsService
 
 
@@ -18,11 +19,13 @@ class ToolRegistry:
         assignments_service: AssignmentsService,
         action_item_service: ActionItemService,
         meetings_service: MeetingsService,
+        discipline_analytics_service: DisciplineAnalyticsService | None = None,
     ):
         self.current_user_service = current_user_service
         self.assignments_service = assignments_service
         self.action_item_service = action_item_service
         self.meetings_service = meetings_service
+        self.discipline_analytics_service = discipline_analytics_service
         self._handlers: dict[str, Callable[[dict[str, Any]], Any]] = {
             "get_current_user": lambda args: self.current_user_service.get_current_user(),
             "get_my_assignments": lambda args: self.assignments_service.get_my_assignments(),
@@ -33,6 +36,14 @@ class ToolRegistry:
                 self._normalize_search_query(args.get("query", ""))
             ),
             "search_documents": lambda args: self.action_item_service.search_documents(args.get("query", "")),
+            "search_documents_by_counterparty": lambda args: self.action_item_service.search_documents_by_counterparty(
+                self._normalize_search_query(args.get("query", ""))
+            ),
+            "list_letters": lambda args: self.action_item_service.list_letters(
+                direction=str(args.get("direction", "")),
+                date_from=args.get("date_from"),
+                date_to=args.get("date_to"),
+            ),
             "create_action_item": self._create_action_item,
             "create_task": self._create_task,
             "get_my_meetings": lambda args: self.meetings_service.get_my_meetings(
@@ -41,10 +52,13 @@ class ToolRegistry:
             "get_action_item_details": lambda args: self.meetings_service.get_action_item_details(
                 int(args["action_item_id"])
             ),
+            "get_discipline_analytics": lambda args: self._get_discipline_analytics(args),
         }
         self._required_arguments: dict[str, list[str]] = {
             "search_employee": ["query"],
             "search_documents": ["query"],
+            "search_documents_by_counterparty": ["query"],
+            "list_letters": ["direction"],
             "create_action_item": ["subject", "performer_id", "action_text"],
             "create_task": ["subject", "performer_id", "action_text"],
             "get_action_item_details": ["action_item_id"],
@@ -68,6 +82,39 @@ class ToolRegistry:
                 "Search Directum official documents by name or subject.",
                 {"query": {"type": "string", "description": "Document name, subject, number, or keyword"}},
                 required=["query"],
+            ),
+            self._tool(
+                "search_documents_by_counterparty",
+                (
+                    "Find all Directum documents that belong to a counterparty/organization. "
+                    "Use for Russian requests like 'покажи документы от {организация}', "
+                    "'документы по контрагенту', 'все документы организации'. The query is the "
+                    "organization name and may be imprecise — fuzzy matching is applied."
+                ),
+                {"query": {"type": "string", "description": "Counterparty / organization name (may be approximate)"}},
+                required=["query"],
+            ),
+            self._tool(
+                "list_letters",
+                (
+                    "List registered Directum correspondence letters. Use for Russian requests like "
+                    "'покажи все входящие', 'все исходящие письма', 'входящие за май', "
+                    "'исходящие с 1 по 15 мая', 'входящие за сегодня'. Set direction='incoming' for "
+                    "входящие and direction='outgoing' for исходящие. When the user names a date or "
+                    "period, convert it to concrete ISO-8601 dates and pass date_from/date_to "
+                    "(YYYY-MM-DD). For an open period like 'за май 2026' use date_from=2026-05-01 and "
+                    "date_to=2026-05-31. Omit date_from/date_to when no period is mentioned."
+                ),
+                {
+                    "direction": {
+                        "type": "string",
+                        "enum": ["incoming", "outgoing"],
+                        "description": "incoming = входящие, outgoing = исходящие",
+                    },
+                    "date_from": {"type": "string", "description": "Start date ISO YYYY-MM-DD (optional)"},
+                    "date_to": {"type": "string", "description": "End date ISO YYYY-MM-DD inclusive (optional)"},
+                },
+                required=["direction"],
             ),
             self._tool(
                 "create_action_item",
@@ -111,7 +158,44 @@ class ToolRegistry:
                 {"action_item_id": {"type": "integer", "description": "Action item ID"}},
                 required=["action_item_id"],
             ),
+        ] + self._discipline_tools()
+
+    def _discipline_tools(self) -> list[dict[str, Any]]:
+        if self.discipline_analytics_service is None:
+            return []
+        return [
+            self._tool(
+                "get_discipline_analytics",
+                (
+                    "Get descriptive execution-discipline analytics over Directum assignments "
+                    "(поручения/задания). Use for Russian requests like 'исполнительская дисциплина', "
+                    "'аналитика по дисциплине', 'сколько просрочено', 'процент выполнения в срок', "
+                    "'отчёт по дисциплине сотрудника/за период'. Returns counts: in_process, overdue, "
+                    "completed, completed_on_time, completed_late and on_time_rate (percent). By default "
+                    "the scope is the whole organization. Pass employee (name or part of name) to scope "
+                    "to one performer. When the user names a period, convert it to concrete ISO-8601 dates "
+                    "and pass date_from/date_to (YYYY-MM-DD); the period bounds completed assignments."
+                ),
+                {
+                    "employee": {
+                        "type": "string",
+                        "description": "Performer name or part of name (optional; omit for whole organization)",
+                    },
+                    "date_from": {"type": "string", "description": "Period start ISO YYYY-MM-DD (optional)"},
+                    "date_to": {"type": "string", "description": "Period end ISO YYYY-MM-DD inclusive (optional)"},
+                },
+            ),
         ]
+
+    def _get_discipline_analytics(self, args: dict[str, Any]) -> Any:
+        if self.discipline_analytics_service is None:
+            raise ValueError("Discipline analytics service is not configured")
+        employee = args.get("employee")
+        return self.discipline_analytics_service.get_discipline_analytics(
+            employee=str(employee) if employee else None,
+            date_from=args.get("date_from"),
+            date_to=args.get("date_to"),
+        )
 
     def call(self, name: str, arguments: dict[str, Any]) -> Any:
         if name not in self._handlers:

@@ -13,6 +13,17 @@ OPENROUTER_MODEL = "google/gemma-4-26b-a4b-it:free"
 ARIO_BASE_URL = "https://llm.ario.directum360.ru/v1"
 ARIO_MODEL = "Qwen/Qwen3.6-35B-A3B"
 
+# Дефолты провайдеров. Если base_url/model не переопределены пользователем
+# (т.е. остались одним из известных дефолтов), при смене провайдера их
+# заменяем на дефолты выбранного провайдера.
+PROVIDER_DEFAULTS = {
+    "ollama": (OLLAMA_BASE_URL, OLLAMA_MODEL),
+    "openrouter": (OPENROUTER_BASE_URL, OPENROUTER_MODEL),
+    "ario": (ARIO_BASE_URL, ARIO_MODEL),
+}
+KNOWN_BASE_URLS = {url.rstrip("/") for url, _ in PROVIDER_DEFAULTS.values()}
+KNOWN_MODELS = {model for _, model in PROVIDER_DEFAULTS.values()}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -26,6 +37,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: SecretStr = SecretStr("")
     OPENAI_MODEL: str = ARIO_MODEL
     LLM_TOOL_CALLING: Literal["auto", "enabled", "disabled"] = "auto"
+    # Проверка TLS-сертификата LLM-эндпоинта. Для self-signed (напр. внутренний
+    # ario) выставить false в .env: LLM_VERIFY_SSL=false
+    LLM_VERIFY_SSL: bool = True
 
     DIRECTUM_BASE_URL: str
     DIRECTUM_AUTH_MODE: Literal["basic_token"] = "basic_token"
@@ -38,16 +52,16 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def apply_provider_defaults(self):
-        if self.LLM_PROVIDER == "openrouter":
-            if self.OPENAI_BASE_URL.rstrip("/") == OLLAMA_BASE_URL:
-                self.OPENAI_BASE_URL = OPENROUTER_BASE_URL
-            if self.OPENAI_MODEL == OLLAMA_MODEL:
-                self.OPENAI_MODEL = OPENROUTER_MODEL
-        elif self.LLM_PROVIDER == "ario":
-            if self.OPENAI_BASE_URL.rstrip("/") == OLLAMA_BASE_URL:
-                self.OPENAI_BASE_URL = ARIO_BASE_URL
-            if self.OPENAI_MODEL == OLLAMA_MODEL:
-                self.OPENAI_MODEL = ARIO_MODEL
+        defaults = PROVIDER_DEFAULTS.get(self.LLM_PROVIDER)
+        if defaults is None:
+            return self
+        base_url, model = defaults
+        # Переопределяем только если значение осталось одним из известных дефолтов
+        # (пользователь не задал собственное).
+        if self.OPENAI_BASE_URL.rstrip("/") in KNOWN_BASE_URLS:
+            self.OPENAI_BASE_URL = base_url
+        if self.OPENAI_MODEL in KNOWN_MODELS:
+            self.OPENAI_MODEL = model
         return self
 
     @property
@@ -67,6 +81,10 @@ class Settings(BaseSettings):
         return self.OPENAI_MODEL
 
     @property
+    def llm_verify_ssl(self) -> bool:
+        return self.LLM_VERIFY_SSL
+
+    @property
     def directum_base_url(self) -> str:
         return self.DIRECTUM_BASE_URL.rstrip("/")
 
@@ -84,6 +102,7 @@ class Settings(BaseSettings):
             "openai_model": self.OPENAI_MODEL,
             "openai_api_key_set": bool(self.OPENAI_API_KEY.get_secret_value()),
             "llm_tool_calling": self.LLM_TOOL_CALLING,
+            "llm_verify_ssl": self.LLM_VERIFY_SSL,
             "directum_base_url": self.directum_base_url,
             "directum_auth_mode": self.DIRECTUM_AUTH_MODE,
             "directum_auth_token_set": bool(self.DIRECTUM_AUTH_TOKEN.get_secret_value()),

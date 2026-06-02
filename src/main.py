@@ -23,6 +23,7 @@ from src.models.schemas import (
 from src.services.action_items import ActionItemService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
+from src.services.discipline_analytics import DisciplineAnalyticsService
 from src.services.directum_connection import build_basic_auth_token
 from src.services.directum_client import DirectumClient, DirectumError
 from src.services.llm_service import LLMService
@@ -173,6 +174,26 @@ def create_app(testing: bool = False, metrics_db_path: str | None = None) -> Fas
     def document_search(query: str):
         return current_services()["action_items"].search_documents(query)
 
+    @app.get("/api/directum/documents/by-counterparty")
+    def documents_by_counterparty(query: str):
+        return current_services()["action_items"].search_documents_by_counterparty(query)
+
+    @app.get("/api/directum/letters")
+    def list_letters(direction: str, date_from: str | None = None, date_to: str | None = None):
+        return current_services()["action_items"].list_letters(
+            direction=direction, date_from=date_from, date_to=date_to
+        )
+
+    @app.get("/api/directum/discipline")
+    def discipline_analytics(
+        employee: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ):
+        return current_services()["discipline"].get_discipline_analytics(
+            employee=employee, date_from=date_from, date_to=date_to
+        )
+
     @app.post("/api/directum/action-items")
     def create_action_item(request: ActionItemCreateRequest):
         result = current_services()["action_items"].create_action_item(request)
@@ -246,6 +267,7 @@ def _settings_with_directum_connection(
         OPENAI_API_KEY=settings.OPENAI_API_KEY,
         OPENAI_MODEL=settings.OPENAI_MODEL,
         LLM_TOOL_CALLING=settings.LLM_TOOL_CALLING,
+        LLM_VERIFY_SSL=settings.LLM_VERIFY_SSL,
         DIRECTUM_BASE_URL=request.base_url,
         DIRECTUM_AUTH_MODE=settings.DIRECTUM_AUTH_MODE,
         DIRECTUM_AUTH_TOKEN=build_basic_auth_token(request.username, request.password.get_secret_value()),
@@ -280,6 +302,7 @@ def _settings_with_llm_connection(
         OPENAI_API_KEY=api_key,
         OPENAI_MODEL=request.model,
         LLM_TOOL_CALLING=request.tool_calling,
+        LLM_VERIFY_SSL=settings.LLM_VERIFY_SSL,
         DIRECTUM_BASE_URL=settings.DIRECTUM_BASE_URL,
         DIRECTUM_AUTH_MODE=settings.DIRECTUM_AUTH_MODE,
         DIRECTUM_AUTH_TOKEN=settings.DIRECTUM_AUTH_TOKEN,
@@ -305,6 +328,7 @@ def build_llm_service(settings: Settings, registry: ToolRegistry, testing: bool 
         settings.openai_model,
         settings.LLM_TOOL_CALLING,
         registry,
+        verify_ssl=settings.LLM_VERIFY_SSL,
     )
 
 
@@ -321,9 +345,10 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     assignments = AssignmentsService(client, current_user)
     action_items = ActionItemService(client)
     meetings = MeetingsService(client, current_user)
+    discipline = DisciplineAnalyticsService(client, action_items)
     metrics = MetricsStorage(settings.METRICS_DB_PATH)
     metrics.initialize()
-    registry = ToolRegistry(current_user, assignments, action_items, meetings)
+    registry = ToolRegistry(current_user, assignments, action_items, meetings, discipline)
     llm = build_llm_service(settings, registry, testing=testing)
     return {
         "directum": client,
@@ -331,6 +356,7 @@ def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
         "assignments": assignments,
         "action_items": action_items,
         "meetings": meetings,
+        "discipline": discipline,
         "metrics": metrics,
         "registry": registry,
         "llm": llm,

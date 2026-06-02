@@ -27,6 +27,7 @@ SYSTEM_PROMPT = (
 )
 
 ACTION_ITEM_PREVIEW_MARKER = "DIRECTUM_ACTION_ITEM_PREVIEW"
+ANALYTICS_MARKER = "DIRECTUM_ANALYTICS"
 EMPLOYEE_QUERY_STRIP_CHARS = " \t\r\n.,;:!?\"'\u00ab\u00bb"
 CREATE_VERB_PATTERN = r"(?:создай|подготовь|поставь|сформируй|выдай)"
 
@@ -40,6 +41,7 @@ class LLMService:
         model: str,
         tool_calling: str,
         tool_registry: Any,
+        verify_ssl: bool = True,
     ):
         self.provider = provider
         self.base_url = base_url.rstrip("/")
@@ -47,10 +49,14 @@ class LLMService:
         self.tool_calling = tool_calling
         self.tool_registry = tool_registry
         self._api_key = api_key
+        self.verify_ssl = verify_ssl
         self.client = OpenAI(
             api_key=api_key,
             base_url=self.base_url,
-            http_client=httpx.Client(trust_env=not self._uses_local_base_url()),
+            http_client=httpx.Client(
+                trust_env=not self._uses_local_base_url(),
+                verify=verify_ssl,
+            ),
         )
 
     def _uses_local_base_url(self) -> bool:
@@ -77,7 +83,7 @@ class LLMService:
             yield direct_response
             return
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": self._system_prompt()}]
         messages.extend(history_items)
         messages.append({"role": "user", "content": message})
 
@@ -86,14 +92,28 @@ class LLMService:
         except Exception as exc:
             yield self._safe_error_message(exc)
 
+    def _system_prompt(self) -> str:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return (
+            f"{SYSTEM_PROMPT}\n"
+            f"Today's date is {today} (ISO 8601). Resolve relative dates and periods such as "
+            "'сегодня', 'вчера', 'за май', 'за эту неделю', 'с 1 по 15 мая' against today's date "
+            "and pass concrete ISO dates (YYYY-MM-DD) to tools like list_letters."
+        )
+
     def _stream_chat_with_tools(self, messages: list[dict[str, Any]], max_tool_rounds: int = 4) -> Iterable[str]:
         tools = self.tools_for_request()
         employee_names_by_id: dict[int, str] = {}
+        analytics_marker: str | None = None
         for _ in range(max_tool_rounds):
             chunks, tool_calls = self._collect_stream(messages, tools)
             if chunks:
                 yield from chunks
             if not tool_calls:
+                # Чарт рендерим после финального текста LLM (ADR-004: код считает,
+                # LLM объясняет; фронтенд рисует гистограмму поверх объяснения).
+                if analytics_marker is not None:
+                    yield "\n" + analytics_marker
                 return
 
             messages.append(
@@ -117,6 +137,9 @@ class LLMService:
                         return
                     raise
                 self._remember_employee_names(tool_name, result, employee_names_by_id)
+                marker = self._analytics_marker_for_tool(tool_name, result)
+                if marker is not None:
+                    analytics_marker = marker
                 preview_response = self._tool_preview_response(tool_name, result, employee_names_by_id)
                 if preview_response is not None:
                     yield preview_response
@@ -227,7 +250,14 @@ class LLMService:
                     tool_call["function"]["name"] += getattr(function, "name", None) or ""
                     tool_call["function"]["arguments"] += getattr(function, "arguments", None) or ""
 
-        return chunks, [tool_calls_by_index[index] for index in sorted(tool_calls_by_index)]
+        tool_calls = [tool_calls_by_index[index] for index in sorted(tool_calls_by_index)]
+        for tool_call in tool_calls:
+            # Инструменты со всеми опциональными параметрами LLM зовёт с пустыми
+            # аргументами. Пустую строку нельзя возвращать серверу обратно: vLLM
+            # делает json.loads("") и отвечает 400 BadRequestError. Нормализуем в "{}".
+            if not tool_call["function"]["arguments"].strip():
+                tool_call["function"]["arguments"] = "{}"
+        return chunks, tool_calls
 
     def _safe_error_message(self, exc: Exception) -> str:
         message = str(exc)
@@ -246,6 +276,10 @@ class LLMService:
             return create_response
 
         normalized = message.lower()
+        # Исполнительская дисциплина всегда идёт через LLM tool-path: модель
+        # резолвит сотрудника/период, а чарт догоняет маркером после ответа.
+        if "дисциплин" in normalized:
+            return None
         direct_tool: str | None = None
         wants_outgoing_action_item_analytics = (
             "\u0430\u043d\u0430\u043b\u0438\u0442" in normalized
@@ -1052,14 +1086,95 @@ class LLMService:
             else:
                 categories["work"].append(item)
 
+        # Текстовые списки убраны: в ответе только сводка + визуализация.
+        # Детали по каждому поручению уезжают в drill-down модалку через items
+        # внутри колонок маркера.
+        # Заголовок не дублируем — визуализация уже несёт title «Аналитика…».
         sections = [
-            "## Аналитика по исходящим поручениям",
             f"Всего исходящих поручений: **{len(items)}**.",
-            self._analytics_section("Поручения в работе", categories["work"], "work"),
-            self._analytics_section("Срок подходит к концу (остался один день)", categories["due_soon"], "due-soon"),
-            self._analytics_section("Просроченные поручения", categories["overdue"], "overdue"),
+            "Нажмите на колонку графика, чтобы открыть список поручений.",
         ]
-        return "\n\n".join(sections)
+        chart = {
+            "kind": "outgoing_action_items",
+            "title": "Аналитика по исходящим поручениям",
+            "subtitle": f"Всего: {len(items)}",
+            "charts": [
+                {
+                    "type": "bar",
+                    "title": "Распределение по срокам",
+                    "bars": [
+                        {
+                            "label": "В работе",
+                            "value": len(categories["work"]),
+                            "tone": "work",
+                            "items": [self._analytics_item_payload(i) for i in categories["work"]],
+                        },
+                        {
+                            "label": "Срок завтра",
+                            "value": len(categories["due_soon"]),
+                            "tone": "due-soon",
+                            "items": [self._analytics_item_payload(i) for i in categories["due_soon"]],
+                        },
+                        {
+                            "label": "Просрочено",
+                            "value": len(categories["overdue"]),
+                            "tone": "overdue",
+                            "items": [self._analytics_item_payload(i) for i in categories["overdue"]],
+                        },
+                    ],
+                }
+            ],
+        }
+        return "\n\n".join(sections) + "\n" + self._analytics_marker(chart)
+
+    def _analytics_item_payload(self, item: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": item.get("id"),
+            "subject": str(item.get("subject") or item.get("name") or ""),
+            "url": item.get("url"),
+            "status": item.get("status"),
+            "deadline": item.get("deadline"),
+            "performer": item.get("performer"),
+        }
+
+    def _analytics_marker(self, payload: dict[str, Any]) -> str:
+        return f"[[{ANALYTICS_MARKER}:{json.dumps(payload, ensure_ascii=False, default=str)}]]"
+
+    def _analytics_marker_for_tool(self, tool_name: str, result: Any) -> str | None:
+        if tool_name == "get_discipline_analytics" and isinstance(result, dict):
+            return self._analytics_marker(self._discipline_chart_payload(result))
+        return None
+
+    def _discipline_chart_payload(self, result: dict[str, Any]) -> dict[str, Any]:
+        employee = result.get("employee")
+        subtitle = (
+            employee.get("name")
+            if isinstance(employee, dict) and employee.get("name")
+            else "Организация"
+        )
+        charts: list[dict[str, Any]] = [
+            {
+                "type": "bar",
+                "title": "Поручения",
+                "bars": [
+                    {"label": "В работе", "value": int(result.get("in_process") or 0), "tone": "work"},
+                    {"label": "Просрочено", "value": int(result.get("overdue") or 0), "tone": "overdue"},
+                    {"label": "В срок", "value": int(result.get("completed_on_time") or 0), "tone": "ok"},
+                    {"label": "С опозданием", "value": int(result.get("completed_late") or 0), "tone": "late"},
+                ],
+            }
+        ]
+        rate = result.get("on_time_rate")
+        if rate is not None:
+            charts.append(
+                {"type": "gauge", "title": "Выполнено в срок", "value": rate, "unit": "%"}
+            )
+        return {
+            "kind": "discipline",
+            "title": "Исполнительская дисциплина",
+            "subtitle": subtitle,
+            "charts": charts,
+        }
 
     def _normalize_tool_items(self, result: Any) -> list[dict[str, Any]]:
         raw_items = result if isinstance(result, list) else [result]

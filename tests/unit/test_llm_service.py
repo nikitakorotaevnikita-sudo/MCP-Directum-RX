@@ -359,6 +359,23 @@ class MultiStepCreateClient:
         self.chat = SimpleNamespace(completions=self.completions)
 
 
+def test_llm_service_system_prompt_includes_todays_date():
+    from datetime import datetime, timezone
+
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen3:8b",
+        tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+
+    prompt = service._system_prompt()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    assert today in prompt
+
+
 def test_llm_service_reports_provider_status_without_secret():
     service = LLMService(
         provider="ollama",
@@ -417,6 +434,33 @@ def test_llm_service_keeps_env_proxy_for_remote_provider(monkeypatch):
     )
 
     assert created_clients[0]["http_client"].trust_env is True
+
+
+def test_llm_service_defaults_to_verifying_tls():
+    service = LLMService(
+        provider="ario",
+        base_url="https://llm.ario.directum360.ru/v1",
+        api_key="test-key",
+        model="Qwen/Qwen3-32B-AWQ",
+        tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+
+    assert service.verify_ssl is True
+
+
+def test_llm_service_can_disable_tls_verification_for_self_signed_endpoint():
+    service = LLMService(
+        provider="ario",
+        base_url="https://llm.ario.directum360.ru/v1",
+        api_key="test-key",
+        model="Qwen/Qwen3-32B-AWQ",
+        tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+        verify_ssl=False,
+    )
+
+    assert service.verify_ssl is False
 
 
 @pytest.mark.parametrize("tool_calling", ["auto", "enabled"])
@@ -627,24 +671,26 @@ def test_stream_chat_formats_outgoing_action_item_analytics_by_deadline():
         tool_registry=registry,
     )
 
-    chunks = list(service.stream_chat("Дай аналитику по исходящим поручениям", []))
+    text = "".join(service.stream_chat("Дай аналитику по исходящим поручениям", []))
+    body, marker = _extract_analytics_marker(text)
 
     assert registry.calls == [("get_action_items_created_by_me", {})]
-    assert len(chunks) == 1
-    assert "## Аналитика по исходящим поручениям" in chunks[0]
-    assert "Всего исходящих поручений: **3**." in chunks[0]
-    assert (
-        '### <span class="analytics-heading analytics-heading-work">Поручения в работе</span>'
-        "\n1. [**Поручение в работе**](<https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/101>)"
-    ) in chunks[0]
-    assert (
-        '### <span class="analytics-heading analytics-heading-due-soon">Срок подходит к концу (остался один день)</span>'
-        "\n1. **Скоро срок**"
-    ) in chunks[0]
-    assert (
-        '### <span class="analytics-heading analytics-heading-overdue">Просроченные поручения</span>'
-        "\n1. **Просроченное поручение**"
-    ) in chunks[0]
+    # Заголовок-дубль убран (визуализация уже несёт title).
+    assert "Аналитика по исходящим поручениям" not in body
+    assert "Всего исходящих поручений: **3**." in body
+    # Текстовые секции по категориям убраны — только сводка + визуализация.
+    assert "analytics-heading" not in body
+    assert "Поручения в работе" not in body
+
+    # Элементы встроены в колонки маркера для drill-down модалки.
+    bars = {b["label"]: b for b in marker["charts"][0]["bars"]}
+    work_items = bars["В работе"]["items"]
+    assert [i["subject"] for i in work_items] == ["Поручение в работе"]
+    assert work_items[0]["url"] == (
+        "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/101"
+    )
+    assert [i["subject"] for i in bars["Срок завтра"]["items"]] == ["Скоро срок"]
+    assert [i["subject"] for i in bars["Просрочено"]["items"]] == ["Просроченное поручение"]
 
 
 def test_stream_chat_routes_in_progress_tasks_question_without_model_tool_call():
@@ -1595,3 +1641,271 @@ def test_format_analytics_item_no_report_link_when_id_absent():
     item = {"subject": "Задача без id", "deadline": None}
     result = service._format_analytics_item(item)
     assert "#action-item-" not in result
+
+
+# ── Analytics chart markers ───────────────────────────────────────────────
+
+
+def _extract_analytics_marker(text):
+    body, marker = text.split("[[DIRECTUM_ANALYTICS:", 1)
+    payload = json.loads(marker.rsplit("]]", 1)[0])
+    return body, payload
+
+
+def test_stream_chat_outgoing_analytics_appends_chart_marker():
+    now = datetime.now(timezone.utc)
+
+    class AnalyticsRegistry(FakeToolRegistry):
+        def __init__(self):
+            self.calls = []
+
+        def call(self, name, arguments):
+            self.calls.append((name, arguments))
+            return [
+                {"subject": "A", "status": "InProcess", "deadline": (now + timedelta(days=3)).isoformat()},
+                {"subject": "B", "status": "InProcess", "deadline": (now + timedelta(hours=12)).isoformat()},
+                {"subject": "C", "status": "InProcess", "deadline": (now - timedelta(hours=1)).isoformat()},
+            ]
+
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=AnalyticsRegistry(),
+    )
+
+    text = "".join(service.stream_chat("Дай аналитику по исходящим поручениям", []))
+    body, marker = _extract_analytics_marker(text)
+
+    assert "Всего исходящих поручений: **3**." in body
+    assert "Аналитика по исходящим поручениям" not in body
+    assert marker["kind"] == "outgoing_action_items"
+    bars = {b["label"]: b["value"] for b in marker["charts"][0]["bars"]}
+    assert bars == {"В работе": 1, "Срок завтра": 1, "Просрочено": 1}
+
+
+def test_outgoing_analytics_item_payload_carries_drilldown_fields():
+    now = datetime.now(timezone.utc)
+    deadline = (now - timedelta(hours=1)).isoformat()
+
+    class AnalyticsRegistry(FakeToolRegistry):
+        def call(self, name, arguments):
+            return [
+                {
+                    "id": 77,
+                    "subject": "Просроченное",
+                    "status": "InProcess",
+                    "deadline": deadline,
+                    "url": "https://rx.example/card/77",
+                    "performer": "Иванов Иван Иванович",
+                    "entity_type": "action_item_task",
+                }
+            ]
+
+    service = LLMService(
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key="test-key",
+        model="openrouter/free",
+        tool_calling="auto",
+        tool_registry=AnalyticsRegistry(),
+    )
+
+    text = "".join(service.stream_chat("Дай аналитику по исходящим поручениям", []))
+    _, marker = _extract_analytics_marker(text)
+
+    overdue = [b for b in marker["charts"][0]["bars"] if b["label"] == "Просрочено"][0]
+    item = overdue["items"][0]
+    assert item["id"] == 77
+    assert item["subject"] == "Просроченное"
+    assert item["url"] == "https://rx.example/card/77"
+    assert item["status"] == "InProcess"
+    assert item["deadline"] == deadline
+    assert item["performer"] == "Иванов Иван Иванович"
+
+
+class DisciplineToolCallCompletions:
+    def __init__(self):
+        self.requests = []
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        if len(self.requests) == 1:
+            return iter(
+                [
+                    SimpleNamespace(
+                        choices=[
+                            SimpleNamespace(
+                                delta=SimpleNamespace(
+                                    tool_calls=[
+                                        SimpleNamespace(
+                                            index=0,
+                                            id="call_discipline",
+                                            type="function",
+                                            function=SimpleNamespace(
+                                                name="get_discipline_analytics", arguments="{}"
+                                            ),
+                                        )
+                                    ]
+                                )
+                            )
+                        ]
+                    )
+                ]
+            )
+        return iter(
+            [
+                SimpleNamespace(
+                    choices=[SimpleNamespace(delta=SimpleNamespace(content="Дисциплина в норме."))]
+                )
+            ]
+        )
+
+
+class DisciplineToolCallClient:
+    def __init__(self):
+        self.completions = DisciplineToolCallCompletions()
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+class DisciplineRegistry(FakeToolRegistry):
+    def openai_tools(self):
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_discipline_analytics",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ]
+
+    def call(self, name, arguments):
+        return {
+            "scope": "organization",
+            "employee": None,
+            "in_process": 66,
+            "overdue": 27,
+            "completed": 137,
+            "completed_on_time": 110,
+            "completed_late": 27,
+            "on_time_rate": 80.3,
+            "message": "",
+        }
+
+
+def test_stream_chat_discipline_appends_chart_marker_after_llm_answer():
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=DisciplineRegistry(),
+    )
+    service.client = DisciplineToolCallClient()
+
+    text = "".join(service.stream_chat("Покажи исполнительскую дисциплину", []))
+    body, marker = _extract_analytics_marker(text)
+
+    assert "Дисциплина в норме." in body
+    assert marker["kind"] == "discipline"
+    bars = {b["label"]: b["value"] for b in marker["charts"][0]["bars"]}
+    assert bars["В работе"] == 66
+    assert bars["Просрочено"] == 27
+    assert bars["В срок"] == 110
+    assert bars["С опозданием"] == 27
+    gauge = [c for c in marker["charts"] if c["type"] == "gauge"][0]
+    assert gauge["value"] == 80.3
+
+
+class EmptyArgsToolCallCompletions(DisciplineToolCallCompletions):
+    """LLM эмитит tool call БЕЗ аргументов (arguments=\"\") — как реальный vLLM
+    для инструмента со всеми опциональными параметрами."""
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        if len(self.requests) == 1:
+            return iter(
+                [
+                    SimpleNamespace(
+                        choices=[
+                            SimpleNamespace(
+                                delta=SimpleNamespace(
+                                    tool_calls=[
+                                        SimpleNamespace(
+                                            index=0,
+                                            id="call_discipline",
+                                            type="function",
+                                            function=SimpleNamespace(
+                                                name="get_discipline_analytics", arguments=""
+                                            ),
+                                        )
+                                    ]
+                                )
+                            )
+                        ]
+                    )
+                ]
+            )
+        return iter(
+            [
+                SimpleNamespace(
+                    choices=[SimpleNamespace(delta=SimpleNamespace(content="Дисциплина в норме."))]
+                )
+            ]
+        )
+
+
+class EmptyArgsToolCallClient:
+    def __init__(self):
+        self.completions = EmptyArgsToolCallCompletions()
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+def test_tool_call_with_empty_arguments_is_normalized_in_followup_request():
+    """Регресс: пустую строку arguments нельзя класть обратно в messages —
+    vLLM делает json.loads(\"\") и падает с 400 BadRequestError."""
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=DisciplineRegistry(),
+    )
+    client = EmptyArgsToolCallClient()
+    service.client = client
+
+    text = "".join(service.stream_chat("Покажи исполнительскую дисциплину", []))
+
+    assert "Дисциплина в норме." in text
+    # Был сделан follow-up запрос
+    assert len(client.completions.requests) == 2
+    followup_messages = client.completions.requests[1]["messages"]
+    assistant_with_tools = [
+        m for m in followup_messages if m.get("role") == "assistant" and m.get("tool_calls")
+    ]
+    assert assistant_with_tools, "assistant-сообщение с tool_calls должно уйти в follow-up"
+    for message in assistant_with_tools:
+        for tool_call in message["tool_calls"]:
+            arguments = tool_call["function"]["arguments"]
+            assert arguments, "arguments не должны быть пустой строкой (vLLM 400)"
+            # И должны быть валидным JSON-объектом
+            assert json.loads(arguments) == {}
+
+
+def test_discipline_keyword_routes_to_tool_path_not_overdue_shortcut():
+    service = LLMService(
+        provider="ollama",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama",
+        model="qwen",
+        tool_calling="auto",
+        tool_registry=DisciplineRegistry(),
+    )
+
+    # «дисциплина» не должна перехватываться прямым маршрутом (например, get_overdue_assignments).
+    assert service._direct_rx_response("Аналитика по исполнительской дисциплине просрочки", []) is None

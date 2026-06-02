@@ -72,6 +72,7 @@ class AssignmentSummary(BaseModel):
     deadline: datetime | None = None
     entity_type: str
     url: str | None = None
+    performer: str | None = None
 
 
 class EmployeeSummary(BaseModel):
@@ -86,6 +87,33 @@ class DocumentSummary(BaseModel):
     subject: str | None = None
     registration_number: str | None = None
     registration_date: datetime | None = None
+    url: str | None = None
+
+
+class CounterpartySummary(BaseModel):
+    id: int
+    name: str
+    tin: str | None = None
+
+
+class DocumentsByCounterpartyResult(BaseModel):
+    counterparty: CounterpartySummary | None = None
+    documents: list[DocumentSummary] = Field(default_factory=list)
+    message: str = ""
+
+
+class DisciplineSummary(BaseModel):
+    scope: str = "organization"
+    employee: EmployeeSummary | None = None
+    date_from: datetime | None = None
+    date_to: datetime | None = None
+    in_process: int = 0
+    overdue: int = 0
+    completed: int = 0
+    completed_on_time: int = 0
+    completed_late: int = 0
+    on_time_rate: float | None = None
+    message: str = ""
 
 
 class ActionItemCreateRequest(BaseModel):

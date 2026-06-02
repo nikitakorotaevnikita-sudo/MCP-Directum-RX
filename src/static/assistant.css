@@ -184,6 +184,22 @@ button.nav-item {
 
 /* ============================== PROMPT CHIPS ============================== */
 
+/* Кнопки в шапке панели промптов: тоггл сворачивания + «Настроить» */
+.prompt-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Свёрнутая панель прячет чипы */
+.prompt-panel.collapsed .prompt-chips { display: none; }
+
+#prompt-toggle {
+  min-width: 32px;
+  line-height: 1;
+  font-size: 13px;
+}
+
 .prompt-chips {
   display: flex;
   flex-wrap: wrap;
@@ -406,6 +422,135 @@ button.nav-item {
 }
 
 .preview-link:hover { border-bottom-color: var(--accent); }
+
+/* ============================== ANALYTICS CHARTS ========================= */
+
+.analytics-block {
+  margin: 4px 0 14px;
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.analytics-block-title {
+  font-weight: 700;
+  color: var(--title);
+  font-size: 15px;
+}
+
+.analytics-block-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.analytics-charts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.analytics-chart { flex: 1 1 320px; min-width: 260px; }
+
+.analytics-chart-title {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.analytics-bar-label {
+  fill: var(--text);
+  font-size: 13px;
+  font-family: var(--font);
+}
+
+.analytics-bar-value {
+  fill: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+.analytics-bar-track { fill: var(--border); opacity: .45; }
+
+.analytics-gauge {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.analytics-gauge-track { stroke: var(--border); opacity: .5; }
+
+.analytics-gauge-value {
+  fill: var(--title);
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Кликабельная колонка drill-down */
+.analytics-bar-hit { cursor: pointer; }
+.analytics-bar-hit:hover { fill: var(--accent); fill-opacity: .07; }
+/* Обводку показываем только при клавиатурном фокусе; при фокусе мышью — нет. */
+.analytics-bar-hit:focus { outline: none; }
+.analytics-bar-hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ── Модалка drill-down по колонке ── */
+.analytics-modal { max-width: 720px; }
+
+.analytics-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.analytics-modal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.analytics-modal-item-head { font-size: 14px; font-weight: 600; }
+
+.analytics-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.analytics-modal-meta-label { color: var(--muted); }
+
+.analytics-report-btn { align-self: flex-start; margin-top: 2px; }
+
+.analytics-report-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.analytics-report-body:empty { display: none; }
+.analytics-report-body.loading { color: var(--muted); font-style: italic; }
+.analytics-report-body p { margin: 0 0 6px; }
+.analytics-report-body p:last-child { margin-bottom: 0; }
 
 /* ============================== BACKOFFICE ================================ */
 

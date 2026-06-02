@@ -30,6 +30,40 @@ def test_build_client_card_url_uses_client_route_for_task_entities():
     )
 
 
+def test_count_hits_count_endpoint_with_filter_and_returns_int():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        # /$count возвращает текст с возможным BOM, не JSON.
+        return httpx.Response(200, text="﻿42")
+
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = client.count("IAssignments", filter_="Status eq 'InProcess'")
+
+    assert result == 42
+    assert seen["url"].rstrip("/").endswith("/IAssignments/$count") or "/IAssignments/$count?" in seen["url"]
+    assert "$filter=Status+eq+%27InProcess%27" in seen["url"]
+
+
+def test_count_without_filter():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="215")
+
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert client.count("IAssignments") == 215
+
+
 def test_query_sends_odata_params_and_returns_value():
     seen = {}
 

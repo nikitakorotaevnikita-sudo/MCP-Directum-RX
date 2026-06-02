@@ -45,3 +45,36 @@ def test_get_created_action_items_filters_by_author():
     assert entity_set == "IActionItemExecutionTasks"
     assert "Author/Id eq 1165" in kwargs["filter_"]
     assert kwargs["select"] == "Id,Subject,Deadline,Status"
+    # Исполнителя ("Ответственный") тянем через навигацию Assignee.
+    assert kwargs.get("expand") == "Assignee($select=Name)"
+
+
+class PerformerClient(FakeClient):
+    def query(self, entity_set, **kwargs):
+        self.calls.append((entity_set, kwargs))
+        return [
+            {
+                "Id": 48,
+                "Subject": "Подготовить ответ",
+                "Status": "InProcess",
+                "Assignee": {"Id": 86, "Name": "Иванов Иван Иванович"},
+            }
+        ]
+
+
+def test_created_action_items_expose_performer_name():
+    client = PerformerClient()
+    service = AssignmentsService(client=client, current_user_service=FakeCurrentUser())
+
+    result = service.get_action_items_created_by_me()
+
+    assert result[0].performer == "Иванов Иван Иванович"
+
+
+def test_created_action_items_performer_none_when_assignee_absent():
+    client = FakeClient()  # не возвращает Assignee
+    service = AssignmentsService(client=client, current_user_service=FakeCurrentUser())
+
+    result = service.get_action_items_created_by_me()
+
+    assert result[0].performer is None

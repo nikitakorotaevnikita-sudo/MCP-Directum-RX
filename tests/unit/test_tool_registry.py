@@ -7,6 +7,8 @@ from src.models.schemas import (
     ActionItemDetail,
     AssignmentSummary,
     DirectumUser,
+    DisciplineSummary,
+    DocumentSummary,
     EmployeeSummary,
     MeetingSummary,
     TaskCreateRequest,
@@ -46,6 +48,18 @@ class FakeActionItems:
 
     def search_documents(self, query):
         return []
+
+    def search_documents_by_counterparty(self, query):
+        self.counterparty_query = query
+        return {
+            "counterparty": {"id": 100, "name": "ООО Ромашка", "tin": "7700000000"},
+            "documents": [{"id": 1, "name": "Договор", "url": "https://rx.example/IContracts(1)"}],
+            "message": "",
+        }
+
+    def list_letters(self, direction, date_from=None, date_to=None):
+        self.list_letters_call = {"direction": direction, "date_from": date_from, "date_to": date_to}
+        return [DocumentSummary(id=585, name="Вх. письмо", url="https://rx.example/IIncomingLetters(585)")]
 
     def create_action_item(self, request: ActionItemCreateRequest):
         self.created_requests.append(request)
@@ -97,6 +111,117 @@ def test_tool_registry_lists_core_tools():
     assert "get_my_assignments" in names
     assert "create_action_item" in names
     assert "create_task" in names
+
+
+def test_tool_registry_lists_documents_by_counterparty_tool():
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
+
+    tools = {t["function"]["name"]: t["function"] for t in registry.openai_tools()}
+
+    assert "search_documents_by_counterparty" in tools
+    assert tools["search_documents_by_counterparty"]["parameters"]["required"] == ["query"]
+
+
+def test_tool_registry_dispatches_documents_by_counterparty():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
+
+    result = registry.call("search_documents_by_counterparty", {"query": "  Ромашка "})
+
+    assert action_items.counterparty_query == "Ромашка"
+    assert result["counterparty"]["id"] == 100
+    assert result["documents"][0]["url"] == "https://rx.example/IContracts(1)"
+
+
+def test_tool_registry_lists_letters_tool():
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
+
+    tools = {t["function"]["name"]: t["function"] for t in registry.openai_tools()}
+
+    assert "list_letters" in tools
+    assert tools["list_letters"]["parameters"]["required"] == ["direction"]
+    assert tools["list_letters"]["parameters"]["properties"]["direction"]["enum"] == [
+        "incoming",
+        "outgoing",
+    ]
+
+
+def test_tool_registry_dispatches_list_letters_with_period():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
+
+    result = registry.call(
+        "list_letters",
+        {"direction": "incoming", "date_from": "2026-05-01", "date_to": "2026-05-31"},
+    )
+
+    assert action_items.list_letters_call == {
+        "direction": "incoming",
+        "date_from": "2026-05-01",
+        "date_to": "2026-05-31",
+    }
+    assert result[0]["id"] == 585
+    assert result[0]["url"] == "https://rx.example/IIncomingLetters(585)"
+
+
+def test_tool_registry_list_letters_requires_direction():
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
+
+    with pytest.raises(ValueError):
+        registry.call("list_letters", {"date_from": "2026-05-01"})
+
+
+class FakeDiscipline:
+    def __init__(self):
+        self.calls = []
+
+    def get_discipline_analytics(self, employee=None, date_from=None, date_to=None):
+        self.calls.append({"employee": employee, "date_from": date_from, "date_to": date_to})
+        return DisciplineSummary(
+            scope="organization",
+            in_process=66,
+            overdue=27,
+            completed=137,
+            completed_on_time=110,
+            completed_late=27,
+            on_time_rate=80.3,
+        )
+
+
+def test_tool_registry_lists_discipline_tool_when_service_present():
+    registry = ToolRegistry(
+        FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService(), FakeDiscipline()
+    )
+
+    names = [tool["function"]["name"] for tool in registry.openai_tools()]
+
+    assert "get_discipline_analytics" in names
+
+
+def test_tool_registry_omits_discipline_tool_without_service():
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService())
+
+    names = [tool["function"]["name"] for tool in registry.openai_tools()]
+
+    assert "get_discipline_analytics" not in names
+
+
+def test_tool_registry_dispatches_discipline_with_employee_and_period():
+    discipline = FakeDiscipline()
+    registry = ToolRegistry(
+        FakeCurrentUser(), FakeAssignments(), FakeActionItems(), FakeMeetingsService(), discipline
+    )
+
+    result = registry.call(
+        "get_discipline_analytics",
+        {"employee": "Иванов", "date_from": "2026-05-01", "date_to": "2026-05-31"},
+    )
+
+    assert discipline.calls == [
+        {"employee": "Иванов", "date_from": "2026-05-01", "date_to": "2026-05-31"}
+    ]
+    assert result["on_time_rate"] == 80.3
+    assert result["overdue"] == 27
 
 
 def test_tool_registry_dispatches_assignment_tool():

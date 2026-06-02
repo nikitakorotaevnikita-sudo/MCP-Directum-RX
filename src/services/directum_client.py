@@ -106,6 +106,25 @@ class DirectumClient:
         data = self._json_or_error(response)
         return self._collection_or_error(data, response.status_code)
 
+    def count(self, entity_set: str, filter_: str | None = None) -> int:
+        url = f"{self.build_url(entity_set)}/$count"
+        if filter_:
+            url = f"{url}?{urlencode({'$filter': filter_}, safe='$')}"
+        response = self.client.get(url, headers=self._headers())
+        if response.status_code >= 400:
+            detail = self._safe_error_detail(response) if response.status_code == 400 else ""
+            suffix = f": {detail}" if detail else ""
+            raise DirectumError(
+                safe_message=f"Directum OData count failed with status {response.status_code}{suffix}",
+                status_code=response.status_code,
+            )
+        # /$count отдаёт plain text (иногда с BOM), а не JSON.
+        text = response.text.lstrip("﻿").strip()
+        try:
+            return int(text)
+        except ValueError as exc:
+            raise DirectumError("Directum returned a non-numeric count", response.status_code) from exc
+
     def get_one(self, entity_path: str) -> dict[str, Any]:
         response = self.client.get(self.build_url(entity_path), headers=self._headers())
         return self._json_or_error(response)

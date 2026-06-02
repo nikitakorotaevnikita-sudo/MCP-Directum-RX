@@ -50,6 +50,7 @@ class AssignmentsService:
             "IActionItemExecutionTasks",
             filter_=f"Author/Id eq {user.id} and Status eq 'InProcess'",
             select="Id,Subject,Deadline,Status",
+            expand="Assignee($select=Name)",
             orderby="Deadline asc",
         )
         return [self._assignment(row, "action_item_task") for row in rows]
@@ -69,7 +70,17 @@ class AssignmentsService:
             deadline=row.get("Deadline"),
             entity_type=entity_type,
             url=client_url.strip() if isinstance(client_url, str) and client_url.strip() else None,
+            performer=self._performer_name(row),
         )
+
+    @staticmethod
+    def _performer_name(row: dict[str, Any]) -> str | None:
+        assignee = row.get("Assignee")
+        if isinstance(assignee, dict):
+            name = assignee.get("Name")
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+        return None
 
     def _entity_path(self, entity_type: str, directum_id: int) -> str | None:
         entity_sets = {

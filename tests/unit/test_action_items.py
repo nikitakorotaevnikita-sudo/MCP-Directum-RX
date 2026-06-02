@@ -417,6 +417,295 @@ def test_search_documents_expands_mc_abbreviation_to_mincifry_stem():
     assert result[0].id == 576
 
 
+class CounterpartyDocsClient(FakeClient):
+    """Fuzzy counterparty lookup (ICompanies) + typed document sets by Counterparty nav."""
+
+    def __init__(self, counterparties_by_filter=None, docs_by_set=None, error_sets=None):
+        super().__init__()
+        self.counterparties_by_filter = counterparties_by_filter or {}
+        self.docs_by_set = docs_by_set or {}
+        self.error_sets = error_sets or {}
+
+    def query(self, entity_set, **kwargs):
+        self.query_calls.append((entity_set, kwargs))
+        if entity_set in self.error_sets:
+            raise self.error_sets[entity_set]
+        if entity_set == "ICompanies":
+            return self.counterparties_by_filter.get(kwargs.get("filter_"), [])
+        return self.docs_by_set.get(entity_set, [])
+
+
+def test_search_documents_by_counterparty_takes_first_match_and_aggregates_typed_sets():
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'Ромашка')": [
+                {"Id": 100, "Name": "ООО Ромашка", "TIN": "7700000000"},
+                {"Id": 101, "Name": "Ромашка-Сервис", "TIN": "7700000001"},
+            ]
+        },
+        docs_by_set={
+            "IContractualDocuments": [
+                {
+                    "Id": 1,
+                    "Name": "Договор поставки",
+                    "Subject": "Поставка",
+                    "RegistrationNumber": "Д-1",
+                    "RegistrationDate": "2026-05-01T00:00:00+04:00",
+                }
+            ],
+            "IUniversalTransferDocuments": [
+                {
+                    "Id": 2,
+                    "Name": "УПД №5",
+                    "Subject": None,
+                    "RegistrationNumber": "УПД-5",
+                    "RegistrationDate": "2026-05-10T00:00:00+04:00",
+                }
+            ],
+        },
+    )
+    service = ActionItemService(client)
+
+    result = service.search_documents_by_counterparty("Ромашка", top=20)
+
+    # First counterparty wins; Directum permissions limit what is visible.
+    assert result.counterparty.id == 100
+    assert result.counterparty.name == "ООО Ромашка"
+    assert result.counterparty.tin == "7700000000"
+
+    # Counterparty searched in ICompanies by fuzzy contains(Name,...).
+    counterparty_calls = [c for c in client.query_calls if c[0] == "ICompanies"]
+    assert counterparty_calls[0][1]["filter_"] == "contains(Name,'Ромашка')"
+
+    # Documents aggregated across typed sets and sorted by date desc.
+    assert [d.id for d in result.documents] == [2, 1]
+    # Each typed set filtered by the Counterparty navigation on counterparty Id.
+    filters = {c[0]: c[1]["filter_"] for c in client.query_calls if c[0] != "ICompanies"}
+    assert filters["IContractualDocuments"] == "Counterparty/Id eq 100"
+    assert filters["IUniversalTransferDocuments"] == "Counterparty/Id eq 100"
+    # Documents carry a link.
+    contract = next(d for d in result.documents if d.id == 1)
+    assert contract.url == "https://rx.example/Integration/odata/IContractualDocuments(1)"
+
+
+def test_search_documents_by_counterparty_includes_letters_via_correspondent_nav():
+    # Письма (вх./исх.) ссылаются на контрагента через навигацию Correspondent,
+    # а не Counterparty (проверено вживую на стенде ogvsale253).
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'Минцифры России')": [
+                {"Id": 2, "Name": "Минцифры России", "TIN": None}
+            ]
+        },
+        docs_by_set={
+            "IIncomingLetters": [
+                {
+                    "Id": 587,
+                    "Name": "Вх. письмо от Минцифры России",
+                    "Subject": "Тестовое входящее от Минцифры РФ",
+                    "RegistrationNumber": None,
+                    "RegistrationDate": None,
+                }
+            ]
+        },
+    )
+    service = ActionItemService(client)
+
+    result = service.search_documents_by_counterparty("Минцифры России")
+
+    assert result.counterparty.id == 2
+    assert [d.id for d in result.documents] == [587]
+    filters = {c[0]: c[1]["filter_"] for c in client.query_calls if c[0] != "ICompanies"}
+    assert filters["IIncomingLetters"] == "Correspondent/Id eq 2"
+    assert filters["IOutgoingLetters"] == "Correspondent/Id eq 2"
+    letter = result.documents[0]
+    assert letter.url == "https://rx.example/Integration/odata/IIncomingLetters(587)"
+
+
+def test_search_documents_by_counterparty_skips_sets_that_reject_filter():
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'Ромашка')": [{"Id": 100, "Name": "ООО Ромашка", "TIN": None}]
+        },
+        docs_by_set={
+            "IContractualDocuments": [
+                {"Id": 1, "Name": "Договор", "RegistrationDate": "2026-05-01T00:00:00+04:00"}
+            ]
+        },
+        error_sets={"IIncomingInvoices": DirectumError("bad filter", status_code=400)},
+    )
+    service = ActionItemService(client)
+
+    result = service.search_documents_by_counterparty("Ромашка")
+
+    # Rejected set is skipped, the rest still aggregated.
+    assert [d.id for d in result.documents] == [1]
+
+
+def test_search_documents_by_counterparty_deduplicates_by_document_id():
+    # IContractualDocuments is a base type; a contract may also surface in another set.
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'Ромашка')": [{"Id": 100, "Name": "ООО Ромашка", "TIN": None}]
+        },
+        docs_by_set={
+            "IContractualDocuments": [
+                {"Id": 33, "Name": "Договор", "RegistrationDate": "2024-03-30T00:00:00+04:00"}
+            ],
+            "IIncomingInvoices": [
+                {"Id": 33, "Name": "Договор (дубль)", "RegistrationDate": "2024-03-30T00:00:00+04:00"}
+            ],
+        },
+    )
+    service = ActionItemService(client)
+
+    result = service.search_documents_by_counterparty("Ромашка")
+
+    assert [d.id for d in result.documents] == [33]
+
+
+def test_search_documents_by_counterparty_uses_token_fallback_for_loose_query():
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'Минцифры Алтайского края')": [],
+            "contains(Name,'края')": [],
+            "contains(Name,'Алтайского')": [{"Id": 200, "Name": "Минцифры Алтайского края", "TIN": None}],
+        },
+        docs_by_set={
+            "IContractualDocuments": [
+                {"Id": 7, "Name": "Договор", "RegistrationDate": "2026-04-01T00:00:00+04:00"}
+            ]
+        },
+    )
+    service = ActionItemService(client)
+
+    result = service.search_documents_by_counterparty("Минцифры Алтайского края")
+
+    assert result.counterparty.id == 200
+    assert [d.id for d in result.documents] == [7]
+
+
+def test_search_counterparty_prefers_longest_token_over_short_noise():
+    # «Минцифры РФ»: короткое «РФ» не должно матчить чужую организацию раньше,
+    # чем специфичное «Минцифры». Сперва пробуем самый длинный токен.
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'Минцифры РФ')": [],
+            "contains(Name,'Минцифры')": [{"Id": 2, "Name": "Минцифры России", "TIN": None}],
+            "contains(Name,'РФ')": [
+                {"Id": 9, "Name": "Администрация Президента РФ (УРОГ)", "TIN": None}
+            ],
+        },
+    )
+    service = ActionItemService(client)
+
+    result = service.search_counterparty("Минцифры РФ")
+
+    assert result[0].id == 2
+    queried = [c[1]["filter_"] for c in client.query_calls]
+    # Короткий «РФ» не должен запрашиваться, раз «Минцифры» уже совпал.
+    assert "contains(Name,'РФ')" not in queried
+
+
+def test_search_counterparty_expands_mc_abbreviation_to_mincifry():
+    # «МЦ РФ» — обиходное сокращение «Минцифры РФ». Раскрываем «МЦ» → «Минцифр»
+    # и пробуем его раньше шумного «РФ».
+    client = CounterpartyDocsClient(
+        counterparties_by_filter={
+            "contains(Name,'МЦ РФ')": [],
+            "contains(Name,'Минцифр')": [{"Id": 2, "Name": "Минцифры России", "TIN": None}],
+            "contains(Name,'РФ')": [
+                {"Id": 9, "Name": "Администрация Президента РФ (УРОГ)", "TIN": None}
+            ],
+        },
+    )
+    service = ActionItemService(client)
+
+    result = service.search_counterparty("МЦ РФ")
+
+    assert result[0].id == 2
+    queried = [c[1]["filter_"] for c in client.query_calls]
+    assert "contains(Name,'РФ')" not in queried
+
+
+def test_list_letters_incoming_filters_registered_and_period():
+    client = FakeClient(
+        query_rows=[
+            {
+                "Id": 585,
+                "Name": "Вх. письмо №1-0010/26",
+                "Subject": "Тест",
+                "RegistrationNumber": "1-0010/26",
+                "RegistrationDate": "2026-05-21T00:00:00+04:00",
+            }
+        ]
+    )
+    service = ActionItemService(client)
+
+    result = service.list_letters(
+        direction="incoming",
+        date_from="2026-05-01",
+        date_to="2026-05-31",
+    )
+
+    entity_set, kwargs = client.query_calls[0]
+    assert entity_set == "IIncomingLetters"
+    flt = kwargs["filter_"]
+    assert "RegistrationState eq 'Registered'" in flt
+    assert "RegistrationDate ge 2026-05-01T00:00:00" in flt
+    # date_to (date-only) расширяется до конца дня — иначе письма за 31-е выпадут.
+    assert "RegistrationDate le 2026-05-31T23:59:59" in flt
+    assert kwargs["orderby"] == "RegistrationDate desc"
+    assert result[0].id == 585
+    assert result[0].url == "https://rx.example/Integration/odata/IIncomingLetters(585)"
+
+
+def test_list_letters_outgoing_without_dates_only_registered():
+    client = FakeClient(query_rows=[])
+    service = ActionItemService(client)
+
+    service.list_letters(direction="outgoing")
+
+    entity_set, kwargs = client.query_calls[0]
+    assert entity_set == "IOutgoingLetters"
+    assert kwargs["filter_"] == "RegistrationState eq 'Registered'"
+
+
+def test_list_letters_rejects_unknown_direction():
+    client = FakeClient(query_rows=[])
+    service = ActionItemService(client)
+
+    try:
+        service.list_letters(direction="sideways")
+    except DirectumError as exc:
+        assert "direction" in str(exc)
+    else:
+        raise AssertionError("expected DirectumError for unknown direction")
+
+
+def test_list_letters_ignores_non_iso_dates_to_prevent_injection():
+    client = FakeClient(query_rows=[])
+    service = ActionItemService(client)
+
+    service.list_letters(direction="incoming", date_from="2026 or 1 eq 1")
+
+    flt = client.query_calls[0][1]["filter_"]
+    # Мусорная дата отбрасывается, остаётся только фильтр по статусу.
+    assert flt == "RegistrationState eq 'Registered'"
+
+
+def test_search_documents_by_counterparty_returns_empty_when_no_counterparty():
+    client = CounterpartyDocsClient(counterparties_by_filter={})
+    service = ActionItemService(client)
+
+    result = service.search_documents_by_counterparty("НесуществующийКонтрагент")
+
+    assert result.counterparty is None
+    assert result.documents == []
+    # No document sets queried if counterparty not found.
+    assert all(c[0] == "ICompanies" for c in client.query_calls)
+
+
 def test_create_action_item_confirm_auto_resolves_document_from_text():
     class DocumentResolvingClient(FakeClient):
         def query(self, entity_set, **kwargs):
