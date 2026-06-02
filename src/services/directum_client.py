@@ -118,8 +118,13 @@ class DirectumClient:
                 safe_message=f"Directum OData count failed with status {response.status_code}{suffix}",
                 status_code=response.status_code,
             )
+        # 204 / пустое тело = под фильтр не попало ни одной записи → это 0.
+        if response.status_code == 204:
+            return 0
         # /$count отдаёт plain text (иногда с BOM), а не JSON.
         text = response.text.lstrip("﻿").strip()
+        if not text:
+            return 0
         try:
             return int(text)
         except ValueError as exc:

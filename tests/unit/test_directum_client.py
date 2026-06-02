@@ -64,6 +64,28 @@ def test_count_without_filter():
     assert client.count("IAssignments") == 215
 
 
+def test_count_returns_zero_on_204_no_content():
+    # Directum отдаёт 204 (пустое тело) когда под фильтр не попало ни одной записи,
+    # например `Modified gt Deadline` без совпадений → это 0, а не ошибка.
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(204)),
+    )
+
+    assert client.count("IAssignments", filter_="Modified gt Deadline") == 0
+
+
+def test_count_returns_zero_on_empty_body():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, text="﻿")),
+    )
+
+    assert client.count("IAssignments") == 0
+
+
 def test_query_sends_odata_params_and_returns_value():
     seen = {}
 
