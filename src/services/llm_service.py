@@ -105,6 +105,7 @@ class LLMService:
         tools = self.tools_for_request()
         employee_names_by_id: dict[int, str] = {}
         analytics_marker: str | None = None
+        document_links: str | None = None
         for _ in range(max_tool_rounds):
             chunks, tool_calls = self._collect_stream(messages, tools)
             if chunks:
@@ -114,6 +115,8 @@ class LLMService:
                 # LLM объясняет; фронтенд рисует гистограмму поверх объяснения).
                 if analytics_marker is not None:
                     yield "\n" + analytics_marker
+                if document_links is not None:
+                    yield document_links
                 return
 
             messages.append(
@@ -143,6 +146,9 @@ class LLMService:
                 marker = self._analytics_marker_for_tool(tool_name, result)
                 if marker is not None:
                     analytics_marker = marker
+                links = self._document_action_links(result)
+                if links is not None:
+                    document_links = links
                 preview_response = self._tool_preview_response(tool_name, result, employee_names_by_id)
                 if preview_response is not None:
                     yield preview_response
@@ -238,6 +244,27 @@ class LLMService:
             correct_text=False,
             document=document_display,
         )
+
+    def _document_action_links(self, result: Any) -> str | None:
+        items = result
+        if isinstance(result, dict):
+            items = result.get("documents")
+        if not isinstance(items, list):
+            return None
+        links: list[str] = []
+        for item in items:
+            if hasattr(item, "model_dump"):
+                item = item.model_dump(mode="json")
+            if not isinstance(item, dict):
+                continue
+            is_document = "registration_number" in item or "registration_date" in item
+            doc_id = item.get("id")
+            if is_document and doc_id is not None:
+                name = item.get("name") or item.get("subject") or "документ"
+                links.append(f"- {name}: [Выдать поручение](#document-{doc_id})")
+        if not links:
+            return None
+        return "\n\nВыдать поручение по документу:\n" + "\n".join(links)
 
     def _resolve_employee_name(self, employee_id: int) -> str | None:
         try:

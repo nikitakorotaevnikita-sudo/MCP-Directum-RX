@@ -342,7 +342,10 @@ class ActionItemService:
 
         document_id = request.document_id or self._resolve_document_id(request)
         if document_id is None:
-            raise DirectumError("Action item creation requires document_id for Directum RX")
+            raise DirectumError(
+                "Поручение в Directum RX создаётся по документу. Найдите документ и нажмите "
+                "«Выдать поручение» (или укажите документ), затем повторите."
+            )
 
         payload = self._payload(request, document_id=document_id)
         response = self.client.post("RecordManagement/CreateActionItemExecution", payload)

@@ -2094,3 +2094,31 @@ def test_tool_preview_response_enriches_document_and_performer_name():
     assert payload["display"]["document"]["url"] == "https://rx.example/card/583"
     assert payload["display"]["performer_name"] == "Ардо Наталья Алексеевна"
     assert "Ардо Наталья Алексеевна" in text
+
+
+def test_document_action_links_built_for_document_list():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+    docs = [
+        {"id": 583, "name": "Вх. письмо МЦ", "registration_number": "12",
+         "registration_date": "2026-05-30T00:00:00Z", "url": "u1"},
+        {"id": 584, "name": "Акт", "registration_number": "9",
+         "registration_date": "2026-05-28T00:00:00Z", "url": "u2"},
+    ]
+    suffix = service._document_action_links(docs)
+    assert "#document-583" in suffix
+    assert "#document-584" in suffix
+    assert "Выдать поручение" in suffix
+
+
+def test_document_action_links_none_for_non_documents():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=FakeToolRegistry(),
+    )
+    assert service._document_action_links([{"subject": "Task", "status": "InProcess"}]) is None
+    assert service._document_action_links("not a list") is None

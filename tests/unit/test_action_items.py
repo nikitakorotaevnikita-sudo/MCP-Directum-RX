@@ -285,7 +285,7 @@ def test_create_action_item_confirm_requires_document_id():
     try:
         service.create_action_item(request)
     except DirectumError as exc:
-        assert "document_id" in exc.safe_message
+        assert "документ" in exc.safe_message.lower()
     else:
         raise AssertionError("action item without document_id was accepted")
 
