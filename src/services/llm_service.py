@@ -1025,16 +1025,18 @@ class LLMService:
                 title = item.get("subject") or item.get("name") or item.get("message") or str(item)
                 status = item.get("status") or item.get("mode") or item.get("entity_type")
                 deadline = item.get("deadline")
+                is_document = "registration_number" in item or "registration_date" in item
                 lines.append(
                     {
                         "title": str(title),
                         "status": str(status) if status else "",
                         "deadline": self._format_deadline_for_display(deadline),
                         "url": item.get("url") or "",
+                        "doc_id": str(item.get("id")) if (is_document and item.get("id") is not None) else "",
                     }
                 )
             else:
-                lines.append({"title": str(item), "status": "", "deadline": "", "url": ""})
+                lines.append({"title": str(item), "status": "", "deadline": "", "url": "", "doc_id": ""})
 
         if len(lines) == 1:
             line = lines[0]
@@ -1049,7 +1051,10 @@ class LLMService:
             if line["deadline"]:
                 details.append(f"\u0441\u0440\u043e\u043a: {line['deadline']}")
             details_text = f" — {', '.join(details)}" if details else ""
-            markdown_lines.append(f"{index}. {self._markdown_item_title(line['title'], line.get('url'))}{details_text}")
+            action = f" · [Выдать поручение](#document-{line['doc_id']})" if line.get("doc_id") else ""
+            markdown_lines.append(
+                f"{index}. {self._markdown_item_title(line['title'], line.get('url'))}{details_text}{action}"
+            )
         return "\n\n".join([markdown_lines[0], "\n".join(markdown_lines[1:])])
 
     def _format_deadline_for_display(self, value: Any) -> str:

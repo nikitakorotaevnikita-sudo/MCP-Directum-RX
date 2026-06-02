@@ -2017,3 +2017,21 @@ def test_resolve_document_display_through_real_tool_registry():
     assert display["name"] == "Письмо №7"
     assert display["number"] == "7"
     assert display["url"] == "https://rx.example/card/555"
+
+
+def test_format_tool_result_adds_issue_action_item_link_for_documents():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=RecordingToolRegistry(),
+    )
+    docs = [
+        {"id": 555, "name": "Письмо №7", "registration_number": "7",
+         "registration_date": "2026-05-30T00:00:00Z", "url": "https://rx.example/card/555"},
+        {"id": 556, "name": "Акт №9", "registration_number": "9",
+         "registration_date": "2026-05-28T00:00:00Z", "url": "https://rx.example/card/556"},
+    ]
+    text = service._format_tool_result(docs)
+    assert "#document-555" in text
+    assert "#document-556" in text
+    assert "Выдать поручение" in text
