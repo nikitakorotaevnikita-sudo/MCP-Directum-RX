@@ -122,7 +122,10 @@ class ToolRegistry:
                 (
                     "Preview a document-bound Directum RX action item. Use this only for Russian requests that say "
                     "'поручение' or 'поручения'. Do not use it for 'задача' or 'задание'; use create_task for those. "
-                    "Use only concrete user-provided subject/action_text; never invent placeholder text."
+                    "When the user asks to issue an action item ON a document ('по документу'), you MUST set "
+                    "document_id. If the document is given by requisites and search_documents returns more than one "
+                    "match, list them and ask which one; if it returns none, say the document was not found and do "
+                    "not create. Use only concrete user-provided subject/action_text; never invent placeholder text."
                 ),
                 {
                     "subject": {"type": "string"},
