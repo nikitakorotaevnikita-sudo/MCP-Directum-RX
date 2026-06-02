@@ -2062,3 +2062,35 @@ def test_format_tool_result_single_non_document_unchanged():
     ])
     assert "#document-" not in text
     assert text.startswith("Найдено 1:")
+
+
+class PreviewEnrichRegistry(FakeToolRegistry):
+    def call(self, name, arguments):
+        if name == "get_document":
+            return {"id": 583, "name": "Вх. письмо от Минцифры", "registration_number": "12",
+                    "registration_date": "2026-05-30T00:00:00Z", "url": "https://rx.example/card/583"}
+        if name == "get_employee":
+            return {"id": 75, "name": "Ардо Наталья Алексеевна", "status": "Active"}
+        return None
+
+
+def test_tool_preview_response_enriches_document_and_performer_name():
+    service = LLMService(
+        provider="openrouter", base_url="https://openrouter.ai/api/v1",
+        api_key="test-key", model="openrouter/free", tool_calling="auto",
+        tool_registry=PreviewEnrichRegistry(),
+    )
+    result = {
+        "mode": "preview",
+        "confirmation_payload": {
+            "subject": "Обработать письмо", "performer_id": 75,
+            "action_text": "Подготовить ответ", "document_id": 583, "confirm": False,
+        },
+    }
+    text = service._tool_preview_response("create_action_item", result, {})
+    assert text is not None
+    payload = json.loads(text.split("[[DIRECTUM_ACTION_ITEM_PREVIEW:", 1)[1].rsplit("]]", 1)[0])
+    assert payload["display"]["document"]["name"] == "Вх. письмо от Минцифры"
+    assert payload["display"]["document"]["url"] == "https://rx.example/card/583"
+    assert payload["display"]["performer_name"] == "Ардо Наталья Алексеевна"
+    assert "Ардо Наталья Алексеевна" in text

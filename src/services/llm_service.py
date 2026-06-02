@@ -135,6 +135,9 @@ class LLMService:
                     if self._is_vague_create_error(exc):
                         yield self._create_request_needs_text_message(tool_name)
                         return
+                    if self._is_unresolved_performer_error(exc):
+                        yield self._unresolved_performer_message()
+                        return
                     raise
                 self._remember_employee_names(tool_name, result, employee_names_by_id)
                 marker = self._analytics_marker_for_tool(tool_name, result)
@@ -161,6 +164,15 @@ class LLMService:
     def _is_vague_create_error(self, exc: ValueError) -> bool:
         message = str(exc)
         return "needs concrete user-provided subject and action_text" in message
+
+    def _is_unresolved_performer_error(self, exc: ValueError) -> bool:
+        return "could not resolve performer" in str(exc)
+
+    def _unresolved_performer_message(self) -> str:
+        return (
+            "Не удалось определить исполнителя. Уточните, пожалуйста, ФИО сотрудника, "
+            "которому выдать поручение."
+        )
 
     def _create_request_needs_text_message(self, tool_name: str) -> str:
         entity_label = "задачи" if tool_name == "create_task" else "поручения"
@@ -200,10 +212,21 @@ class LLMService:
 
         performer_id = payload.get("performer_id")
         performer_name = employee_names_by_id.get(performer_id) if isinstance(performer_id, int) else None
+        if not performer_name and isinstance(performer_id, int):
+            performer_name = self._resolve_employee_name(performer_id)
         performer_name = performer_name or str(performer_id or "исполнитель")
         preview_type = "task" if tool_name == "create_task" else "action_item"
         entity_label = "задачи" if preview_type == "task" else "поручения"
         subject = payload.get("subject") or payload.get("action_text") or ""
+        # Документ показываем в превью и для LLM-пути (фраза «по нему»), не только
+        # для детерминированного #document-маршрута.
+        document_display = None
+        document_id = payload.get("document_id")
+        if document_id:
+            try:
+                document_display = self._resolve_document_display(int(document_id))
+            except (TypeError, ValueError):
+                document_display = None
         visible_response = (
             f"Подготовлен preview {entity_label} для {performer_name}: {subject}. "
             "Для фактического создания нажмите кнопку подтверждения."
@@ -213,7 +236,18 @@ class LLMService:
             performer_name,
             preview_type,
             correct_text=False,
+            document=document_display,
         )
+
+    def _resolve_employee_name(self, employee_id: int) -> str | None:
+        try:
+            employee = self.tool_registry.call("get_employee", {"employee_id": employee_id})
+        except Exception:
+            return None
+        if isinstance(employee, dict):
+            name = employee.get("name")
+            return name if isinstance(name, str) and name.strip() else None
+        return None
 
     def _collect_stream(
         self,

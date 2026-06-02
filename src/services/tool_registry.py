@@ -37,6 +37,7 @@ class ToolRegistry:
             ),
             "search_documents": lambda args: self.action_item_service.search_documents(args.get("query", "")),
             "get_document": lambda args: self.action_item_service.get_document(int(args["document_id"])),
+            "get_employee": lambda args: self.action_item_service.get_employee(int(args["employee_id"])),
             "search_documents_by_counterparty": lambda args: self.action_item_service.search_documents_by_counterparty(
                 self._normalize_search_query(args.get("query", ""))
             ),
@@ -129,10 +130,16 @@ class ToolRegistry:
                 ),
                 {
                     "subject": {"type": "string"},
-                    "performer_id": {"type": "integer"},
+                    "performer_id": {
+                        "type": "string",
+                        "description": (
+                            "Исполнитель: ФИО или его часть (например 'Ардо'). Система сама "
+                            "найдёт сотрудника. Не выдумывай числовой Id — передавай имя."
+                        ),
+                    },
                     "action_text": {"type": "string"},
                     "deadline": {"type": "string"},
-                    "document_id": {"type": "integer"},
+                    "document_id": {"type": "integer", "description": "Directum Id документа, если поручение по документу"},
                 },
                 required=["subject", "performer_id", "action_text"],
             ),
@@ -323,12 +330,33 @@ class ToolRegistry:
         if isinstance(performer, str):
             cleaned = self._normalize_search_query(performer)
             if cleaned.isdecimal():
-                arguments["performer_id"] = int(cleaned)
+                resolved = int(cleaned)
+                arguments["performer_id"] = resolved
+                self._validate_performer_exists(resolved, performer)
                 return
             employees = self.action_item_service.search_employee(cleaned)
             if employees:
                 first = employees[0]
                 arguments["performer_id"] = first["id"] if isinstance(first, dict) else first.id
+                return
+            raise ValueError(
+                f"Tool 'create_action_item' could not resolve performer '{performer}'; "
+                "ask the user to specify a valid executor by name"
+            )
+        if isinstance(performer, int) and performer > 0:
+            # Защита от выдуманного LLM числового id: не отправляем в Directum,
+            # пока не убедились, что сотрудник существует.
+            self._validate_performer_exists(performer, str(performer))
+
+    def _validate_performer_exists(self, performer_id: int, label: str) -> None:
+        get_employee = getattr(self.action_item_service, "get_employee", None)
+        if get_employee is None:
+            return
+        if get_employee(performer_id) is None:
+            raise ValueError(
+                f"Tool 'create_action_item' could not resolve performer '{label}'; "
+                "ask the user to specify a valid executor by name"
+            )
 
     def _normalize_action_item_document(self, arguments: dict[str, Any]) -> None:
         document_id = arguments.get("document_id")

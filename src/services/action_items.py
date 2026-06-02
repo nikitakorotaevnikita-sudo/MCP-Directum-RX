@@ -74,6 +74,18 @@ class ActionItemService:
             for row in rows
         ]
 
+    def get_employee(self, employee_id: int) -> EmployeeSummary | None:
+        rows = self.client.query(
+            "IEmployees",
+            filter_=f"Id eq {int(employee_id)}",
+            select="Id,Name,Status",
+            top=1,
+        )
+        if not rows:
+            return None
+        row = rows[0]
+        return EmployeeSummary(id=int(row["Id"]), name=row["Name"], status=row.get("Status"))
+
     def _query_employees(self, query: str, top: int) -> list[dict[str, Any]]:
         escaped_query = query.replace("'", "''")
         return self.client.query(

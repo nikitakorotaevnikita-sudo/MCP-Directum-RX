@@ -46,6 +46,12 @@ class FakeActionItems:
             return [EmployeeSummary(id=75, name="Ардо Наталья Алексеевна", status="Active")]
         return []
 
+    def get_employee(self, employee_id):
+        valid = {42: "Сотрудник 42", 75: "Ардо Наталья Алексеевна"}
+        if employee_id in valid:
+            return EmployeeSummary(id=employee_id, name=valid[employee_id], status="Active")
+        return None
+
     def search_documents(self, query):
         return []
 
@@ -380,6 +386,65 @@ def test_tool_registry_normalizes_model_style_create_action_item_arguments():
     assert request.subject == "подготовка документов для МЦ РФ"
     assert request.action_text == "подготовка документов для МЦ РФ"
     assert request.deadline.isoformat().startswith("2026-06-27T23:59:00")
+
+
+def test_tool_registry_rejects_fabricated_performer_id():
+    # Регресс: LLM выдумывает несуществующий performer_id (например 123).
+    # Не должны слать мусор в Directum — нужно понятное сообщение про исполнителя.
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
+
+    try:
+        registry.call(
+            "create_action_item",
+            {
+                "subject": "Обработать входящее письмо",
+                "performer_id": 123,
+                "action_text": "Подготовить ответ на письмо",
+            },
+        )
+    except ValueError as exc:
+        assert "performer" in str(exc).lower()
+        assert action_items.created_requests == []
+    else:
+        raise AssertionError("fabricated performer_id was accepted")
+
+
+def test_tool_registry_resolves_performer_name_string():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
+
+    registry.call(
+        "create_action_item",
+        {
+            "subject": "Поручение по документу",
+            "performer_id": "Ардо Наташи",
+            "action_text": "Обработать документ",
+        },
+    )
+
+    request = action_items.created_requests[0]
+    assert request.performer_id == 75
+
+
+def test_tool_registry_unresolved_performer_name_raises():
+    action_items = FakeActionItems()
+    registry = ToolRegistry(FakeCurrentUser(), FakeAssignments(), action_items, FakeMeetingsService())
+
+    try:
+        registry.call(
+            "create_action_item",
+            {
+                "subject": "Обработать входящее письмо",
+                "performer_id": "Неизвестный Сотрудник",
+                "action_text": "Подготовить ответ на письмо",
+            },
+        )
+    except ValueError as exc:
+        assert "performer" in str(exc).lower()
+        assert action_items.created_requests == []
+    else:
+        raise AssertionError("unresolved performer name was accepted")
 
 
 def test_tool_registry_rejects_direct_create_confirmation():

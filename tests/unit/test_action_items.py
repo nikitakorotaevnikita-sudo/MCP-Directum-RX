@@ -830,3 +830,32 @@ def test_get_document_returns_summary_by_id():
 def test_get_document_returns_none_when_absent():
     service = ActionItemService(_DocClient([]))
     assert service.get_document(999) is None
+
+
+class _EmpClient:
+    def __init__(self, rows):
+        self._rows = rows
+        self.calls = []
+
+    def query(self, entity_set, **kwargs):
+        self.calls.append((entity_set, kwargs))
+        return self._rows
+
+
+def test_get_employee_returns_summary_by_id():
+    client = _EmpClient([{"Id": 75, "Name": "Ардо Иван Иванович", "Status": "Active"}])
+    service = ActionItemService(client)
+
+    emp = service.get_employee(75)
+
+    assert emp is not None
+    assert emp.id == 75
+    assert emp.name == "Ардо Иван Иванович"
+    entity_set, kwargs = client.calls[0]
+    assert entity_set == "IEmployees"
+    assert "Id eq 75" in kwargs["filter_"]
+
+
+def test_get_employee_returns_none_when_absent():
+    service = ActionItemService(_EmpClient([]))
+    assert service.get_employee(123) is None
