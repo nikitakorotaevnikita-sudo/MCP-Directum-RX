@@ -2122,3 +2122,50 @@ def test_document_action_links_none_for_non_documents():
     )
     assert service._document_action_links([{"subject": "Task", "status": "InProcess"}]) is None
     assert service._document_action_links("not a list") is None
+
+
+class HistoryCapturingCompletions:
+    def __init__(self):
+        self.requests = []
+
+    def create(self, **kwargs):
+        self.requests.append(kwargs)
+        return iter([SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content="Готово."))])])
+
+
+class HistoryCapturingClient:
+    def __init__(self):
+        self.completions = HistoryCapturingCompletions()
+        self.chat = SimpleNamespace(completions=self.completions)
+
+
+def test_internal_markers_stripped_from_history_sent_to_model():
+    service = LLMService(
+        provider="ollama", base_url="http://localhost:11434/v1", api_key="ollama",
+        model="qwen", tool_calling="auto", tool_registry=FakeToolRegistry(),
+    )
+    service.client = HistoryCapturingClient()
+    history = [
+        {"role": "user", "content": "Дай аналитику по дисциплине"},
+        {"role": "assistant", "content": "Всего: 14\n[[DIRECTUM_ANALYTICS:{\"kind\":\"discipline\"}]]"},
+    ]
+    list(service.stream_chat("ещё раз", history))
+
+    sent = service.client.completions.requests[0]["messages"]
+    blob = json.dumps(sent, ensure_ascii=False)
+    assert "DIRECTUM_ANALYTICS" not in blob
+    assert "[[" not in blob
+    # Полезный текст ответа сохраняется
+    assert any("Всего: 14" in (m.get("content") or "") for m in sent)
+
+
+def test_strip_internal_markers_helper():
+    service = LLMService(
+        provider="ollama", base_url="http://localhost:11434/v1", api_key="ollama",
+        model="qwen", tool_calling="auto", tool_registry=FakeToolRegistry(),
+    )
+    text = "Текст\n[[DIRECTUM_ANALYTICS:{\"a\":[1,2]}]]"
+    assert service._strip_internal_markers(text) == "Текст"
+    text2 = "Preview\n[[DIRECTUM_ACTION_ITEM_PREVIEW:{\"x\":1}]]"
+    assert service._strip_internal_markers(text2) == "Preview"

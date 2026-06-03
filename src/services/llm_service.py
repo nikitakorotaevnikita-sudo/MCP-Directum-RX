@@ -78,19 +78,45 @@ class LLMService:
 
     def stream_chat(self, message: str, history: Iterable[dict[str, str]] | None = None) -> Iterable[str]:
         history_items = list(history or [])
+        # Direct-route видит исходную историю (умеет переиспользовать preview-маркер).
         direct_response = self._direct_rx_response(message, history_items)
         if direct_response is not None:
             yield direct_response
             return
 
+        # Модели историю отдаём БЕЗ внутренних маркеров — иначе она их имитирует.
         messages = [{"role": "system", "content": self._system_prompt()}]
-        messages.extend(history_items)
+        messages.extend(self._sanitize_history(history_items))
         messages.append({"role": "user", "content": message})
 
         try:
             yield from self._stream_chat_with_tools(messages)
         except Exception as exc:
             yield self._safe_error_message(exc)
+
+    def _sanitize_history(self, history: Iterable[dict[str, str]] | None) -> list[dict[str, Any]]:
+        # Внутренние маркеры ([[DIRECTUM_…]]) — артефакты рендера фронта, не контент.
+        # Если отдать их модели обратно в истории, слабые модели начинают их
+        # имитировать (кривой/выдуманный markup в ответе). Поэтому вырезаем.
+        sanitized: list[dict[str, Any]] = []
+        for item in list(history or []):
+            if not isinstance(item, dict):
+                continue
+            content = item.get("content")
+            if isinstance(content, str):
+                item = {**item, "content": self._strip_internal_markers(content)}
+            sanitized.append(item)
+        return sanitized
+
+    def _strip_internal_markers(self, text: str) -> str:
+        # Любой маркер вида [[ИМЯ:json]] — и наши, и выдуманные слабой моделью.
+        cleaned = re.sub(
+            r"\n?\[\[[A-Z_]+:.*?\]\]\s*",
+            "",
+            text,
+            flags=re.DOTALL,
+        )
+        return cleaned.rstrip()
 
     def _system_prompt(self) -> str:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
