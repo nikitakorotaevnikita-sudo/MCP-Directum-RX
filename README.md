@@ -1,260 +1,195 @@
 # MCP Directum RX Assistant
 
-Прототип чат-интерфейса для работы с заданиями и поручениями Directum RX через LLM с MCP-стильными инструментами.
+Прототип чат-ассистента для работы с заданиями, поручениями, документами и
+аналитикой Directum RX через LLM с MCP-стильными инструментами.
+
+FastAPI backend + Vanilla JS frontend. Всё общение с пользователем — на русском.
 
 ## Статус проекта
 
 **Работает:**
-- Просмотр заданий, просроченных заданий, поручений (входящих и исходящих)
-- Поиск сотрудников и документов (с fuzzy-fallback по токенам)
-- Preview-карточки с подтверждением перед созданием
-- Рендеринг Markdown в чате
-- Аналитика исходящих поручений по категориям (в работе / срок подходит / просроченные)
-- Кликабельные ссылки на карточки Directum в результатах
+- Просмотр заданий, просроченных заданий, поручений (входящих и исходящих), совещаний
+- Поиск сотрудников, документов и документов по контрагенту (fuzzy-fallback, стемминг, стоп-слова)
+- Реестр входящих/исходящих писем за период (`list_letters`)
+- **Создание поручений по документу** — `RecordManagement/CreateActionItemExecution` + автостарт `Docflow/StartTask` (проверено на стенде, поручение создаётся)
+- **Создание задач** — `Docflow/CreateSimpleTask`
+- Preview-карточки с подтверждением перед созданием (LLM не может создать без кнопки)
+- **Аналитика исполнительской дисциплины** — детерминированные метрики через OData `$count`
+  (в работе / просрочено / завершено / в срок / с опозданием / % в срок), фильтры по сотруднику и периоду
+- **Аналитика исходящих поручений** по категориям срочности
+- **Визуализация аналитики** — inline-SVG гистограммы и круговой gauge (без фреймворков/CDN)
+- **Drill-down модалка** — клик по колонке графика открывает список поручений
+  (статус, срок, ответственный) с кнопкой «Отчёт» (рендерится в модалке)
+- Кликабельные ссылки на карточки Directum; ссылка «Выдать поручение» у найденных документов
 - Автокоррекция текста поручения через LLM (повелительное наклонение, отглагольная тема)
-- Контекстный диалог: разрешение местоимений («для неё», «ей»), повтор предыдущего исполнителя
-- Создание через свободный текст с LLM-извлечением параметров
+- Контекстный диалог: разрешение местоимений, повтор предыдущего исполнителя/текста
+- Панель быстрых промптов: сворачивание (память в localStorage), клик = отправка
+- Backoffice: метрики чата, последние вызовы инструментов, настройка LLM/Directum в UI
 
-**Требует проверки:**
-- Создание поручений и задач в Directum — endpoint сменён на `RecordManagement/CreateActionItemExecution` и `Docflow/CreateSimpleTask`, но результат не верифицирован на реальной инсталляции Directum RX
-
-**Не реализовано:**
-- Прикрепление документа к поручению через UI (требует `document_id`)
-- Управление наблюдателями и соисполнителями
-- Отзыв/завершение поручений и задач через чат
+**Ограничения / зависит от стенда:**
+- Документ привязывается к поручению **только по явному id** (через ссылку «Выдать поручение»
+  `#document-<id>`); угадывание по тексту намеренно отключено во избежание чужих вложений
+- Модуль «Обращения граждан» в Directum присутствует (виды «Жалоба/Заявление/Предложение»),
+  но на проверенном стенде данных нет — запрос готов, аналитику подключим при наличии данных
+- Управление наблюдателями/соисполнителями, отзыв/завершение через чат — не реализовано
 
 ## Возможности
 
 ### Чат с LLM
-- Отправка сообщений на русском языке в чат
-- Ответы LLM с рендерингом Markdown (жирный, курсив, заголовки, списки, код, блок-цитаты, ссылки)
-- Потоковая передача ответов (StreamingResponse)
-- Быстрые команды без обращения к LLM: «мои задания», «просроченные», «назначенные мне», «созданные мной»
-- Аналитика исходящих поручений по категориям (в работе / срок подходит / просроченные) — фраза «аналитика исходящих поручений»
-- Контекстный диалог: местоимения («для неё», «ей»), повтор исполнителя и текста из предыдущего сообщения
+- Сообщения на русском, рендеринг Markdown, потоковая передача ответов
+- Быстрые детерминированные маршруты без LLM: «мои задания», «просроченные»,
+  «поручения мне/от меня», «исполнительская дисциплина», «аналитика исходящих», «совещания»
+- Контекстный диалог (местоимения, повтор исполнителя/текста)
 
-### Preview карточки
-- Перед созданием поручения/задачи отображается preview-карточка
-- Кнопки **«Создать поручение»** (или **«Создать задачу»**) и **«Отмена»**
-- Создание происходит только после нажатия кнопки подтверждения
+### Инструменты LLM (14)
+`get_current_user`, `get_my_assignments`, `get_overdue_assignments`,
+`get_action_items_assigned_to_me`, `get_action_items_created_by_me`,
+`search_employee`, `search_documents`, `search_documents_by_counterparty`,
+`list_letters`, `create_action_item`, `create_task`, `get_my_meetings`,
+`get_action_item_details`, `get_discipline_analytics`.
+Внутренние (не выдаются модели): `get_document`, `get_employee`.
+
+### Preview-карточки
+- Перед созданием поручения/задачи — preview-карточка с реквизитами (включая «Документ»)
+- Кнопки **«Создать поручение/задачу»** и **«Отмена»**; создание только после подтверждения
 - Логика: `confirm=false` → preview, `confirm=true` → POST в Directum
 
-### Панель Directum (боковая)
-- **Мои задания** — активные задания текущего пользователя
-- **Просроченные** — просроченные задания
-- **Поручения мне** — поручения где я исполнитель
-- **Поручения от меня** — поручения где я автор
-- **Создать поручение** — подсказка в чате
-
-### Поиск сотрудников и документов
-- `search_employee` — поиск по IEmployees (автоматически пробует сокращённые токены)
-- `search_documents` — поиск по IOfficialDocuments с fuzzy-fallback, стемминг суффиксов, расшифровка аббревиатур (МЦ → Минцифр)
-
-### Backoffice (метрики)
-- Статистика чата: запросы, preview/confirmed, ошибки
-- Последние вызовы инструментов
-- Настройка LLM-провайдера и Directum прямо в интерфейсе
+### Аналитика и визуализация
+- **Дисциплина** (`get_discipline_analytics`): `$count`-метрики, фильтры по сотруднику/периоду,
+  гистограмма + gauge «% в срок»
+- **Исходящие поручения**: распределение по срокам + drill-down модалка по колонке
+  (список поручений, ответственный, кнопка «Отчёт» → отчёт LLM в модалке)
+- Рендер маркеров `[[DIRECTUM_ANALYTICS:{...}]]` и `[[DIRECTUM_ACTION_ITEM_PREVIEW:{...}]]` во фронте
 
 ## Архитектура
 
-```mermaid
-graph TD
-    subgraph Browser["🌐 Браузер"]
-        SB["Sidebar\nзадания / поручения / аналитика"]
-        CH["Chat UI\nMarkdown · Preview cards · SSE"]
-    end
-
-    subgraph Backend["⚙️ FastAPI — main.py"]
-        API["Endpoints\n/api/directum/* · /api/chat\n/api/metrics · /backoffice"]
-        LLM["LLMService\nstreaming · tool calling · аналитика"]
-        TOOLS["ToolRegistry\n9 инструментов"]
-        DC["DirectumClient\nOData HTTP-клиент"]
-        DB["MetricsStorage\nSQLite"]
-    end
-
-    subgraph External["☁️ Внешние сервисы"]
-        LLMAPI["LLM\nOllama · OpenRouter · Groq"]
-        DRXAPI["Directum RX\nOData API"]
-    end
-
-    SB -->|"fetch /api/directum/*"| API
-    CH -->|"fetch /api/chat"| API
-    API --> LLM
-    API --> DC
-    API --> DB
-    LLM --> TOOLS
-    LLM -->|"OpenAI SDK"| LLMAPI
-    TOOLS --> DC
-    DC -->|"GET · POST OData"| DRXAPI
+```
+src/
+├── main.py                  # FastAPI app, все endpoints
+├── config.py                # Settings (pydantic-settings, .env)
+├── models/schemas.py        # Pydantic модели
+└── services/
+    ├── llm_service.py        # LLM streaming, tool calling, маркеры, санитайз истории
+    ├── tool_registry.py      # 14 инструментов LLM (+2 внутренних)
+    ├── directum_client.py    # OData HTTP-клиент ($count, $expand, navigation)
+    ├── action_items.py       # Создание поручений/задач, поиск (сотрудники/документы/контрагенты)
+    ├── assignments.py        # Получение заданий/поручений
+    ├── discipline_analytics.py # Метрики исполнительской дисциплины через $count
+    ├── current_user.py       # Текущий пользователь Directum
+    ├── meetings.py           # Совещания
+    └── metrics_storage.py    # SQLite метрики
 ```
 
-## Конфигурация
+Принцип ADR-004: метрики считает детерминированный код, LLM только объясняет/формулирует;
+визуализацию рисует фронт.
 
-### Переменные окружения (.env)
+## Конфигурация (.env)
 
 ```env
-# LLM (Ollama — локальный)
 LLM_PROVIDER=ollama
 OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_API_KEY=ollama
 OPENAI_MODEL=llama3.1:latest
 LLM_TOOL_CALLING=auto
 
-# Если Ollama на Windows-хосте, а приложение в Docker:
-OPENAI_BASE_URL=http://host.docker.internal:11434/v1
-
-# Directum RX
 DIRECTUM_BASE_URL=https://your-directum/Integration/odata
-DIRECTUM_AUTH_TOKEN=Basic base64_username_password
-
-# Опционально: OpenRouter (вместо Ollama)
-# LLM_PROVIDER=openrouter
-# OPENAI_BASE_URL=https://openrouter.ai/api/v1
-# OPENAI_API_KEY=sk-or-v1-your-key
-# OPENAI_MODEL=google/gemma-4-26b-a4b-it:free
+DIRECTUM_AUTH_TOKEN=Basic <base64 user:password>
 
 APP_HOST=0.0.0.0
 APP_PORT=8000
 METRICS_DB_PATH=data/metrics.db
 ```
 
-### Запуск локально (без Docker)
+**`.env` хранит боевые креды стенда — не коммитить, не редактировать в репозитории.**
+
+## Запуск
+
+### Локально (Windows, без Docker)
 
 ```powershell
-cd "c:\Users\Администратор\Desktop\Работа\ПРототипы\MCP Directum RX"
-copy .env.example .env
-# отредактируй .env с реальными значениями
-uv run uvicorn src.main:app --reload --port 8005
+& ".venv\Scripts\python.exe" -m uvicorn src.main:app --host 0.0.0.0 --port 8005 --reload
 ```
+Открыть: http://localhost:8005/ · Backoffice: http://localhost:8005/backoffice
 
-Открыть: http://localhost:8005/
-
-### Запуск в Docker
+### Docker
 
 ```powershell
-docker-compose build
-docker-compose up -d
+docker compose up -d --build
 ```
+Открыть: http://localhost:8000/ · Backoffice: http://localhost:8000/backoffice
 
-Открыть:
-
-- UI: http://localhost:8000/
-- Backoffice: http://localhost:8000/backoffice
+(`docker-compose.yml` пробрасывает `.env` через `env_file` и том `./data` для метрик.)
 
 ## API Endpoints
 
 | Method | Path | Описание |
 |--------|------|----------|
 | GET | `/` | Главная страница (чат) |
-| GET | `/backoffice` | Страница метрик и настроек |
+| GET | `/backoffice` | Метрики и настройки |
 | GET | `/health` | Статус приложения и LLM |
-| POST | `/api/chat` | LLM чат (StreamingResponse) |
+| POST | `/api/chat` | LLM-чат |
 | GET | `/api/directum/assignments/my` | Мои задания |
 | GET | `/api/directum/assignments/overdue` | Просроченные задания |
 | GET | `/api/directum/action-items/assigned-to-me` | Поручения мне |
 | GET | `/api/directum/action-items/created-by-me` | Поручения от меня |
 | GET | `/api/directum/employees/search?query=` | Поиск сотрудника |
 | GET | `/api/directum/documents/search?query=` | Поиск документа |
-| POST | `/api/directum/action-items` | Preview (`confirm=false`) или создание (`confirm=true`) поручения |
-| POST | `/api/directum/tasks` | Создание задачи (без документа) |
+| GET | `/api/directum/documents/by-counterparty?query=` | Документы по контрагенту |
+| GET | `/api/directum/letters?direction=&date_from=&date_to=` | Письма (incoming/outgoing) за период |
+| GET | `/api/directum/discipline?employee=&date_from=&date_to=` | Аналитика исполнительской дисциплины |
+| GET | `/api/directum/meetings/upcoming?days=` | Ближайшие совещания |
+| POST | `/api/directum/action-items` | Preview (`confirm=false`) / создание (`confirm=true`) поручения |
+| POST | `/api/directum/tasks` | Создание задачи |
 | GET | `/api/metrics` | Метрики (backoffice) |
+| POST | `/api/feedback` | Обратная связь |
+| GET | `/api/diagnostics/*` | Диагностика (config, current-user, odata) |
+| GET/POST | `/api/directum/connection/*`, `/api/llm/connection/*` | Проверка/применение настроек подключения |
 
-## Поток создания поручения
-
-```
-1. Пользователь в чате: "создай поручение для Наташи Ардо, тема Подготовка документов"
-   ↓
-2. LLMService._direct_action_item_create_response() парсит сообщение
-   ├─ Regex-парсинг (quoted / natural / theme / performer-only форматы)
-   └─ Fallback: LLM-извлечение параметров (_extract_create_draft_via_llm)
-   ↓
-3. search_employee("Наташа Ардо") → найден сотрудник (id=42)
-   ↓
-4. create_action_item(subject, performer_id=42, action_text) → preview
-   ↓
-5. LLM корректирует текст: повелительное наклонение, отглагольная тема
-   ↓
-6. В чат возвращается: текст + [[DIRECTUM_ACTION_ITEM_PREVIEW:{...}]]
-   ↓
-7. app.js парсит маркер, рендерит preview-карточку с кнопками
-   ↓
-8. Пользователь нажимает "Создать поручение"
-   ↓
-9. POST /api/directum/action-items {"confirm": true, ...}
-   ↓
-10. ActionItemService.create_action_item() → POST RecordManagement/CreateActionItemExecution
-    → POST Docflow/StartTask (автостарт)
-```
-
-## Известные проблемы
-
-### Создание поручений/задач — требует проверки
-
-Endpoint сменён с `RecordManagement/CreateActionItemExecutionTask` на `RecordManagement/CreateActionItemExecution`.
-Автостарт через `Docflow/StartTask` добавлен. Результат на реальной инсталляции Directum RX **не верифицирован**.
-
-Если снова появится 400 `Не указан обязательный параметр "Кем"` — причина: API требует автора (`AssignedBy`) через OData navigation property `$ref`. Подробный анализ в `handoff.md`.
-
-### LLM Tool Calling
-
-- **Ollama gemma4**: не генерирует tool calls, отвечает текстом → переключено на llama3.1:latest
-- **Groq LLaMA 3.3**: есть баг с кириллицей в аргументах tool call (кракозябры вместо русского)
-
-## Структура файлов
+## Поток «поручение по документу»
 
 ```
-MCP Directum RX/
-├── src/
-│   ├── main.py                    # FastAPI app, все endpoints
-│   ├── config.py                  # Settings (pydantic)
-│   ├── models/
-│   │   └── schemas.py            # Pydantic модели запросов
-│   ├── services/
-│   │   ├── llm_service.py         # LLM integration, tool calling, preview markers
-│   │   ├── tool_registry.py       # 9 инструментов для LLM
-│   │   ├── directum_client.py     # OData HTTP клиент
-│   │   ├── action_items.py        # Создание поручений/задач
-│   │   ├── assignments.py         # Получение заданий
-│   │   ├── current_user.py        # Текущий пользователь Directum
-│   │   └── metrics_storage.py    # SQLite метрики
-│   └── static/
-│       ├── index.html            # Главная страница (marked.js)
-│       ├── backoffice.html       # Метрики и настройки
-│       ├── backoffice.js
-│       ├── app.js                 # Чат (preview cards, markdown)
-│       └── style.css              # Стили (включая markdown)
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/                       # Playwright
-├── docker-compose.yml
-├── Dockerfile
-├── README.md
-├── TECHNICAL_DOCUMENTATION.md
-├── 04_IMPLEMENTATION.md
-└── 05_TEST_RESULTS.md
+1. «Найди документы от <организация>» → список документов
+   + блок «Выдать поручение по документу» со ссылками #document-<id>
+2. Клик «Выдать поручение» → в чат подставляется «Выдай поручение по документу #<id>: …»
+3. Пользователь дописывает текст и исполнителя (по ФИО)
+4. Детерминированный маршрут: резолв документа (get_document) и исполнителя,
+   preview-карточка со строкой «Документ»
+5. Кнопка «Создать поручение» → POST /api/directum/action-items {confirm:true, document_id}
+6. CreateActionItemExecution → Docflow/StartTask → документ в области вложения
 ```
 
-## Развёртывание
+## Известные проблемы и нюансы
 
-```powershell
-git clone <repo>
-cd "MCP Directum RX"
-copy .env.example .env
-# Заполнить .env реальными значениями
-docker-compose build
-docker-compose up -d
-```
+### Совместимость моделей с tool calling
+- **Qwen3-32B-AWQ, llama3.1** — отдают нативные `tool_calls`, работают штатно.
+- **Qwen3.6-35B-A3B (MoE)** — отдаёт вызовы в Hermes-XML (`<tool_call>…</tool_call>`)
+  в тексте. Если сервинг (vLLM/ario) не настроен с tool-парсером, в стриме вызов теряется →
+  пустые ответы. Лечится на стороне сервинга: `--enable-auto-tool-choice --tool-call-parser hermes`.
+- **Ollama gemma**: не генерирует tool calls. **Groq LLaMA 3.3**: кракозябры в кириллице tool call.
+
+### Санитайз истории
+Внутренние маркеры (`[[DIRECTUM_…]]`) и блок ссылок «Выдать поручение по документу»
+вырезаются из истории перед отправкой модели — иначе слабые модели имитируют разметку
+(битый/выдуманный markup). Direct-route видит исходную историю (переиспользует preview).
+
+### Поиск контрагента
+Fuzzy-fallback использует стемминг словоформ и стоп-лист шумовых токенов
+(«РФ», орг-правовые формы, родовые слова госорганов: «министерство», «федеральн*» и т.п.),
+чтобы домен («культуры/финансов»), а не родовое слово, определял совпадение.
 
 ## Тестирование
 
 ```powershell
-# Все тесты с покрытием
-uv run python -m pytest tests/ -v --cov=src --cov-report=term-missing
+# Все unit-тесты с покрытием
+& ".venv\Scripts\python.exe" -m pytest tests/unit/ -v --cov=src --cov-report=term-missing
 
 # E2E (Playwright)
-uv run python -m pytest tests/e2e/ -v
-
-# Локальный запуск без Docker
-uv run uvicorn src.main:app --reload --port 8005
+& ".venv\Scripts\python.exe" -m pytest tests/e2e/ -v
 ```
+Целевое покрытие ≥70%. Скриншоты Playwright → `tmp/screenshots/`.
+
+## Стек
+
+Python 3.10+, FastAPI, Uvicorn, httpx (OData), OpenAI Python SDK (Ollama/OpenRouter/любой
+OpenAI-совместимый), pydantic-settings, SQLite (метрики). Frontend — Vanilla JS / HTML / CSS,
+без фреймворков; JS-библиотеки локально (Docker без интернета).
