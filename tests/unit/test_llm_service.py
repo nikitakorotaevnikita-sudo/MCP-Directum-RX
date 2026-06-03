@@ -2169,3 +2169,20 @@ def test_strip_internal_markers_helper():
     assert service._strip_internal_markers(text) == "Текст"
     text2 = "Preview\n[[DIRECTUM_ACTION_ITEM_PREVIEW:{\"x\":1}]]"
     assert service._strip_internal_markers(text2) == "Preview"
+
+
+def test_strip_document_action_links_block_from_history():
+    service = LLMService(
+        provider="ollama", base_url="http://localhost:11434/v1", api_key="ollama",
+        model="qwen", tool_calling="auto", tool_registry=FakeToolRegistry(),
+    )
+    text = (
+        "Найдены документы:\n1. Док [ссылка](http://u)\n\n"
+        "Выдать поручение по документу:\n"
+        "- Док: [Выдать поручение](#document-5)\n"
+        "- Док2: [Выдать поручение](#document-7)"
+    )
+    out = service._strip_internal_markers(text)
+    assert "#document-" not in out
+    assert "Выдать поручение по документу" not in out
+    assert "Найдены документы" in out

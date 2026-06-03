@@ -932,3 +932,18 @@ def test_create_action_item_confirm_does_not_guess_document_by_subject():
         assert client.post_calls == []
     else:
         raise AssertionError("guessed a document instead of requiring explicit document_id")
+
+
+def test_counterparty_fallback_excludes_generic_government_words():
+    service = ActionItemService(_DocClient([]))
+    tokens = service._fallback_counterparty_tokens("Министерство культуры РФ")
+    assert "Министерство" not in tokens
+    assert "РФ" not in tokens
+    assert "культуры" in tokens
+
+
+def test_search_counterparty_not_matched_by_ministry_word():
+    # «Министерство культуры» не должно матчить «Министерство сельского хозяйства».
+    client = _ContainsClient("Министерство сельского хозяйства РФ")
+    service = ActionItemService(client)
+    assert service.search_counterparty("Министерство культуры") == []

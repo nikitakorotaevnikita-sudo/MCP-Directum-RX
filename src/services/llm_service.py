@@ -116,6 +116,10 @@ class LLMService:
             text,
             flags=re.DOTALL,
         )
+        # Блок «Выдать поручение по документу:» — наш UI-артефакт со ссылками
+        # #document-<id>. Если оставить в истории, модель его имитирует (дубли).
+        cleaned = re.sub(r"\n*Выдать поручение по документу:\s*", "\n", cleaned)
+        cleaned = re.sub(r"[^\n]*\]\(#document-\d+\)[^\n]*\n?", "", cleaned)
         return cleaned.rstrip()
 
     def _system_prompt(self) -> str:
