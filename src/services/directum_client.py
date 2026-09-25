@@ -17,6 +17,14 @@ DIRECTUM_CARD_GUIDS_BY_ENTITY = {
 }
 
 
+def sanitize_error_detail(detail: str) -> str:
+    """Вырезает Basic-токены и ключи из текста ошибки и схлопывает пробелы."""
+    detail = re.sub(r"Basic\s+[A-Za-z0-9+/=_-]{4,}", "Basic [redacted]", detail)
+    detail = re.sub(r"sk-or-v1-[A-Za-z0-9]+", "[redacted]", detail)
+    detail = re.sub(r"\s+", " ", detail).strip()
+    return detail
+
+
 class DirectumError(RuntimeError):
     def __init__(self, safe_message: str, status_code: int | None = None):
         super().__init__(safe_message)
@@ -237,7 +245,4 @@ class DirectumClient:
         return message if isinstance(message, str) else ""
 
     def _sanitize_error_detail(self, detail: str) -> str:
-        detail = re.sub(r"Basic\s+[A-Za-z0-9+/=_-]{4,}", "Basic [redacted]", detail)
-        detail = re.sub(r"sk-or-v1-[A-Za-z0-9]+", "[redacted]", detail)
-        detail = re.sub(r"\s+", " ", detail).strip()
-        return detail
+        return sanitize_error_detail(detail)

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -9,13 +10,22 @@ from mcp.types import CallToolResult, TextContent
 from src.mcp_server.audit import ToolUsageStore
 from src.mcp_server.context import TtlCache
 from src.mcp_server.errors import to_tool_error
-from src.services.directum_client import DirectumError
+from src.services.directum_client import DirectumError, sanitize_error_detail
 
 logger = logging.getLogger("mcp_ogv.native")
 
 NATIVE_PREFIX = "drx_native_"
 HANDLE_MCP_PATH = "IntegrationAIAgent/HandleMcpRequest"
 MAX_METRICS_TOOL_NAME = 100
+MAX_ERROR_TEXT = 300
+NATIVE_ERROR_PREFIX = "Встроенный инструмент Directum вернул ошибку: "
+# Детали запроса из DirectumClient.post ("Payload had N fields: [...]") агенту не показываем.
+PAYLOAD_DETAIL = re.compile(r"Payload had \d+ fields: \[.*?\]\.?\s*", re.DOTALL)
+
+
+def safe_error_text(text: str) -> str:
+    """Текст ошибки для агента: без токенов и деталей запроса, не длиннее MAX_ERROR_TEXT."""
+    return sanitize_error_detail(PAYLOAD_DETAIL.sub("", text or ""))[:MAX_ERROR_TEXT]
 
 
 class NativeMcpClient:
@@ -34,7 +44,8 @@ class NativeMcpClient:
         error = payload.get("error")
         if error:
             text = error.get("message", "") if isinstance(error, dict) else str(error)
-            raise DirectumError(f"Встроенный MCP Directum: {text}")
+            # Текст сырой: агенту он уходит только через safe_error_text (с префиксом) в _call.
+            raise DirectumError(text or "ошибка без описания")
         return payload.get("result") or {}
 
     def list_read_only_tools(self) -> list[dict[str, Any]]:
@@ -136,7 +147,8 @@ class NativeProxyMiddleware:
                 result = NativeMcpClient(services.client).call_tool(native_name, arguments)
         except Exception as exc:
             error, error_kind = to_tool_error(exc)
-            return _error_result(str(error))
+            text = NATIVE_ERROR_PREFIX + exc.safe_message if error_kind == "directum" else str(error)
+            return _error_result(safe_error_text(text))
         finally:
             if self.usage is not None:
                 duration_ms = int((time.perf_counter() - started) * 1000)

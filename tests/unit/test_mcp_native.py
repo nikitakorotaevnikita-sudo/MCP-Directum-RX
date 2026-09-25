@@ -211,3 +211,60 @@ def test_native_tool_name_in_metrics_is_capped(tmp_path):
     call_tool(server, "drx_native_" + "x" * 300, {})
 
     assert [len(row["tool"]) for row in store.summary()] == [100]
+
+
+# --- F4: ошибки встроенного MCP возвращаются агенту очищенными ---
+
+class _FailingCallClient:
+    """tools/list works; tools/call fails either with a JSON-RPC error or a POST failure."""
+
+    def __init__(self, rpc_error=None, post_error=None):
+        self.rpc_error = rpc_error
+        self.post_error = post_error
+
+    def post(self, entity_set, payload):
+        message = json.loads(payload["value"])
+        if message["method"] == "tools/list":
+            result = {"tools": NATIVE_TOOLS}
+            return {"value": json.dumps({"jsonrpc": "2.0", "id": message["id"], "result": result})}
+        if self.post_error is not None:
+            raise self.post_error
+        error = {"code": -32000, "message": self.rpc_error}
+        return {"value": json.dumps({"jsonrpc": "2.0", "id": message["id"], "error": error}, ensure_ascii=False)}
+
+
+NATIVE_TOOL = "drx_native_gd_dashboard_ai_agent_get_action_items2_info"
+
+
+def test_native_jsonrpc_error_is_redacted_and_truncated(tmp_path):
+    message = "Ошибка авторизации Authorization: Basic abcdEFGH12345678 " + "x" * 500
+    server = make_server(tmp_path, _FailingCallClient(rpc_error=message))
+
+    text = error_text(call_tool(server, NATIVE_TOOL, {}))
+
+    assert text.startswith("Встроенный инструмент Directum вернул ошибку:")
+    assert "abcdEFGH12345678" not in text
+    assert "Basic [redacted]" in text
+    assert "Ошибка авторизации" in text and text.count("Встроенный") == 1
+    assert len(text) <= 300
+
+
+def test_native_post_failure_hides_payload_details(tmp_path):
+    failure = DirectumError(
+        "POST IntegrationAIAgent/HandleMcpRequest failed with 500. Payload had 1 fields: ['value']. "
+        "Response detail: сервер недоступен",
+        500,
+    )
+    server = make_server(tmp_path, _FailingCallClient(post_error=failure))
+
+    text = error_text(call_tool(server, NATIVE_TOOL, {}))
+
+    assert "Payload" not in text and "'value'" not in text
+    assert "сервер недоступен" in text
+    assert text.startswith("Встроенный инструмент Directum вернул ошибку:")
+
+
+def test_native_auth_failure_keeps_friendly_message(tmp_path):
+    server = make_server(tmp_path, _FailingCallClient(post_error=DirectumError("x", 401)))
+
+    assert "Неверный логин или пароль" in error_text(call_tool(server, NATIVE_TOOL, {}))
