@@ -9,13 +9,15 @@ from starlette.responses import JSONResponse
 from src.mcp_server import resources
 from src.mcp_server.audit import ToolUsageStore
 from src.mcp_server.config import McpSettings
-from src.mcp_server.context import ServicesProvider
+from src.mcp_server.context import ServicesProvider, TtlCache
+from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
 from src.mcp_server.tools import action_items, common, documents, odata
 
 SERVER_NAME = "mcpOGV"
 SKILLS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "skills"
+NATIVE_TOOLS_TTL_SECONDS = 600
 
 INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени текущего пользователя (его права и его данные).
 Правила:
@@ -36,7 +38,8 @@ def _register_health(mcp: MCPServer) -> None:
 
 def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir: Path = SKILLS_DIR) -> MCPServer:
     runner = ToolRunner(provider, usage)
-    mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS)
+    native = NativeProxyMiddleware(provider, TtlCache(NATIVE_TOOLS_TTL_SECONDS), usage)
+    mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, middleware=[native])
     common.register(mcp, runner)
     action_items.register(mcp, runner)
     documents.register(mcp, runner)
