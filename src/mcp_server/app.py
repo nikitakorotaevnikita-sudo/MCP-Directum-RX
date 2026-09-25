@@ -9,7 +9,7 @@ from src.mcp_server.audit import ToolUsageStore
 from src.mcp_server.config import McpSettings
 from src.mcp_server.context import ServicesProvider
 from src.mcp_server.runner import ToolRunner
-from src.mcp_server.tools import common
+from src.mcp_server.tools import action_items, common
 
 SERVER_NAME = "mcpOGV"
 
@@ -34,6 +34,7 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None) -> MCPServe
     runner = ToolRunner(provider, usage)
     mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS)
     common.register(mcp, runner)
+    action_items.register(mcp, runner)
     _register_health(mcp)
     return mcp
 
