@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import tzinfo
 
 import httpx
 
@@ -32,6 +33,7 @@ def build_directum_services(
     auth_token: str,
     timeout: float = 30.0,
     transport: httpx.BaseTransport | None = None,
+    tz: tzinfo | None = None,
 ) -> DirectumServices:
     client = DirectumClient(base_url, auth_token, timeout, transport=transport)
     current_user = CurrentUserService(client, auth_token)
@@ -39,7 +41,7 @@ def build_directum_services(
     return DirectumServices(
         client=client,
         current_user=current_user,
-        assignments=AssignmentsService(client, current_user),
+        assignments=AssignmentsService(client, current_user, tz=tz),
         action_items=action_items,
         meetings=MeetingsService(client, current_user),
         discipline=DisciplineAnalyticsService(client, action_items),

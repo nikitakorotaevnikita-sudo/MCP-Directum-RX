@@ -187,3 +187,40 @@ def test_provider_caches_current_user_per_credentials():
         assert services.current_user.get_current_user().id == 63
 
     assert seen == [basic("user1", "pw"), basic("user2", "pw")]
+
+
+@pytest.mark.parametrize(
+    ("raw", "hours", "minutes"),
+    [("+04:00", 4, 0), ("-03:30", -3, -30), ("+00:00", 0, 0)],
+)
+def test_settings_parse_utc_offset(raw, hours, minutes):
+    from datetime import timedelta
+
+    tz = make_settings(MCP_UTC_OFFSET=raw).stand_timezone
+
+    assert tz.utcoffset(None) == timedelta(hours=hours, minutes=minutes)
+
+
+@pytest.mark.parametrize("raw", [None, "", "  "])
+def test_settings_without_utc_offset_use_machine_zone(raw):
+    assert make_settings(MCP_UTC_OFFSET=raw).stand_timezone is None
+
+
+@pytest.mark.parametrize("raw", ["abc", "+4", "04:00", "+25:00"])
+def test_settings_reject_bad_utc_offset(raw):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        make_settings(MCP_UTC_OFFSET=raw)
+
+
+def test_provider_passes_stand_timezone_to_services():
+    from datetime import timedelta
+
+    provider = ServicesProvider(
+        make_settings(MCP_UTC_OFFSET="+05:00"),
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"value": []})),
+    )
+
+    with provider.open({"X-Directum-Login": "u", "X-Directum-Password": "p"}) as (_, services):
+        assert services.assignments.tz.utcoffset(None) == timedelta(hours=5)

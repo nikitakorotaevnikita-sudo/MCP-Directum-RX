@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
 from src.models.schemas import AssignmentSummary
@@ -10,6 +11,8 @@ from src.services.directum_client import DirectumClient
 ACTION_ITEM_STATUSES = {"in_process": "InProcess", "completed": "Completed", "aborted": "Aborted", "all": None}
 ACTION_ITEM_DATE_FIELDS = {"deadline": "Deadline", "created": "Created"}
 OVERDUE_COMPATIBLE_STATUSES = ("in_process", "all")
+# Окно срока в календарных днях, начиная с сегодняшнего (по поясу стенда).
+DUE_WINDOW_DAYS = {"today": 1, "week": 7}
 
 
 @dataclass(frozen=True)
@@ -19,20 +22,34 @@ class ActionItemFilters:
     date_field: str = "deadline"
     date_from: date | None = None
     date_to: date | None = None
+    due: str | None = None
 
 
-def _utc_now_literal() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def local_timezone() -> tzinfo:
+    return datetime.now().astimezone().tzinfo
 
 
-def _day_literal(day: date) -> str:
-    return f"{day.isoformat()}T00:00:00Z"
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _instant_literal(moment: datetime) -> str:
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class AssignmentsService:
-    def __init__(self, client: DirectumClient, current_user_service: CurrentUserService):
+    def __init__(
+        self,
+        client: DirectumClient,
+        current_user_service: CurrentUserService,
+        tz: tzinfo | None = None,
+        now: Callable[[], datetime] | None = None,
+    ):
         self.client = client
         self.current_user_service = current_user_service
+        # RX хранит сроки в местном времени стенда: границы дней строим в его поясе.
+        self.tz = tz or local_timezone()
+        self._now = now or _utc_now
 
     ACTION_ITEM_SOURCES = {
         "incoming": ("IActionItemExecutionAssignments", "Performer"),
@@ -128,19 +145,34 @@ class AssignmentsService:
             raise ValueError(f"Unknown action items date field: {filters.date_field}")
         if filters.only_overdue and filters.status not in OVERDUE_COMPATIBLE_STATUSES:
             raise ValueError("Only action items in process can be overdue")
+        if filters.due is not None:
+            if filters.due not in DUE_WINDOW_DAYS:
+                raise ValueError(f"Unknown action items due window: {filters.due}")
+            if filters.status not in OVERDUE_COMPATIBLE_STATUSES or filters.only_overdue:
+                raise ValueError("Due window applies only to action items in process")
+            if filters.date_from or filters.date_to:
+                raise ValueError("Due window cannot be combined with a date period")
         entity_set, role = self.ACTION_ITEM_SOURCES[direction]
         conditions = [f"{role}/Id eq {int(employee_id)}"]
-        status = "InProcess" if filters.only_overdue else ACTION_ITEM_STATUSES[filters.status]
+        in_process_only = filters.only_overdue or filters.due is not None
+        status = "InProcess" if in_process_only else ACTION_ITEM_STATUSES[filters.status]
         if status:
             conditions.append(f"Status eq '{status}'")
         if filters.only_overdue:
-            conditions.append(f"Deadline lt {_utc_now_literal()}")
+            conditions.append(f"Deadline lt {_instant_literal(self._now())}")
+        if filters.due is not None:
+            today = self._now().astimezone(self.tz).date()
+            conditions.append(f"Deadline ge {self._day_literal(today)}")
+            conditions.append(f"Deadline lt {self._day_literal(today + timedelta(days=DUE_WINDOW_DAYS[filters.due]))}")
         field = ACTION_ITEM_DATE_FIELDS[filters.date_field]
         if filters.date_from:
-            conditions.append(f"{field} ge {_day_literal(filters.date_from)}")
+            conditions.append(f"{field} ge {self._day_literal(filters.date_from)}")
         if filters.date_to:
-            conditions.append(f"{field} lt {_day_literal(filters.date_to + timedelta(days=1))}")
+            conditions.append(f"{field} lt {self._day_literal(filters.date_to + timedelta(days=1))}")
         return entity_set, " and ".join(conditions)
+
+    def _day_literal(self, day: date) -> str:
+        return datetime(day.year, day.month, day.day, tzinfo=self.tz).isoformat()
 
     def _my_assignments_filter(self, only_overdue: bool) -> str:
         user = self.current_user_service.get_current_user()

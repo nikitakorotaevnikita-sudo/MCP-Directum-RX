@@ -116,6 +116,7 @@ class ServicesProvider:
             credentials.auth_token,
             self.settings.MCP_DIRECTUM_TIMEOUT_SECONDS,
             transport=self.transport,
+            tz=self.settings.stand_timezone,
         )
         cached_user = self.user_cache.get(credentials.fingerprint)
         if cached_user is not None:
