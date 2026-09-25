@@ -1,0 +1,19 @@
+# Фрагмент librechat.yaml для подключения mcpOGV.
+# MCP_OGV_KEY задаётся в окружении LibreChat и совпадает со значением в .env mcpOGV.
+mcpServers:
+  mcpOGV:
+    type: streamable-http
+    url: http://mcp-ogv:8010/mcp
+    headers:
+      X-Directum-Login: '{{DRX_LOGIN}}'
+      X-Directum-Password: '{{DRX_PASSWORD}}'
+      X-MCP-Key: '${MCP_OGV_KEY}'
+    customUserVars:
+      DRX_LOGIN:
+        title: 'Логин Directum RX'
+        description: 'Ваш логин в Directum RX. mcpOGV работает с вашими правами.'
+      DRX_PASSWORD:
+        title: 'Пароль Directum RX'
+        description: 'Хранится в LibreChat, в mcpOGV не сохраняется и не логируется.'
+    serverInstructions: true
+    timeout: 60000

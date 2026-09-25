@@ -25,3 +25,4 @@ dev = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+markers = ["live: smoke-проверки на реальном стенде Directum RX (пропускаются без MCP_LIVE_*)"]

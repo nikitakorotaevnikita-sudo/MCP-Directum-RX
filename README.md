@@ -177,6 +177,37 @@ Fuzzy-fallback использует стемминг словоформ и ст�
 («РФ», орг-правовые формы, родовые слова госорганов: «министерство», «федеральн*» и т.п.),
 чтобы домен («культуры/финансов»), а не родовое слово, определял совпадение.
 
+## mcpOGV — MCP-сервер для LibreChat
+
+Отдельный процесс, который даёт агентной платформе на базе LibreChat доступ к Directum RX по протоколу MCP (Streamable HTTP). Работает **от имени пользователя**: логин и пароль Directum пользователь вводит в LibreChat (`customUserVars`), они приходят в заголовках и в mcpOGV не сохраняются.
+
+**Состав (этап 1):**
+- курируемые тулы: `get_current_user`, `search_employees`, `list_my_assignments`, `list_action_items`, `get_action_item`, `get_discipline_analytics`, `get_outgoing_action_items_analytics`, `search_documents`, `get_document`, `list_documents_by_counterparty`, `list_letters`, `list_my_meetings`;
+- универсальное чтение: `odata_list_domains`, `odata_describe_entity`, `odata_query`, `odata_count`, `odata_get` (фильтр обязателен, чувствительные наборы закрыты);
+- справочники доменов — ресурсы `drx://domains/*`;
+- тулы встроенного MCP Directum (`drx_native_*`, только read-only).
+
+**Локальный запуск:**
+
+```powershell
+& ".venv\Scripts\python.exe" -m src.mcp_server
+```
+
+Проверка: `http://localhost:8010/health`. Нужные переменные — в `.env.example` (раздел mcpOGV). Для отладки без LibreChat можно включить `MCP_ALLOW_ENV_CREDENTIALS=true` — тогда используется `DIRECTUM_AUTH_TOKEN`.
+
+**Docker:** сервис `mcp-ogv` в `docker-compose.yml` (порт 8010). Подключение к LibreChat — `docs/mcp-ogv/librechat.example.yaml`; LibreChat и `mcp-ogv` должны быть в одной Docker-сети, хост `mcp-ogv:8010` — в `MCP_ALLOWED_HOSTS`.
+
+**Метрики использования тулов:** SQLite `MCP_USAGE_DB_PATH` (тул, успех, длительность, хеш пользователя — без кредов).
+
+**Live-проверка на стенде** (только чтение, креды из окружения):
+
+```powershell
+$env:MCP_LIVE_BASE_URL = "https://<стенд>/Integration/odata"
+$env:MCP_LIVE_LOGIN = "<логин>"
+$env:MCP_LIVE_PASSWORD = "<пароль>"
+& ".venv\Scripts\python.exe" -m pytest tests/live -v
+```
+
 ## Тестирование
 
 ```powershell
