@@ -6,7 +6,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from src.mcp_server.envelope import clamp_limit, list_envelope
-from src.mcp_server.odata_meta import EntityInfo, MetadataCache, is_denied
+from src.mcp_server.odata_meta import (
+    NAV_DENY_SUBSTRINGS,
+    EntityInfo,
+    MetadataCache,
+    is_denied,
+    is_denied_navigation_type,
+    is_denied_type,
+)
 from src.mcp_server.resources import DomainGuide
 from src.mcp_server.runner import READ_ONLY, ToolRunner
 
@@ -14,20 +21,22 @@ GENERIC_MAX_TOP = 50
 MAX_FILTER_LENGTH = 1000
 FORBIDDEN_FILTER_CHARS = ("&", "?", "#")
 SIMPLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+FILTER_PATH_SEGMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*/\s*([A-Za-z_][A-Za-z0-9_]*)")
 
 EntitySet = Annotated[str, Field(description="Имя набора данных Directum RX, например IRequests")]
 Filter = Annotated[str, Field(description="Обязательный OData $filter, например Status eq 'InProcess'")]
 
+DENIED_MESSAGE = "Набор данных «{entity_set}» недоступен. Найди нужный набор через odata_list_domains и справочники drx://domains/*."
+
 
 def resolve_entity(entities: dict[str, EntityInfo], entity_set: str) -> EntityInfo:
-    if is_denied(entity_set) or entity_set not in entities:
-        raise ToolError(
-            f"Набор данных «{entity_set}» недоступен. Найди нужный набор через odata_list_domains и справочники drx://domains/*."
-        )
-    return entities[entity_set]
+    info = entities.get(entity_set)
+    if is_denied(entity_set) or info is None or is_denied_type(info.entity_type):
+        raise ToolError(DENIED_MESSAGE.format(entity_set=entity_set))
+    return info
 
 
-def check_filter(expression: str) -> str:
+def check_filter(expression: str, info: EntityInfo) -> str:
     text = (expression or "").strip()
     if not text:
         raise ToolError("Нужен фильтр: Directum отклоняет запросы без $filter. Пример: Status eq 'InProcess'.")
@@ -35,6 +44,14 @@ def check_filter(expression: str) -> str:
         raise ToolError(f"Фильтр длиннее {MAX_FILTER_LENGTH} символов — упрости условие.")
     if any(char in text for char in FORBIDDEN_FILTER_CHARS):
         raise ToolError("В фильтре нельзя использовать символы &, ? и #.")
+    for left, right in FILTER_PATH_SEGMENT.findall(text):
+        for segment in (left, right):
+            lowered = segment.lower()
+            if any(marker in lowered for marker in NAV_DENY_SUBSTRINGS):
+                raise ToolError(f"Фильтр обращается к закрытым данным («{segment}»).")
+        nav_type = info.navigation.get(left)
+        if nav_type and is_denied_navigation_type(nav_type):
+            raise ToolError(f"Фильтр обращается к закрытым данным («{left}»).")
     return text
 
 
@@ -67,7 +84,11 @@ def check_expand(csv: str, navigation: dict[str, str]) -> str:
     names = [part.strip() for part in csv.split(",") if part.strip()]
     if any(not SIMPLE_NAME.match(name) for name in names):
         raise ToolError("В expand разрешены только имена навигационных свойств через запятую, без вложенных параметров.")
-    return check_fields(",".join(names), navigation, "expand")
+    checked = check_fields(",".join(names), navigation, "expand")
+    for name in names:
+        if is_denied_navigation_type(navigation.get(name, "")):
+            raise ToolError(f"Навигация «{name}» ведёт к закрытым данным и недоступна.")
+    return checked
 
 
 def register(mcp: MCPServer, runner: ToolRunner, metadata: MetadataCache, guides: dict[str, DomainGuide]) -> None:
@@ -112,7 +133,7 @@ def register(mcp: MCPServer, runner: ToolRunner, metadata: MetadataCache, guides
             info = resolve_entity(metadata.get(s.client), entity_set)
             rows = s.client.query(
                 entity_set,
-                filter_=check_filter(filter),
+                filter_=check_filter(filter, info),
                 select=check_fields(select, info.properties, "select") if select else None,
                 expand=check_expand(expand, info.navigation) if expand else None,
                 orderby=check_orderby(orderby, info.properties) if orderby else None,
@@ -127,8 +148,8 @@ def register(mcp: MCPServer, runner: ToolRunner, metadata: MetadataCache, guides
         """Количество записей набора данных по фильтру."""
 
         def action(s):
-            resolve_entity(metadata.get(s.client), entity_set)
-            expression = check_filter(filter)
+            info = resolve_entity(metadata.get(s.client), entity_set)
+            expression = check_filter(filter, info)
             return {"entity_set": entity_set, "filter": expression, "count": s.client.count(entity_set, filter_=expression)}
 
         return await runner.run(ctx, "odata_count", action)

@@ -61,13 +61,20 @@ METADATA_XML = """<?xml version="1.0" encoding="utf-8"?>
         <Property Name="Subject" Type="Edm.String"/>
         <Property Name="RegistrationDate" Type="Edm.DateTimeOffset"/>
         <NavigationProperty Name="Author" Type="Demo.IEmployeeDto"/>
+        <NavigationProperty Name="Performer" Type="Demo.IUserDto"/>
       </EntityType>
-      <EntityType Name="IEmployeeDto" BaseType="Demo.IEntityBase"><Property Name="Name" Type="Edm.String"/></EntityType>
+      <EntityType Name="IEmployeeDto" BaseType="Demo.IEntityBase">
+        <Property Name="Name" Type="Edm.String"/>
+        <NavigationProperty Name="Login" Type="Demo.ILoginDto"/>
+      </EntityType>
       <EntityType Name="ILoginDto" BaseType="Demo.IEntityBase"><Property Name="LoginName" Type="Edm.String"/></EntityType>
+      <EntityType Name="IUserDto" BaseType="Demo.IEntityBase"><Property Name="Name" Type="Edm.String"/></EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="IRequests" EntityType="Demo.IRequestDto"/>
         <EntitySet Name="IEmployees" EntityType="Demo.IEmployeeDto"/>
         <EntitySet Name="ILogins" EntityType="Demo.ILoginDto"/>
+        <EntitySet Name="IUsers" EntityType="Demo.IUserDto"/>
+        <EntitySet Name="ICitizenRequestSettings" EntityType="Demo.IEmployeeDto"/>
       </EntityContainer>
     </Schema>
   </edmx:DataServices>

@@ -4,7 +4,14 @@ import anyio
 from mcp import Client
 
 from src.mcp_server.app import build_server
-from src.mcp_server.odata_meta import MetadataCache, is_denied, parse_metadata
+from src.mcp_server.odata_meta import (
+    MetadataCache,
+    is_denied,
+    is_denied_navigation_type,
+    is_denied_type,
+    parse_metadata,
+    type_leaf,
+)
 from src.mcp_server.resources import load_domain_guides
 from tests.unit.mcp_fakes import METADATA_XML, FakeODataClient, FakeProvider, call_tool, error_text, payload
 
@@ -25,7 +32,7 @@ def test_parse_metadata_resolves_inheritance_and_navigation():
 
     request = entities["IRequests"]
     assert set(request.properties) == {"Id", "Subject", "RegistrationDate"}
-    assert set(request.navigation) == {"Author"}
+    assert set(request.navigation) == {"Author", "Performer"}
 
 
 def test_deny_list_blocks_sensitive_sets():
@@ -84,7 +91,10 @@ def test_odata_describe_entity(tmp_path):
     data = payload(call_tool(server, "odata_describe_entity", {"entity_set": "IRequests"}))
 
     assert {"name": "Subject", "type": "Edm.String"} in data["properties"]
-    assert data["navigation"] == [{"name": "Author", "type": "Demo.IEmployeeDto"}]
+    assert data["navigation"] == [
+        {"name": "Author", "type": "Demo.IEmployeeDto"},
+        {"name": "Performer", "type": "Demo.IUserDto"},
+    ]
 
 
 def test_odata_query_requires_filter(tmp_path):
@@ -108,6 +118,16 @@ def test_odata_query_rejects_parameter_smuggling(tmp_path):
     text = error_text(call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Id gt 0&$top=999"}))
 
     assert "&" in text
+
+
+def test_odata_query_rejects_question_mark_and_hash_in_filter(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Id gt 0?x=1"}))
+    assert "?" in text
+
+    text = error_text(call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Id gt 0#frag"}))
+    assert "#" in text
 
 
 def test_odata_query_validates_fields(tmp_path):
@@ -163,3 +183,102 @@ def test_odata_count_and_get(tmp_path):
     assert count == {"entity_set": "IRequests", "filter": "Id gt 0", "count": 1761}
     assert record["Id"] == 5
     assert client.paths[-1] == "IRequests(5)?$expand=Author"
+
+
+def test_type_leaf_strips_namespace_and_collection():
+    assert type_leaf("Demo.ILoginDto") == "ILoginDto"
+    assert type_leaf("Collection(Demo.ILoginDto)") == "ILoginDto"
+
+
+def test_is_denied_type_matches_deny_markers():
+    assert is_denied_type("Demo.IUserDto")
+    assert is_denied_type("Demo.ILoginDto")
+    assert not is_denied_type("Demo.IEmployeeDto")
+
+
+def test_is_denied_navigation_type_excludes_user_marker():
+    assert not is_denied_navigation_type("Demo.IUserDto")
+    assert is_denied_navigation_type("Demo.ILoginDto")
+
+
+def test_odata_query_blocks_navigation_to_denied_type_via_expand(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(
+        call_tool(server, "odata_query", {"entity_set": "IEmployees", "filter": "Id gt 0", "expand": "Login"})
+    )
+
+    assert "закрытым данным" in text
+
+
+def test_odata_query_blocks_navigation_to_denied_type_via_filter(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(
+        call_tool(server, "odata_query", {"entity_set": "IEmployees", "filter": "Login/LoginName eq 'admin'"})
+    )
+
+    assert "закрытым данным" in text
+
+
+def test_odata_query_allows_navigation_to_user_type(tmp_path):
+    server, client = make_server(tmp_path)
+
+    data = payload(
+        call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Id gt 0", "expand": "Performer"})
+    )
+
+    assert client.queries[-1]["expand"] == "Performer"
+    assert "returned" in data
+
+
+def test_odata_query_allows_filter_through_user_navigation(tmp_path):
+    server, client = make_server(tmp_path)
+
+    payload(call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Performer/Id eq 5"}))
+
+    assert client.queries[-1]["filter_"] == "Performer/Id eq 5"
+
+
+def test_odata_get_blocks_navigation_to_denied_type(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(
+        call_tool(server, "odata_get", {"entity_set": "IEmployees", "record_id": 1, "expand": "Login"})
+    )
+
+    assert "закрытым данным" in text
+
+
+def test_odata_query_blocks_settings_entity_set(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(
+        call_tool(server, "odata_query", {"entity_set": "ICitizenRequestSettings", "filter": "Id gt 0"})
+    )
+
+    assert "недоступен" in text
+
+
+def test_odata_query_blocks_denied_set_regardless_of_case(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_query", {"entity_set": "ilogins", "filter": "Id gt 0"}))
+
+    assert "недоступен" in text
+
+
+def test_odata_count_blocks_denied_entity_set(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_count", {"entity_set": "ILogins", "filter": "Id gt 0"}))
+
+    assert "недоступен" in text
+
+
+def test_odata_get_blocks_denied_entity_set(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_get", {"entity_set": "ILogins", "record_id": 1}))
+
+    assert "недоступен" in text

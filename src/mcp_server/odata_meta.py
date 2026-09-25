@@ -5,11 +5,16 @@ from typing import Any
 
 EDM_NS = "{http://docs.oasis-open.org/odata/ns/edm}"
 
-# Наборы с учётками, правами, сертификатами, лицензиями и аудитом в универсальный слой не пускаем.
+# Наборы с учётками, правами, сертификатами, лицензиями, настройками и аудитом в универсальный слой не пускаем.
 DENY_SUBSTRINGS = (
     "login", "user", "certificate", "accessright", "license", "audit",
-    "personalsetting", "password", "secret", "token", "session", "permission", "signature",
+    "setting", "password", "secret", "token", "session", "permission", "signature", "constant",
 )
+
+# Для навигационных свойств маркер "user" не применяем: Author/Performer у стандартных
+# заданий и поручений ссылаются на IUserDto/IEmployeeDto — те же данные, что и в разрешённом
+# наборе IEmployees, и нужны для типовых фильтров вида Performer/Id eq 63.
+NAV_DENY_SUBSTRINGS = tuple(marker for marker in DENY_SUBSTRINGS if marker != "user")
 
 
 @dataclass(frozen=True)
@@ -48,6 +53,25 @@ def parse_metadata(xml_text: str) -> dict[str, EntityInfo]:
 def is_denied(entity_set: str) -> bool:
     lowered = entity_set.lower()
     return any(marker in lowered for marker in DENY_SUBSTRINGS)
+
+
+def type_leaf(type_name: str) -> str:
+    """«Collection(Demo.ILoginDto)» -> «ILoginDto»; «Demo.ILoginDto» -> «ILoginDto»."""
+    text = type_name or ""
+    if text.startswith("Collection(") and text.endswith(")"):
+        text = text[len("Collection(") : -1]
+    return text.rsplit(".", 1)[-1]
+
+
+def is_denied_type(type_name: str) -> bool:
+    leaf = type_leaf(type_name).lower()
+    return any(marker in leaf for marker in DENY_SUBSTRINGS)
+
+
+def is_denied_navigation_type(type_name: str) -> bool:
+    """Как is_denied_type, но без маркера "user" — см. NAV_DENY_SUBSTRINGS."""
+    leaf = type_leaf(type_name).lower()
+    return any(marker in leaf for marker in NAV_DENY_SUBSTRINGS)
 
 
 class MetadataCache:
