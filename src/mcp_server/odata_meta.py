@@ -16,6 +16,38 @@ DENY_SUBSTRINGS = (
 # наборе IEmployees, и нужны для типовых фильтров вида Performer/Id eq 63.
 NAV_DENY_SUBSTRINGS = tuple(marker for marker in DENY_SUBSTRINGS if marker != "user")
 
+# Свойства с секретами (пароли ящиков, ключи API, токены) закрыты даже в разрешённых наборах.
+SENSITIVE_PROPERTY_MARKERS = ("password", "secret", "apikey", "token", "privatekey", "pincode", "thumbprint")
+
+# Легитимные слова, содержащие маркер: вырезаются из имени перед любой проверкой маркеров.
+ALLOWED_WORDS = ("secretaries", "secretary")
+
+
+def normalize_name(name: str) -> str:
+    """Имя в нижнем регистре без легитимных слов (Secretary и т.п.) — для сравнения с маркерами."""
+    lowered = (name or "").lower()
+    for word in ALLOWED_WORDS:
+        lowered = lowered.replace(word, "")
+    return lowered
+
+
+def has_marker(name: str, markers: tuple[str, ...]) -> bool:
+    normalized = normalize_name(name)
+    return any(marker in normalized for marker in markers)
+
+
+def is_sensitive_property(name: str) -> bool:
+    return has_marker(name, SENSITIVE_PROPERTY_MARKERS)
+
+
+def strip_sensitive(value: Any) -> Any:
+    """Рекурсивно убирает ключи-секреты из ответа Directum (в т.ч. во вложенных expand-объектах)."""
+    if isinstance(value, dict):
+        return {key: strip_sensitive(item) for key, item in value.items() if not is_sensitive_property(str(key))}
+    if isinstance(value, list):
+        return [strip_sensitive(item) for item in value]
+    return value
+
 
 @dataclass(frozen=True)
 class EntityInfo:
@@ -31,7 +63,11 @@ def parse_metadata(xml_text: str) -> dict[str, EntityInfo]:
     for schema in root.iter(f"{EDM_NS}Schema"):
         namespace = schema.get("Namespace", "")
         for entity_type in schema.findall(f"{EDM_NS}EntityType"):
-            properties = {p.get("Name"): p.get("Type") for p in entity_type.findall(f"{EDM_NS}Property")}
+            properties = {
+                p.get("Name"): p.get("Type")
+                for p in entity_type.findall(f"{EDM_NS}Property")
+                if not is_sensitive_property(p.get("Name") or "")
+            }
             navigation = {n.get("Name"): n.get("Type") for n in entity_type.findall(f"{EDM_NS}NavigationProperty")}
             types[f"{namespace}.{entity_type.get('Name')}"] = (properties, navigation, entity_type.get("BaseType"))
 
@@ -51,8 +87,7 @@ def parse_metadata(xml_text: str) -> dict[str, EntityInfo]:
 
 
 def is_denied(entity_set: str) -> bool:
-    lowered = entity_set.lower()
-    return any(marker in lowered for marker in DENY_SUBSTRINGS)
+    return has_marker(entity_set, DENY_SUBSTRINGS)
 
 
 def type_leaf(type_name: str) -> str:
@@ -64,14 +99,12 @@ def type_leaf(type_name: str) -> str:
 
 
 def is_denied_type(type_name: str) -> bool:
-    leaf = type_leaf(type_name).lower()
-    return any(marker in leaf for marker in DENY_SUBSTRINGS)
+    return has_marker(type_leaf(type_name), DENY_SUBSTRINGS)
 
 
 def is_denied_navigation_type(type_name: str) -> bool:
     """Как is_denied_type, но без маркера "user" — см. NAV_DENY_SUBSTRINGS."""
-    leaf = type_leaf(type_name).lower()
-    return any(marker in leaf for marker in NAV_DENY_SUBSTRINGS)
+    return has_marker(type_leaf(type_name), NAV_DENY_SUBSTRINGS)
 
 
 class MetadataCache:

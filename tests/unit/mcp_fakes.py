@@ -69,12 +69,24 @@ METADATA_XML = """<?xml version="1.0" encoding="utf-8"?>
       </EntityType>
       <EntityType Name="ILoginDto" BaseType="Demo.IEntityBase"><Property Name="LoginName" Type="Edm.String"/></EntityType>
       <EntityType Name="IUserDto" BaseType="Demo.IEntityBase"><Property Name="Name" Type="Edm.String"/></EntityType>
+      <EntityType Name="IBoxDto" BaseType="Demo.IEntityBase">
+        <Property Name="Name" Type="Edm.String"/>
+        <Property Name="Password" Type="Edm.String"/>
+        <Property Name="ApiKey" Type="Edm.String"/>
+      </EntityType>
+      <EntityType Name="IMeetingDto" BaseType="Demo.IEntityBase">
+        <Property Name="Name" Type="Edm.String"/>
+        <NavigationProperty Name="Box" Type="Demo.IBoxDto"/>
+        <NavigationProperty Name="Secretary" Type="Demo.IEmployeeDto"/>
+      </EntityType>
       <EntityContainer Name="Container">
         <EntitySet Name="IRequests" EntityType="Demo.IRequestDto"/>
         <EntitySet Name="IEmployees" EntityType="Demo.IEmployeeDto"/>
         <EntitySet Name="ILogins" EntityType="Demo.ILoginDto"/>
         <EntitySet Name="IUsers" EntityType="Demo.IUserDto"/>
         <EntitySet Name="ICitizenRequestSettings" EntityType="Demo.IEmployeeDto"/>
+        <EntitySet Name="IBoxes" EntityType="Demo.IBoxDto"/>
+        <EntitySet Name="IMeetings" EntityType="Demo.IMeetingDto"/>
       </EntityContainer>
     </Schema>
   </edmx:DataServices>
@@ -82,7 +94,9 @@ METADATA_XML = """<?xml version="1.0" encoding="utf-8"?>
 
 
 class FakeODataClient:
-    def __init__(self):
+    def __init__(self, rows=None, record=None):
+        self.rows = rows
+        self.record = record
         self.metadata_calls = 0
         self.queries = []
         self.counts = []
@@ -96,6 +110,8 @@ class FakeODataClient:
         self.queries.append(
             {"entity_set": entity_set, "filter_": filter_, "select": select, "expand": expand, "orderby": orderby, "top": top}
         )
+        if self.rows is not None:
+            return self.rows
         return [{"Id": i, "Subject": f"Обращение {i}"} for i in range(top or 1)]
 
     def count(self, entity_set, filter_=None):
@@ -104,4 +120,6 @@ class FakeODataClient:
 
     def get_one(self, entity_path):
         self.paths.append(entity_path)
+        if self.record is not None:
+            return self.record
         return {"Id": 5, "Subject": "Обращение 5"}

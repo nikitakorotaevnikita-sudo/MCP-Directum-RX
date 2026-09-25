@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 import anyio
 from mcp import Client
 
@@ -9,6 +11,7 @@ from src.mcp_server.odata_meta import (
     is_denied,
     is_denied_navigation_type,
     is_denied_type,
+    is_sensitive_property,
     parse_metadata,
     type_leaf,
 )
@@ -182,7 +185,7 @@ def test_odata_count_and_get(tmp_path):
 
     assert count == {"entity_set": "IRequests", "filter": "Id gt 0", "count": 1761}
     assert record["Id"] == 5
-    assert client.paths[-1] == "IRequests(5)?$expand=Author"
+    assert client.paths[-1] == "IRequests(5)?$select=Id,Subject,RegistrationDate&$expand=Author"
 
 
 def test_type_leaf_strips_namespace_and_collection():
@@ -282,3 +285,134 @@ def test_odata_get_blocks_denied_entity_set(tmp_path):
     text = error_text(call_tool(server, "odata_get", {"entity_set": "ILogins", "record_id": 1}))
 
     assert "недоступен" in text
+
+
+# --- F1: секретные свойства не читаются через универсальный слой ---
+
+SECRET_ROWS = [
+    {"Id": 1, "Name": "Ящик", "Password": "p1", "ApiKey": "k1", "Box": {"Id": 2, "Password": "p2", "Name": "Вложенный"}},
+]
+
+
+def test_is_sensitive_property_markers():
+    for name in ("Password", "OidcClientSecret", "ApiKey", "APIKey", "AccessToken", "PrivateKey", "PinCode", "Thumbprint"):
+        assert is_sensitive_property(name), name
+    for name in ("Name", "Subject", "Id", "Secretary"):
+        assert not is_sensitive_property(name), name
+
+
+def test_parse_metadata_drops_sensitive_properties():
+    box = parse_metadata(METADATA_XML)["IBoxes"]
+
+    assert set(box.properties) == {"Id", "Name"}
+
+
+def test_describe_entity_omits_sensitive_properties(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    data = payload(call_tool(server, "odata_describe_entity", {"entity_set": "IBoxes"}))
+
+    assert [p["name"] for p in data["properties"]] == ["Id", "Name"]
+
+
+def test_select_of_sensitive_property_rejected(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_query", {"entity_set": "IBoxes", "filter": "Id gt 0", "select": "Password"}))
+
+    assert "Password" in text
+
+
+def test_orderby_of_sensitive_property_rejected(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    assert error_text(call_tool(server, "odata_query", {"entity_set": "IBoxes", "filter": "Id gt 0", "orderby": "ApiKey"}))
+
+
+@pytest.mark.parametrize("expression", ["Password ne null", "startswith(ApiKey,'a')", "Box/Password eq 'x'", "Id gt 0 and OidcClientSecret ne null"])
+def test_filter_on_sensitive_property_rejected(tmp_path, expression):
+    server, client = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_query", {"entity_set": "IBoxes", "filter": expression}))
+    count_text = error_text(call_tool(server, "odata_count", {"entity_set": "IBoxes", "filter": expression}))
+
+    assert "закрытым данным" in text and "закрытым данным" in count_text
+    assert client.queries == [] and client.counts == []
+
+
+def test_filter_marker_inside_string_literal_is_allowed(tmp_path):
+    server, client = make_server(tmp_path)
+
+    payload(call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Subject eq 'Сбросить Password'"}))
+
+    assert client.queries[-1]["filter_"] == "Subject eq 'Сбросить Password'"
+
+
+def test_query_without_select_sends_explicit_safe_select(tmp_path):
+    server, client = make_server(tmp_path)
+
+    payload(call_tool(server, "odata_query", {"entity_set": "IBoxes", "filter": "Id gt 0"}))
+
+    assert client.queries[-1]["select"] == "Id,Name"
+
+
+def test_get_without_expand_sends_explicit_safe_select(tmp_path):
+    server, client = make_server(tmp_path)
+
+    payload(call_tool(server, "odata_get", {"entity_set": "IBoxes", "record_id": 5}))
+
+    assert client.paths[-1] == "IBoxes(5)?$select=Id,Name"
+
+
+def test_query_strips_sensitive_keys_from_rows(tmp_path):
+    server, _ = make_server(tmp_path, FakeODataClient(rows=SECRET_ROWS))
+
+    data = payload(call_tool(server, "odata_query", {"entity_set": "IMeetings", "filter": "Id gt 0", "expand": "Box"}))
+
+    assert data["items"] == [{"Id": 1, "Name": "Ящик", "Box": {"Id": 2, "Name": "Вложенный"}}]
+
+
+def test_get_strips_sensitive_keys_from_record(tmp_path):
+    server, client = make_server(tmp_path, FakeODataClient(record=SECRET_ROWS[0]))
+
+    data = payload(call_tool(server, "odata_get", {"entity_set": "IMeetings", "record_id": 1, "expand": "Box"}))
+
+    assert data == {"Id": 1, "Name": "Ящик", "Box": {"Id": 2, "Name": "Вложенный"}}
+    assert client.paths[-1] == "IMeetings(1)?$select=Id,Name&$expand=Box"
+
+
+# --- F5: проверяются все сегменты пути в фильтре, включая последний ---
+
+def test_filter_path_last_segment_is_checked(tmp_path):
+    server, client = make_server(tmp_path)
+
+    text = error_text(call_tool(server, "odata_query", {"entity_set": "IRequests", "filter": "Author/Foo/LoginName eq 'a'"}))
+
+    assert "LoginName" in text
+    assert client.queries == []
+
+
+# --- F9: легитимные слова не считаются маркерами ---
+
+def test_secretary_navigation_is_allowed_in_filter(tmp_path):
+    server, client = make_server(tmp_path)
+
+    payload(call_tool(server, "odata_query", {"entity_set": "IMeetings", "filter": "Secretary/Id eq 5"}))
+
+    assert client.queries[-1]["filter_"] == "Secretary/Id eq 5"
+
+
+def test_secretary_allowed_but_secret_still_denied():
+    assert not is_denied("ISecretaries")
+    assert is_denied("ISecrets")
+    assert not is_denied_type("Demo.ISecretaryDto")
+    assert not is_denied_navigation_type("Demo.ISecretaryDto")
+    assert is_denied_navigation_type("Demo.ISecretDto")
+
+
+def test_secret_segment_still_denied_in_filter(tmp_path):
+    server, _ = make_server(tmp_path)
+
+    assert "закрытым данным" in error_text(
+        call_tool(server, "odata_query", {"entity_set": "IMeetings", "filter": "Secret/Id eq 5"})
+    )

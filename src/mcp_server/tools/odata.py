@@ -10,9 +10,12 @@ from src.mcp_server.odata_meta import (
     NAV_DENY_SUBSTRINGS,
     EntityInfo,
     MetadataCache,
+    has_marker,
     is_denied,
     is_denied_navigation_type,
     is_denied_type,
+    is_sensitive_property,
+    strip_sensitive,
 )
 from src.mcp_server.resources import DomainGuide
 from src.mcp_server.runner import READ_ONLY, ToolRunner
@@ -21,7 +24,10 @@ GENERIC_MAX_TOP = 50
 MAX_FILTER_LENGTH = 1000
 FORBIDDEN_FILTER_CHARS = ("&", "?", "#")
 SIMPLE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-FILTER_PATH_SEGMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*/\s*([A-Za-z_][A-Za-z0-9_]*)")
+# Перекрывающийся поиск (lookahead): в A/B/C проверяются пары A/B и B/C, включая последний сегмент.
+FILTER_PATH_SEGMENT = re.compile(r"(?<![A-Za-z0-9_])(?=([A-Za-z_][A-Za-z0-9_]*)\s*/\s*([A-Za-z_][A-Za-z0-9_]*))")
+FILTER_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+FILTER_STRING_LITERAL = re.compile(r"'(?:[^']|'')*'")
 
 EntitySet = Annotated[str, Field(description="Имя набора данных Directum RX, например IRequests")]
 Filter = Annotated[str, Field(description="Обязательный OData $filter, например Status eq 'InProcess'")]
@@ -46,13 +52,20 @@ def check_filter(expression: str, info: EntityInfo) -> str:
         raise ToolError("В фильтре нельзя использовать символы &, ? и #.")
     for left, right in FILTER_PATH_SEGMENT.findall(text):
         for segment in (left, right):
-            lowered = segment.lower()
-            if any(marker in lowered for marker in NAV_DENY_SUBSTRINGS):
+            if has_marker(segment, NAV_DENY_SUBSTRINGS):
                 raise ToolError(f"Фильтр обращается к закрытым данным («{segment}»).")
         nav_type = info.navigation.get(left)
         if nav_type and is_denied_navigation_type(nav_type):
             raise ToolError(f"Фильтр обращается к закрытым данным («{left}»).")
+    for identifier in FILTER_IDENTIFIER.findall(FILTER_STRING_LITERAL.sub("''", text)):
+        if is_sensitive_property(identifier):
+            raise ToolError(f"Фильтр обращается к закрытым данным («{identifier}»).")
     return text
+
+
+def safe_select(info: EntityInfo) -> str:
+    """Явный $select по несекретным полям: без него Directum вернул бы все свойства, включая секреты."""
+    return ",".join(info.properties)
 
 
 def check_fields(csv: str, allowed: dict[str, str], label: str) -> str:
@@ -134,12 +147,12 @@ def register(mcp: MCPServer, runner: ToolRunner, metadata: MetadataCache, guides
             rows = s.client.query(
                 entity_set,
                 filter_=check_filter(filter, info),
-                select=check_fields(select, info.properties, "select") if select else None,
+                select=check_fields(select, info.properties, "select") if select else safe_select(info),
                 expand=check_expand(expand, info.navigation) if expand else None,
                 orderby=check_orderby(orderby, info.properties) if orderby else None,
                 top=size + 1,
             )
-            return list_envelope(rows, size)
+            return list_envelope(strip_sensitive(rows), size)
 
         return await runner.run(ctx, "odata_query", action)
 
@@ -165,9 +178,9 @@ def register(mcp: MCPServer, runner: ToolRunner, metadata: MetadataCache, guides
 
         def action(s):
             info = resolve_entity(metadata.get(s.client), entity_set)
-            path = f"{entity_set}({record_id})"
+            path = f"{entity_set}({record_id})?$select={safe_select(info)}"
             if expand:
-                path += "?$expand=" + check_expand(expand, info.navigation)
-            return s.client.get_one(path)
+                path += "&$expand=" + check_expand(expand, info.navigation)
+            return strip_sensitive(s.client.get_one(path))
 
         return await runner.run(ctx, "odata_get", action)
