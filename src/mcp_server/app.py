@@ -14,7 +14,7 @@ from src.mcp_server.context import ServicesProvider, TtlCache
 from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
-from src.mcp_server.tools import action_items, common, documents, odata
+from src.mcp_server.tools import action_items, admin, common, documents, odata
 
 logger = logging.getLogger("mcp_ogv")
 
@@ -46,6 +46,7 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir:
     mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, middleware=[native])
     common.register(mcp, runner)
     action_items.register(mcp, runner)
+    admin.register(mcp, runner)
     documents.register(mcp, runner)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
