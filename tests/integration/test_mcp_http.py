@@ -81,6 +81,16 @@ def test_mcp_endpoint_requires_shared_key(mcp_url):
     assert response.status_code == 401
 
 
+def test_mcp_endpoint_rejects_wrong_shared_key(mcp_url):
+    response = httpx.post(
+        f"{mcp_url}/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        headers={"Accept": "application/json, text/event-stream", "X-MCP-Key": "wrong-key"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_tool_runs_with_user_credentials_from_headers(mcp_url):
     result = _call(mcp_url, FULL_HEADERS, "get_current_user")
 

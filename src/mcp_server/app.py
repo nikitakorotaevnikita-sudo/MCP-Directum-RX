@@ -1,4 +1,5 @@
 import hmac
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,10 @@ from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
 from src.mcp_server.tools import action_items, common, documents, odata
 
+logger = logging.getLogger("mcp_ogv")
+
 SERVER_NAME = "mcpOGV"
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 SKILLS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "skills"
 NATIVE_TOOLS_TTL_SECONDS = 600
 
@@ -76,6 +80,17 @@ def build_asgi_app(
         raise RuntimeError(
             "MCP_OGV_KEY is required; MCP_ALLOW_ENV_CREDENTIALS=true is allowed only for local debugging"
         )
+    if settings.MCP_ALLOW_ENV_CREDENTIALS:
+        if settings.mcp_key is None and settings.MCP_HOST.strip().lower() not in LOOPBACK_HOSTS:
+            raise RuntimeError(
+                "MCP_ALLOW_ENV_CREDENTIALS=true without MCP_OGV_KEY is allowed only with a loopback "
+                "MCP_HOST (127.0.0.1, localhost, ::1)"
+            )
+        if settings.mcp_key is not None:
+            logger.warning(
+                "MCP_ALLOW_ENV_CREDENTIALS=true: requests without Directum credential headers "
+                "will use DIRECTUM_AUTH_TOKEN; use only for local debugging"
+            )
     provider = provider or ServicesProvider(settings)
     usage = usage or ToolUsageStore(settings.MCP_USAGE_DB_PATH)
     mcp = build_server(provider, usage)

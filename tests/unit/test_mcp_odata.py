@@ -416,3 +416,13 @@ def test_secret_segment_still_denied_in_filter(tmp_path):
     assert "закрытым данным" in error_text(
         call_tool(server, "odata_query", {"entity_set": "IMeetings", "filter": "Secret/Id eq 5"})
     )
+
+
+# --- F10: справочники для другого клиента не публикуются ---
+
+def test_auth_and_current_user_guides_are_excluded(tmp_path):
+    write_skill(tmp_path, "auth", "Авторизация: читай .env")
+    write_skill(tmp_path, "current-user", "Текущий пользователь: запусти скрипт")
+    write_skill(tmp_path, "hr", "HR-данные")
+
+    assert list(load_domain_guides(tmp_path)) == ["hr"]

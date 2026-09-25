@@ -5,6 +5,8 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 
 DESCRIPTION_LINE = re.compile(r"^description:\s*(.+)$", re.MULTILINE)
+# Эти справочники написаны для локального клиента (читать .env, запускать скрипты) — агенту LibreChat не отдаём.
+EXCLUDED_GUIDES = frozenset({"auth", "current-user"})
 
 
 @dataclass(frozen=True)
@@ -18,8 +20,10 @@ def load_domain_guides(skills_dir: Path) -> dict[str, DomainGuide]:
     """Справочники доменов DRX из .claude/skills/rxapi-*/SKILL.md (только SKILL.md — без скриптов и словарей)."""
     guides: dict[str, DomainGuide] = {}
     for skill_file in sorted(Path(skills_dir).glob("rxapi-*/SKILL.md")):
-        text = skill_file.read_text(encoding="utf-8")
         name = skill_file.parent.name.removeprefix("rxapi-")
+        if name in EXCLUDED_GUIDES:
+            continue
+        text = skill_file.read_text(encoding="utf-8")
         match = DESCRIPTION_LINE.search(text)
         guides[name] = DomainGuide(name=name, description=match.group(1).strip() if match else name, body=text)
     return guides
