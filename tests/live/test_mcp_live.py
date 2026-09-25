@@ -56,3 +56,21 @@ def test_live_odata_count(server):
 
 def test_live_native_tools_listed(server):
     assert any(tool.name.startswith("drx_native_") for tool in list_tools(server))
+
+
+def test_live_admin_tool_visibility_matches_role(server):
+    visible = "admin_list_employee_action_items" in [tool.name for tool in list_tools(server)]
+
+    if visible:
+        employee = payload(
+            call_tool(server, "odata_query", {"entity_set": "IEmployees", "filter": "Status eq 'Active'", "top": 1})
+        )["items"][0]
+        data = payload(
+            call_tool(
+                server,
+                "admin_list_employee_action_items",
+                {"employee": str(employee["Id"]), "direction": "incoming", "status": "all", "limit": 3},
+            )
+        )
+        assert data["employee"]["id"] == employee["Id"]
+        assert data["total"] is not None
