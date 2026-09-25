@@ -1,4 +1,7 @@
+import base64
+import binascii
 import hashlib
+import hmac
 import threading
 import time
 from collections.abc import Callable, Iterator, Mapping
@@ -17,25 +20,56 @@ LOGIN_HEADER = "x-directum-login"
 PASSWORD_HEADER = "x-directum-password"
 MISSING_CREDENTIALS_MESSAGE = "Укажите логин и пароль Directum в настройках сервера mcpOGV в LibreChat."
 CURRENT_USER_TTL_SECONDS = 600
+ENV_LOGIN_FALLBACK = "env"
+USAGE_ID_LENGTH = 16
 
 
 @dataclass(frozen=True)
 class Credentials:
     auth_token: str = field(repr=False)
-    fingerprint: str
+    fingerprint: str  # ключ in-memory кешей; зависит от пароля, поэтому на диск не пишется
+    usage_id: str  # обезличенный id пользователя для метрик: HMAC логина, от пароля не зависит
+
+
+def _from_latin1(value: str) -> str:
+    """Starlette декодирует байты заголовков как latin-1; возвращаем исходный UTF-8 текст."""
+    try:
+        return value.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+
+
+def _login_from_basic_token(token: str) -> str:
+    encoded = token[len("Basic "):].strip() if token.startswith("Basic ") else ""
+    try:
+        decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        return ENV_LOGIN_FALLBACK
+    login = decoded.split(":", 1)[0] if ":" in decoded else ""
+    return login or ENV_LOGIN_FALLBACK
+
+
+def usage_id_for(login: str, settings: McpSettings) -> str:
+    digest = hmac.new(settings.metrics_salt.encode("utf-8"), login.encode("utf-8"), hashlib.sha256).hexdigest()
+    return digest[:USAGE_ID_LENGTH]
 
 
 def credentials_from_headers(headers: Mapping[str, str] | None, settings: McpSettings) -> Credentials:
     lowered = {str(key).lower(): str(value) for key, value in (headers or {}).items()}
-    login = lowered.get(LOGIN_HEADER, "").strip()
-    password = lowered.get(PASSWORD_HEADER, "")
+    login = _from_latin1(lowered.get(LOGIN_HEADER, "")).strip()
+    password = _from_latin1(lowered.get(PASSWORD_HEADER, ""))
     if login and password:
         token = build_basic_auth_token(login, password)
     elif settings.MCP_ALLOW_ENV_CREDENTIALS and settings.env_auth_token:
         token = settings.env_auth_token
+        login = _login_from_basic_token(token)
     else:
         raise ToolError(MISSING_CREDENTIALS_MESSAGE)
-    return Credentials(auth_token=token, fingerprint=hashlib.sha256(token.encode("utf-8")).hexdigest())
+    return Credentials(
+        auth_token=token,
+        fingerprint=hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        usage_id=usage_id_for(login, settings),
+    )
 
 
 class TtlCache:

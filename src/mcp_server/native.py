@@ -15,6 +15,7 @@ logger = logging.getLogger("mcp_ogv.native")
 
 NATIVE_PREFIX = "drx_native_"
 HANDLE_MCP_PATH = "IntegrationAIAgent/HandleMcpRequest"
+MAX_METRICS_TOOL_NAME = 100
 
 
 class NativeMcpClient:
@@ -121,11 +122,11 @@ class NativeProxyMiddleware:
     def _call(self, headers: Any, name: str, arguments: dict[str, Any]) -> CallToolResult:
         started = time.perf_counter()
         native_name = name[len(NATIVE_PREFIX):]
-        fingerprint = None
+        usage_id = None
         error_kind = None
         try:
             with self.provider.open(headers) as (credentials, services):
-                fingerprint = credentials.fingerprint
+                usage_id = credentials.usage_id
                 allowed = {tool["name"] for tool in self._read_only_tools(credentials, services)}
                 if native_name not in allowed:
                     error_kind = "not_allowed"
@@ -139,5 +140,7 @@ class NativeProxyMiddleware:
         finally:
             if self.usage is not None:
                 duration_ms = int((time.perf_counter() - started) * 1000)
-                self.usage.record(name, error_kind is None, error_kind, duration_ms, fingerprint)
+                self.usage.record(
+                    name[:MAX_METRICS_TOOL_NAME], error_kind is None, error_kind, duration_ms, usage_id
+                )
         return _build_call_result(result)

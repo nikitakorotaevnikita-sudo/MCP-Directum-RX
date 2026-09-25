@@ -8,7 +8,7 @@ from mcp import Client
 
 from src.mcp_server.context import Credentials
 
-FAKE_CREDENTIALS = Credentials(auth_token="Basic fake", fingerprint="f" * 64)
+FAKE_CREDENTIALS = Credentials(auth_token="Basic fake", fingerprint="f" * 64, usage_id="u" * 16)
 
 
 class FakeProvider:

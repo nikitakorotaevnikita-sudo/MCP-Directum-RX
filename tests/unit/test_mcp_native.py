@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.mcp_server.app import build_server
+from src.mcp_server.audit import ToolUsageStore
 from src.mcp_server.native import NativeMcpClient
 from src.services.directum_client import DirectumError
 from tests.unit.mcp_fakes import FakeProvider, call_tool, error_text, list_tools
@@ -188,3 +189,25 @@ def test_native_call_is_error_true_reaches_result(tmp_path):
 
     assert result.is_error
     assert result.content[0].text == "boom"
+
+
+def make_server_with_usage(tmp_path, client):
+    store = ToolUsageStore(str(tmp_path / "usage.db"))
+    server = build_server(FakeProvider(SimpleNamespace(client=client)), usage=store, skills_dir=tmp_path)
+    return server, store
+
+
+def test_native_call_records_usage_id_not_fingerprint(tmp_path):
+    server, store = make_server_with_usage(tmp_path, FakeNativeClient())
+
+    call_tool(server, "drx_native_gd_dashboard_ai_agent_get_action_items2_info", {})
+
+    assert store.user_hashes() == ["u" * 16]
+
+
+def test_native_tool_name_in_metrics_is_capped(tmp_path):
+    server, store = make_server_with_usage(tmp_path, FakeNativeClient())
+
+    call_tool(server, "drx_native_" + "x" * 300, {})
+
+    assert [len(row["tool"]) for row in store.summary()] == [100]

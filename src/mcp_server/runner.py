@@ -41,12 +41,12 @@ class ToolRunner:
 
     def _execute(self, headers: Any, tool: str, action: Callable[[Any], T]) -> T:
         started = time.perf_counter()
-        fingerprint = None
+        usage_id = None
         ok = False
         error_kind = None
         try:
             with self.provider.open(headers) as (credentials, services):
-                fingerprint = credentials.fingerprint
+                usage_id = credentials.usage_id
                 result = action(services)
             ok = True
             return result
@@ -57,4 +57,4 @@ class ToolRunner:
             duration_ms = int((time.perf_counter() - started) * 1000)
             logger.info("tool=%s ok=%s error=%s duration_ms=%d", tool, ok, error_kind, duration_ms)
             if self.usage is not None:
-                self.usage.record(tool, ok, error_kind, duration_ms, fingerprint)
+                self.usage.record(tool, ok, error_kind, duration_ms, usage_id)

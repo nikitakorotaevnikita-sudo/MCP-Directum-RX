@@ -90,6 +90,7 @@ def test_runner_returns_result_and_records_usage(tmp_path):
     assert run_async(runner.run, _Ctx(), "demo", lambda services: services.value) == 42
     assert provider.opened_with == [{"x-directum-login": "user1"}]
     assert store.summary()[0]["calls"] == 1
+    assert store.user_hashes() == ["u" * 16]
 
 
 def test_runner_maps_errors_and_records_them(tmp_path):

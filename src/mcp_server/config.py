@@ -1,5 +1,11 @@
+import secrets
+
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Соль метрик на случай, когда ни MCP_METRICS_SALT, ни MCP_OGV_KEY не заданы: живёт до перезапуска процесса.
+_PROCESS_METRICS_SALT = secrets.token_hex(32)
 
 
 def _secret_or_none(value: SecretStr | None) -> str | None:
@@ -23,6 +29,7 @@ class McpSettings(BaseSettings):
     MCP_OGV_KEY: SecretStr | None = Field(default=None, repr=False)
     MCP_ALLOW_ENV_CREDENTIALS: bool = False
     MCP_USAGE_DB_PATH: str = "data/mcp_usage.db"
+    MCP_METRICS_SALT: SecretStr | None = Field(default=None, repr=False)
 
     @property
     def directum_base_url(self) -> str:
@@ -39,3 +46,7 @@ class McpSettings(BaseSettings):
     @property
     def env_auth_token(self) -> str | None:
         return _secret_or_none(self.DIRECTUM_AUTH_TOKEN)
+
+    @property
+    def metrics_salt(self) -> str:
+        return _secret_or_none(self.MCP_METRICS_SALT) or self.mcp_key or _PROCESS_METRICS_SALT
