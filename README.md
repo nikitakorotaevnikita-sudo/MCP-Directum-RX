@@ -193,11 +193,49 @@ Fuzzy-fallback использует стемминг словоформ и ст�
 & ".venv\Scripts\python.exe" -m src.mcp_server
 ```
 
-Проверка: `http://localhost:8010/health`. Нужные переменные — в `.env.example` (раздел mcpOGV). Для отладки без LibreChat можно включить `MCP_ALLOW_ENV_CREDENTIALS=true` — тогда используется `DIRECTUM_AUTH_TOKEN`.
+Проверка: `http://localhost:8010/health`. Нужные переменные — в `.env.example` (раздел mcpOGV).
 
-**Docker:** сервис `mcp-ogv` в `docker-compose.yml` (порт 8010). Подключение к LibreChat — `docs/mcp-ogv/librechat.example.yaml`; LibreChat и `mcp-ogv` должны быть в одной Docker-сети, хост `mcp-ogv:8010` — в `MCP_ALLOWED_HOSTS`.
+**Локальная отладка без LibreChat:** `MCP_ALLOW_ENV_CREDENTIALS=true` — запросы без заголовков с кредами идут под `DIRECTUM_AUTH_TOKEN`. Без `MCP_OGV_KEY` сервер в этом режиме стартует только на loopback:
 
-**Метрики использования тулов:** SQLite `MCP_USAGE_DB_PATH` (тул, успех, длительность, хеш пользователя — без кредов).
+```powershell
+$env:MCP_ALLOW_ENV_CREDENTIALS = "true"
+$env:MCP_HOST = "127.0.0.1"
+& ".venv\Scripts\python.exe" -m src.mcp_server
+```
+
+**Docker:** сервис `mcp-ogv` в `docker-compose.yml`. Порт 8010 опубликован только на loopback хоста (`127.0.0.1:8010`) — для проверки `/health` с самой машины. LibreChat обращается к `mcp-ogv` не через порт хоста, а по общей Docker-сети: `http://mcp-ogv:8010/mcp` (хост `mcp-ogv:8010` должен быть в `MCP_ALLOWED_HOSTS`). Подключение к LibreChat — `docs/mcp-ogv/librechat.example.yaml`.
+
+Общая сеть (один раз): `docker network create mcp-net`. Затем в `docker-compose.yml` этого проекта (через `docker-compose.override.yml`, чтобы чат не зависел от внешней сети):
+
+```yaml
+services:
+  mcp-ogv:
+    networks:
+      - default
+      - mcp-net
+networks:
+  mcp-net:
+    external: true
+```
+
+и в compose-проекте LibreChat (сервис `api`):
+
+```yaml
+services:
+  api:
+    networks:
+      - default
+      - mcp-net
+networks:
+  mcp-net:
+    external: true
+```
+
+Важно для compose-развёртываний:
+- **не включайте** `MCP_ALLOW_ENV_CREDENTIALS` — иначе запросы без кредов пользователя пойдут под сервисной учёткой;
+- по умолчанию `mcp-ogv` читает общий `.env` вместе с `DIRECTUM_AUTH_TOKEN` чата. Лучше дать сервису отдельный env-файл (например, `env_file: [.env.mcp-ogv]`) без `DIRECTUM_AUTH_TOKEN` — mcpOGV он не нужен.
+
+**Метрики использования тулов:** SQLite `MCP_USAGE_DB_PATH` (тул, успех, длительность, обезличенный id пользователя — HMAC логина с солью `MCP_METRICS_SALT`, без кредов и без производных пароля).
 
 **Live-проверка на стенде** (только чтение, креды из окружения):
 
