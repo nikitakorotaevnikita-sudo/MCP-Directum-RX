@@ -74,3 +74,11 @@ def test_live_admin_tool_visibility_matches_role(server):
         )
         assert data["employee"]["id"] == employee["Id"]
         assert data["total"] is not None
+
+
+@pytest.mark.parametrize("due", ["today", "week"])
+def test_live_action_items_due_window(server, due):
+    data = payload(call_tool(server, "list_action_items", {"direction": "outgoing", "due": due, "limit": 3}))
+
+    assert data["total"] is not None
+    assert data["returned"] <= 3

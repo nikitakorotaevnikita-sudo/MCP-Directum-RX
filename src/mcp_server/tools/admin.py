@@ -7,6 +7,7 @@ from pydantic import Field
 
 from src.mcp_server.envelope import clamp_limit, list_envelope
 from src.mcp_server.runner import READ_ONLY, ToolRunner
+from src.mcp_server.tools.action_items import Due, check_due
 from src.models.schemas import EmployeeSummary
 from src.services.assignments import OVERDUE_COMPATIBLE_STATUSES, ActionItemFilters
 
@@ -68,9 +69,11 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         date_from: IsoDate = None,
         date_to: IsoDate = None,
         limit: Limit = 20,
+        due: Due = None,
     ) -> dict:
-        """Только для администраторов: поручения любого сотрудника — входящие (он исполнитель) или исходящие (он автор), с фильтром по статусу, просрочке и периоду. total — сколько всего."""
+        """Только для администраторов: поручения любого сотрудника — входящие (он исполнитель) или исходящие (он автор), с фильтром по статусу, просрочке, периоду или сроку (сегодня / 7 дней). total — сколько всего."""
         size = clamp_limit(limit)
+        check_due(due, status=status, only_overdue=only_overdue, has_period=bool(date_from or date_to))
         if only_overdue and status not in OVERDUE_COMPATIBLE_STATUSES:
             raise ToolError(
                 "Просроченными бывают только поручения в работе: уберите only_overdue или укажите status=in_process."
@@ -80,7 +83,7 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         if start and end and start > end:
             raise ToolError("date_from позже date_to.")
         filters = ActionItemFilters(
-            status=status, only_overdue=only_overdue, date_field=date_field, date_from=start, date_to=end
+            status=status, only_overdue=only_overdue, date_field=date_field, date_from=start, date_to=end, due=due
         )
 
         def action(s):
@@ -99,6 +102,7 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
                     "date_field": date_field,
                     "date_from": start.isoformat() if start else None,
                     "date_to": end.isoformat() if end else None,
+                    "due": due,
                 },
             }
 

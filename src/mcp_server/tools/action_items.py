@@ -1,10 +1,12 @@
 from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from src.mcp_server.envelope import clamp_limit, list_envelope, to_jsonable
 from src.mcp_server.runner import READ_ONLY, ToolRunner
+from src.services.assignments import OVERDUE_COMPATIBLE_STATUSES, ActionItemFilters
 from src.services.outgoing_analytics import categorize_outgoing
 
 Limit = Annotated[int, Field(description="Сколько записей вернуть (1–100)", ge=1, le=100)]
@@ -13,6 +15,22 @@ Direction = Annotated[
     Literal["incoming", "outgoing"],
     Field(description="incoming — поручения мне на исполнение, outgoing — поручения, выданные мной"),
 ]
+Due = Annotated[
+    Literal["today", "week"] | None,
+    Field(description="Срок: today — сегодня, week — ближайшие 7 дней начиная с сегодня. Только поручения в работе"),
+]
+
+
+def check_due(due: str | None, status: str = "in_process", only_overdue: bool = False, has_period: bool = False) -> None:
+    """Окно срока задаёт свой период и статус «в работе» — с другими фильтрами срока не сочетается."""
+    if due is None:
+        return
+    if only_overdue:
+        raise ToolError("due и only_overdue несовместимы: выберите что-то одно.")
+    if status not in OVERDUE_COMPATIBLE_STATUSES:
+        raise ToolError("due применим только к поручениям в работе: укажите status=in_process.")
+    if has_period:
+        raise ToolError("due нельзя сочетать с date_from/date_to: выберите что-то одно.")
 
 
 def register(mcp: MCPServer, runner: ToolRunner) -> None:
@@ -28,11 +46,16 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         return await runner.run(ctx, "list_my_assignments", action)
 
     @mcp.tool(annotations=READ_ONLY)
-    async def list_action_items(direction: Direction, ctx: Context, limit: Limit = 20) -> dict:
-        """Поручения в работе: входящие (мне) или исходящие (выданные мной, с исполнителем). total — сколько всего."""
+    async def list_action_items(direction: Direction, ctx: Context, limit: Limit = 20, due: Due = None) -> dict:
+        """Поручения в работе: входящие (мне) или исходящие (выданные мной, с исполнителем), при необходимости — со сроком сегодня или в ближайшие 7 дней. total — сколько всего."""
         size = clamp_limit(limit)
 
         def action(s):
+            if due is not None:
+                filters = ActionItemFilters(due=due)
+                me = s.current_user.get_current_user()
+                items = s.assignments.list_employee_action_items(direction, me.id, filters, top=size)
+                return list_envelope(items, size, total=s.assignments.count_employee_action_items(direction, me.id, filters))
             fetch = (
                 s.assignments.get_action_items_assigned_to_me
                 if direction == "incoming"

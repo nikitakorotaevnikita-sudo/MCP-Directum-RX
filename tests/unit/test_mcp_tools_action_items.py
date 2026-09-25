@@ -162,3 +162,57 @@ def test_directum_errors_become_tool_errors():
     text = error_text(call_tool(make_server(services), "list_my_assignments"))
 
     assert "Слишком широкий запрос" in text
+
+
+def due_services():
+    seen = {}
+
+    def list_employee(direction, employee_id, filters=None, top=None):
+        seen["list"] = (direction, employee_id, filters, top)
+        return summaries(1)
+
+    def count_employee(direction, employee_id, filters=None):
+        seen["count"] = (direction, employee_id, filters)
+        return 4
+
+    services = SimpleNamespace(
+        current_user=SimpleNamespace(get_current_user=lambda: SimpleNamespace(id=63, name="Концева")),
+        assignments=SimpleNamespace(
+            get_action_items_assigned_to_me=lambda top: [],
+            get_action_items_created_by_me=lambda top: [],
+            count_action_items=lambda direction: 0,
+            list_employee_action_items=list_employee,
+            count_employee_action_items=count_employee,
+        ),
+    )
+    return services, seen
+
+
+def test_list_action_items_due_today_uses_current_user_window():
+    from src.services.assignments import ActionItemFilters
+
+    services, seen = due_services()
+
+    data = payload(call_tool(make_server(services), "list_action_items", {"direction": "outgoing", "due": "today", "limit": 5}))
+
+    assert seen["list"] == ("outgoing", 63, ActionItemFilters(due="today"), 5)
+    assert seen["count"] == ("outgoing", 63, ActionItemFilters(due="today"))
+    assert data["total"] == 4
+
+
+def test_list_action_items_due_week_incoming():
+    from src.services.assignments import ActionItemFilters
+
+    services, seen = due_services()
+
+    payload(call_tool(make_server(services), "list_action_items", {"direction": "incoming", "due": "week"}))
+
+    assert seen["list"][:3] == ("incoming", 63, ActionItemFilters(due="week"))
+
+
+def test_list_action_items_rejects_unknown_due():
+    services, _ = due_services()
+
+    result = call_tool(make_server(services), "list_action_items", {"direction": "incoming", "due": "month"})
+
+    assert result.is_error

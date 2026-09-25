@@ -59,6 +59,7 @@ def test_returns_envelope_with_employee_and_filters():
         "date_field": "deadline",
         "date_from": None,
         "date_to": None,
+        "due": None,
     }
     assert services.assignments.listed == [("incoming", 63, ActionItemFilters(), 2)]
 
@@ -152,3 +153,37 @@ def test_non_admin_rejected_inside_tool():
 
     assert "только администраторам" in text
     assert services.assignments.listed == []
+
+
+def test_due_passed_to_filters_and_echoed():
+    services = make_services(by_id=NADYA)
+
+    data = payload(call(services, employee="63", direction="outgoing", due="week"))
+
+    _, _, filters, _ = services.assignments.listed[0]
+    assert filters == ActionItemFilters(due="week")
+    assert data["filters"]["due"] == "week"
+
+
+def test_due_without_value_echoed_as_none():
+    data = payload(call(make_services(by_id=NADYA), employee="63", direction="incoming"))
+
+    assert data["filters"]["due"] is None
+
+
+def test_due_with_period_rejected():
+    text = error_text(call(make_services(), employee="63", direction="incoming", due="today", date_from="2026-01-01"))
+
+    assert "date_from/date_to" in text
+
+
+def test_due_with_overdue_rejected():
+    text = error_text(call(make_services(), employee="63", direction="incoming", due="today", only_overdue=True))
+
+    assert "only_overdue" in text
+
+
+def test_due_with_completed_rejected():
+    text = error_text(call(make_services(), employee="63", direction="incoming", due="week", status="completed"))
+
+    assert "в работе" in text
