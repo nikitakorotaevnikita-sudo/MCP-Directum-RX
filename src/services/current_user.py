@@ -11,6 +11,13 @@ class CurrentUserService:
         self.auth_token = auth_token
         self._cached_user: DirectumUser | None = None
 
+    @property
+    def cached_user(self) -> DirectumUser | None:
+        return self._cached_user
+
+    def prime(self, user: DirectumUser) -> None:
+        self._cached_user = user
+
     def get_current_user(self) -> DirectumUser:
         if self._cached_user:
             return self._cached_user

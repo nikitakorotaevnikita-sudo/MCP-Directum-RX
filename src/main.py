@@ -20,14 +20,11 @@ from src.models.schemas import (
     MeetingSummary,
     TaskCreateRequest,
 )
-from src.services.action_items import ActionItemService
-from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
-from src.services.discipline_analytics import DisciplineAnalyticsService
 from src.services.directum_connection import build_basic_auth_token
 from src.services.directum_client import DirectumClient, DirectumError
+from src.services.factory import build_directum_services
 from src.services.llm_service import LLMService
-from src.services.meetings import MeetingsService
 from src.services.metrics_storage import MetricsStorage
 from src.services.tool_registry import ToolRegistry
 
@@ -335,28 +332,29 @@ def build_llm_service(settings: Settings, registry: ToolRegistry, testing: bool 
 def build_services(settings: Settings, testing: bool = False) -> dict[str, Any]:
     transport = _mock_transport() if testing else None
     auth_token = settings.directum_headers()["Authorization"]
-    client = DirectumClient(
+    directum = build_directum_services(
         settings.directum_base_url,
         auth_token,
         settings.DIRECTUM_REQUEST_TIMEOUT_SECONDS,
         transport=transport,
     )
-    current_user = CurrentUserService(client, auth_token)
-    assignments = AssignmentsService(client, current_user)
-    action_items = ActionItemService(client)
-    meetings = MeetingsService(client, current_user)
-    discipline = DisciplineAnalyticsService(client, action_items)
     metrics = MetricsStorage(settings.METRICS_DB_PATH)
     metrics.initialize()
-    registry = ToolRegistry(current_user, assignments, action_items, meetings, discipline)
+    registry = ToolRegistry(
+        directum.current_user,
+        directum.assignments,
+        directum.action_items,
+        directum.meetings,
+        directum.discipline,
+    )
     llm = build_llm_service(settings, registry, testing=testing)
     return {
-        "directum": client,
-        "current_user": current_user,
-        "assignments": assignments,
-        "action_items": action_items,
-        "meetings": meetings,
-        "discipline": discipline,
+        "directum": directum.client,
+        "current_user": directum.current_user,
+        "assignments": directum.assignments,
+        "action_items": directum.action_items,
+        "meetings": directum.meetings,
+        "discipline": directum.discipline,
         "metrics": metrics,
         "registry": registry,
         "llm": llm,

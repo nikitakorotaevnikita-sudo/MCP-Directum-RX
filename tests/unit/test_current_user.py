@@ -60,3 +60,22 @@ def test_current_user_rejects_malformed_basic_token_safely(auth_token, secret_fr
     for fragment in secret_fragments:
         assert fragment not in message
     assert client.calls == 0
+
+
+class _NoQueryClient:
+    def query(self, *args, **kwargs):
+        raise AssertionError("prime() must prevent the lookup")
+
+
+def test_prime_makes_lookup_unnecessary():
+    from src.models.schemas import DirectumUser
+    from src.services.current_user import CurrentUserService
+
+    service = CurrentUserService(_NoQueryClient(), "Basic bG9naW46cGFzcw==")
+    user = DirectumUser(id=63, name="Концева Надежда Ивановна", login="login")
+
+    assert service.cached_user is None
+    service.prime(user)
+
+    assert service.get_current_user() is user
+    assert service.cached_user is user
