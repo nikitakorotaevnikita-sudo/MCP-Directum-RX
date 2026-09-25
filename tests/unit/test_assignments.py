@@ -78,3 +78,62 @@ def test_created_action_items_performer_none_when_assignee_absent():
     result = service.get_action_items_created_by_me()
 
     assert result[0].performer is None
+
+
+import pytest
+
+
+class CountingClient(FakeClient):
+    def count(self, entity_set, filter_=None):
+        self.calls.append((entity_set, {"count_filter": filter_}))
+        return 1191
+
+
+def test_assignment_lists_pass_top_to_odata():
+    client = FakeClient()
+    service = AssignmentsService(client=client, current_user_service=FakeCurrentUser())
+
+    service.get_my_assignments(top=21)
+    service.get_overdue_assignments(top=21)
+    service.get_action_items_assigned_to_me(top=21)
+    service.get_action_items_created_by_me(top=21)
+
+    assert [kwargs["top"] for _, kwargs in client.calls] == [21, 21, 21, 21]
+
+
+def test_count_my_assignments_uses_list_filter():
+    client = CountingClient()
+    service = AssignmentsService(client=client, current_user_service=FakeCurrentUser())
+
+    assert service.count_my_assignments() == 1191
+    entity_set, kwargs = client.calls[-1]
+    assert entity_set == "IAssignments"
+    assert kwargs["count_filter"] == "Performer/Id eq 1165 and Status eq 'InProcess'"
+
+
+def test_count_overdue_assignments_adds_deadline_condition():
+    client = CountingClient()
+    service = AssignmentsService(client=client, current_user_service=FakeCurrentUser())
+
+    service.count_my_assignments(only_overdue=True)
+
+    _, kwargs = client.calls[-1]
+    assert kwargs["count_filter"].startswith("Performer/Id eq 1165 and Status eq 'InProcess' and Deadline lt ")
+
+
+def test_count_action_items_by_direction():
+    client = CountingClient()
+    service = AssignmentsService(client=client, current_user_service=FakeCurrentUser())
+
+    service.count_action_items("incoming")
+    service.count_action_items("outgoing")
+
+    assert client.calls[-2] == ("IActionItemExecutionAssignments", {"count_filter": "Performer/Id eq 1165 and Status eq 'InProcess'"})
+    assert client.calls[-1] == ("IActionItemExecutionTasks", {"count_filter": "Author/Id eq 1165 and Status eq 'InProcess'"})
+
+
+def test_count_action_items_rejects_unknown_direction():
+    service = AssignmentsService(client=CountingClient(), current_user_service=FakeCurrentUser())
+
+    with pytest.raises(ValueError):
+        service.count_action_items("sideways")
