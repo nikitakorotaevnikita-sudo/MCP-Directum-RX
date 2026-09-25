@@ -11,3 +11,4 @@ output/
 uv.lock
 .superpowers/
 tmp/
+*.egg-info/
