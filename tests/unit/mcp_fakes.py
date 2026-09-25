@@ -50,3 +50,51 @@ def payload(result):
 def error_text(result):
     assert result.is_error, "expected a tool error"
     return result.content[0].text
+
+
+METADATA_XML = """<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="Demo" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EntityType Name="IEntityBase"><Key><PropertyRef Name="Id"/></Key><Property Name="Id" Type="Edm.Int64"/></EntityType>
+      <EntityType Name="IRequestDto" BaseType="Demo.IEntityBase">
+        <Property Name="Subject" Type="Edm.String"/>
+        <Property Name="RegistrationDate" Type="Edm.DateTimeOffset"/>
+        <NavigationProperty Name="Author" Type="Demo.IEmployeeDto"/>
+      </EntityType>
+      <EntityType Name="IEmployeeDto" BaseType="Demo.IEntityBase"><Property Name="Name" Type="Edm.String"/></EntityType>
+      <EntityType Name="ILoginDto" BaseType="Demo.IEntityBase"><Property Name="LoginName" Type="Edm.String"/></EntityType>
+      <EntityContainer Name="Container">
+        <EntitySet Name="IRequests" EntityType="Demo.IRequestDto"/>
+        <EntitySet Name="IEmployees" EntityType="Demo.IEmployeeDto"/>
+        <EntitySet Name="ILogins" EntityType="Demo.ILoginDto"/>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>"""
+
+
+class FakeODataClient:
+    def __init__(self):
+        self.metadata_calls = 0
+        self.queries = []
+        self.counts = []
+        self.paths = []
+
+    def get_metadata_xml(self):
+        self.metadata_calls += 1
+        return METADATA_XML
+
+    def query(self, entity_set, *, filter_=None, select=None, expand=None, orderby=None, top=None, count=False):
+        self.queries.append(
+            {"entity_set": entity_set, "filter_": filter_, "select": select, "expand": expand, "orderby": orderby, "top": top}
+        )
+        return [{"Id": i, "Subject": f"Обращение {i}"} for i in range(top or 1)]
+
+    def count(self, entity_set, filter_=None):
+        self.counts.append((entity_set, filter_))
+        return 1761
+
+    def get_one(self, entity_path):
+        self.paths.append(entity_path)
+        return {"Id": 5, "Subject": "Обращение 5"}

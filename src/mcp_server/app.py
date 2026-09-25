@@ -1,17 +1,21 @@
 import hmac
+from pathlib import Path
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.responses import JSONResponse
 
+from src.mcp_server import resources
 from src.mcp_server.audit import ToolUsageStore
 from src.mcp_server.config import McpSettings
 from src.mcp_server.context import ServicesProvider
+from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
-from src.mcp_server.tools import action_items, common, documents
+from src.mcp_server.tools import action_items, common, documents, odata
 
 SERVER_NAME = "mcpOGV"
+SKILLS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "skills"
 
 INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени текущего пользователя (его права и его данные).
 Правила:
@@ -30,12 +34,15 @@ def _register_health(mcp: MCPServer) -> None:
         return JSONResponse({"status": "ok", "server": SERVER_NAME})
 
 
-def build_server(provider: Any, usage: ToolUsageStore | None = None) -> MCPServer:
+def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir: Path = SKILLS_DIR) -> MCPServer:
     runner = ToolRunner(provider, usage)
     mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS)
     common.register(mcp, runner)
     action_items.register(mcp, runner)
     documents.register(mcp, runner)
+    guides = resources.load_domain_guides(skills_dir)
+    odata.register(mcp, runner, MetadataCache(), guides)
+    resources.register(mcp, guides)
     _register_health(mcp)
     return mcp
 
