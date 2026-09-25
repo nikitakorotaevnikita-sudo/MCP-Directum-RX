@@ -40,7 +40,9 @@ class NativeMcpClient:
         tools = self.request("tools/list", {}).get("tools", [])
         return [
             tool for tool in tools
-            if isinstance(tool, dict) and (tool.get("annotations") or {}).get("readOnlyHint") is True
+            if isinstance(tool, dict)
+            and isinstance(tool.get("name"), str) and tool.get("name")
+            and (tool.get("annotations") or {}).get("readOnlyHint") is True
         ]
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -49,6 +51,27 @@ class NativeMcpClient:
 
 def _error_result(text: str) -> CallToolResult:
     return CallToolResult(content=[TextContent(type="text", text=text)], is_error=True)
+
+
+def _build_call_result(result: dict[str, Any]) -> CallToolResult:
+    """Возвращает результат родного MCP как есть (текст/картинки/ресурсы/structuredContent).
+
+    Протокол Directum (2025-03-26) не присылает поля новее (например resultType), у которого
+    в mcp.types есть значение по умолчанию, так что model_validate справляется с "старым" wire-form.
+    Если результат не укладывается в CallToolResult вообще — откатываемся на извлечение текста.
+    """
+    try:
+        return CallToolResult.model_validate(result)
+    except Exception:
+        texts = [
+            item.get("text", "")
+            for item in result.get("content", [])
+            if isinstance(item, dict) and item.get("type") == "text"
+        ]
+        return CallToolResult(
+            content=[TextContent(type="text", text=text) for text in texts] or [TextContent(type="text", text="")],
+            is_error=bool(result.get("isError")),
+        )
 
 
 class NativeProxyMiddleware:
@@ -90,10 +113,10 @@ class NativeProxyMiddleware:
         try:
             with self.provider.open(headers) as (credentials, services):
                 tools = self._read_only_tools(credentials, services)
+            return [{**tool, "name": NATIVE_PREFIX + tool["name"]} for tool in tools]
         except Exception as exc:
             logger.warning("Directum native MCP tools unavailable: %s", type(exc).__name__)
             return []
-        return [{**tool, "name": NATIVE_PREFIX + tool["name"]} for tool in tools]
 
     def _call(self, headers: Any, name: str, arguments: dict[str, Any]) -> CallToolResult:
         started = time.perf_counter()
@@ -117,12 +140,4 @@ class NativeProxyMiddleware:
             if self.usage is not None:
                 duration_ms = int((time.perf_counter() - started) * 1000)
                 self.usage.record(name, error_kind is None, error_kind, duration_ms, fingerprint)
-        texts = [
-            item.get("text", "")
-            for item in result.get("content", [])
-            if isinstance(item, dict) and item.get("type") == "text"
-        ]
-        return CallToolResult(
-            content=[TextContent(type="text", text=text) for text in texts] or [TextContent(type="text", text="")],
-            is_error=bool(result.get("isError")),
-        )
+        return _build_call_result(result)
