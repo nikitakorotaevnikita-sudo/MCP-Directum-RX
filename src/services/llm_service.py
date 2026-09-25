@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 import httpx
 from openai import OpenAI
 
+from src.services.outgoing_analytics import categorize_outgoing, parse_deadline_value
+
 
 SYSTEM_PROMPT = (
     "You are an assistant for Directum RX work items. Russian tool routing is strict: "
@@ -1178,22 +1180,7 @@ class LLMService:
 
     def _format_outgoing_action_item_analytics(self, result: Any) -> str:
         items = self._normalize_tool_items(result)
-        now = datetime.now(timezone.utc)
-        due_soon_limit = now + timedelta(days=1)
-        categories: dict[str, list[dict[str, Any]]] = {
-            "work": [],
-            "due_soon": [],
-            "overdue": [],
-        }
-
-        for item in items:
-            deadline = self._deadline_from_item(item)
-            if deadline is not None and deadline < now:
-                categories["overdue"].append(item)
-            elif deadline is not None and deadline <= due_soon_limit:
-                categories["due_soon"].append(item)
-            else:
-                categories["work"].append(item)
+        categories = categorize_outgoing(items, fallback=self._parse_deadline)
 
         # Текстовые списки убраны: в ответе только сводка + визуализация.
         # Детали по каждому поручению уезжают в drill-down модалку через items
@@ -1319,22 +1306,7 @@ class LLMService:
         return f"{self._markdown_item_title(title, item.get('url'))} — {', '.join(details)}{report_link}"
 
     def _deadline_from_item(self, item: dict[str, Any]) -> datetime | None:
-        raw = item.get("deadline")
-        if raw is None:
-            return None
-        if isinstance(raw, datetime):
-            return raw if raw.tzinfo is not None and raw.utcoffset() is not None else raw.replace(tzinfo=timezone.utc)
-        if not isinstance(raw, str) or not raw.strip():
-            return None
-        try:
-            parsed = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
-        except ValueError:
-            parsed = self._parse_deadline(raw)
-        if parsed is None:
-            return None
-        if parsed.tzinfo is None or parsed.utcoffset() is None:
-            return parsed.replace(tzinfo=timezone.utc)
-        return parsed
+        return parse_deadline_value(item.get("deadline"), self._parse_deadline)
 
     def _safe_directum_error_message(self, exc: Exception) -> str:
         message = str(exc)
