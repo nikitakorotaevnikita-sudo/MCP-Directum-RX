@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import httpx
 
 from src.services.action_items import ActionItemService
+from src.services.admin_access import AdminAccessService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
 from src.services.directum_client import DirectumClient
@@ -20,6 +21,7 @@ class DirectumServices:
     action_items: ActionItemService
     meetings: MeetingsService
     discipline: DisciplineAnalyticsService
+    admin_access: AdminAccessService
 
     def close(self) -> None:
         self.client.close()
@@ -41,4 +43,5 @@ def build_directum_services(
         action_items=action_items,
         meetings=MeetingsService(client, current_user),
         discipline=DisciplineAnalyticsService(client, action_items),
+        admin_access=AdminAccessService(client, current_user),
     )

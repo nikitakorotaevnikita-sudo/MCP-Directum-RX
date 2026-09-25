@@ -19,5 +19,7 @@ def test_build_directum_services_wires_one_shared_client():
     assert services.action_items.client is services.client
     assert services.meetings.client is services.client
     assert services.discipline.client is services.client
+    assert services.admin_access.client is services.client
+    assert services.admin_access.current_user_service is services.current_user
     services.close()
     assert services.client.client.is_closed
