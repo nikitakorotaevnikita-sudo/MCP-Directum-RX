@@ -4,7 +4,6 @@ import socket
 import threading
 import time
 
-import anyio
 import httpx
 import httpx2
 import pytest
@@ -15,6 +14,7 @@ from mcp.client.streamable_http import streamable_http_client
 from src.mcp_server.app import build_asgi_app
 from src.mcp_server.config import McpSettings
 from src.mcp_server.context import ServicesProvider
+from tests.unit.mcp_fakes import run_async
 
 LOGIN, PASSWORD, KEY = "user1", "pw1", "test-key"
 EXPECTED_TOKEN = "Basic " + base64.b64encode(f"{LOGIN}:{PASSWORD}".encode()).decode()
@@ -64,7 +64,7 @@ def _call(url, headers, tool, arguments=None):
         async with Client(streamable_http_client(f"{url}/mcp", http_client=http)) as client:
             return await client.call_tool(tool, arguments or {})
 
-    return anyio.run(main)
+    return run_async(main)
 
 
 def test_health_is_public(mcp_url):

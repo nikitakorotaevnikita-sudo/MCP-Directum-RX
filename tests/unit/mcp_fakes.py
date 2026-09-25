@@ -1,6 +1,7 @@
 """Тестовые дублёры mcpOGV: без HTTP и без Directum."""
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 
 import anyio
@@ -23,7 +24,10 @@ class FakeProvider:
 
 
 def run_async(func, *args):
-    return anyio.run(func, *args)
+    # Отдельный поток: pytest-playwright (e2e) оставляет в главном потоке
+    # запущенный event loop, и anyio.run там падает при общем прогоне tests/.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(anyio.run, func, *args).result()
 
 
 def call_tool(server, name, arguments=None):
@@ -31,7 +35,7 @@ def call_tool(server, name, arguments=None):
         async with Client(server) as client:
             return await client.call_tool(name, arguments or {})
 
-    return anyio.run(main)
+    return run_async(main)
 
 
 def list_tools(server):
@@ -39,7 +43,7 @@ def list_tools(server):
         async with Client(server) as client:
             return (await client.list_tools()).tools
 
-    return anyio.run(main)
+    return run_async(main)
 
 
 def payload(result):

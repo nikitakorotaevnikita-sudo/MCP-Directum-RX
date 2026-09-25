@@ -2,7 +2,6 @@ from types import SimpleNamespace
 
 import pytest
 
-import anyio
 from mcp import Client
 
 from src.mcp_server.app import build_server
@@ -16,7 +15,15 @@ from src.mcp_server.odata_meta import (
     type_leaf,
 )
 from src.mcp_server.resources import load_domain_guides
-from tests.unit.mcp_fakes import METADATA_XML, FakeODataClient, FakeProvider, call_tool, error_text, payload
+from tests.unit.mcp_fakes import (
+    METADATA_XML,
+    FakeODataClient,
+    FakeProvider,
+    call_tool,
+    error_text,
+    payload,
+    run_async,
+)
 
 
 def write_skill(root, name, description, body="# Справочник\nНаборы: IRequests"):
@@ -73,7 +80,7 @@ def test_domain_guides_exposed_as_resources(tmp_path):
             content = await client.read_resource("drx://domains/hr")
             return uris, content.contents[0].text
 
-    uris, text = anyio.run(main)
+    uris, text = run_async(main)
 
     assert "drx://domains/hr" in uris
     assert "Справочник" in text
