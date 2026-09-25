@@ -8,6 +8,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.responses import JSONResponse
 
 from src.mcp_server import resources
+from src.mcp_server.admin_gate import AdminGateMiddleware
 from src.mcp_server.audit import ToolUsageStore
 from src.mcp_server.config import McpSettings
 from src.mcp_server.context import ServicesProvider, TtlCache
@@ -22,6 +23,7 @@ SERVER_NAME = "mcpOGV"
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 SKILLS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "skills"
 NATIVE_TOOLS_TTL_SECONDS = 600
+ADMIN_CHECK_TTL_SECONDS = 600
 
 INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени текущего пользователя (его права и его данные).
 Правила:
@@ -31,6 +33,7 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
 4. Универсальные odata_* используй для того, чего нет в курируемых. Всегда указывай filter — Directum отклоняет запросы без фильтра. Поля смотри через odata_describe_entity, наборы данных — в справочниках drx://domains/*.
 5. Инструменты drx_native_* — встроенные инструменты самой Directum RX.
 6. Даты передавай в формате YYYY-MM-DD.
+7. Инструменты admin_* видны только администраторам Directum RX: ими смотри данные других сотрудников, когда об этом явно просят.
 """
 
 
@@ -43,7 +46,9 @@ def _register_health(mcp: MCPServer) -> None:
 def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir: Path = SKILLS_DIR) -> MCPServer:
     runner = ToolRunner(provider, usage)
     native = NativeProxyMiddleware(provider, TtlCache(NATIVE_TOOLS_TTL_SECONDS), usage)
-    mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, middleware=[native])
+    admin_gate = AdminGateMiddleware(provider, TtlCache(ADMIN_CHECK_TTL_SECONDS))
+    # Порядок outermost-first: gate видит итоговый список, включая drx_native_*.
+    mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, middleware=[admin_gate, native])
     common.register(mcp, runner)
     action_items.register(mcp, runner)
     admin.register(mcp, runner)
