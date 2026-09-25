@@ -134,6 +134,18 @@ class DirectumClient:
         response = self.client.get(self.build_url(entity_path), headers=self._headers())
         return self._json_or_error(response)
 
+    def get_metadata_xml(self) -> str:
+        response = self.client.get(
+            self.build_url("$metadata"),
+            headers={"Authorization": self.auth_token, "Accept": "application/xml"},
+        )
+        if response.status_code >= 400:
+            raise DirectumError(
+                safe_message=f"Directum metadata request failed with status {response.status_code}",
+                status_code=response.status_code,
+            )
+        return response.text
+
     def post(self, entity_set: str, payload: dict[str, Any]) -> dict[str, Any]:
         url = self.build_url(entity_set)
         response = self.client.post(url, headers=self._headers(), json=payload)
@@ -212,6 +224,8 @@ class DirectumClient:
         if not isinstance(data, dict):
             return ""
         error = data.get("error")
+        if isinstance(error, str):
+            return error
         if isinstance(error, dict):
             message = error.get("message")
             if isinstance(message, dict):

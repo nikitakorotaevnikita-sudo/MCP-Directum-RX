@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from src.services.directum_client import DirectumClient, DirectumError
 
@@ -248,3 +249,56 @@ def test_build_client_card_url_for_meeting():
     assert "/5" in url
     assert "dbc0dd63-4d23-4f41-92ae-cab59bb70c8c" in url
     assert "rx.example" in url
+
+
+def test_error_detail_supports_plain_string_error():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                400,
+                json={"error": "Превышено максимальное количество сущностей в запросе. Используйте фильтрацию."},
+            )
+        ),
+    )
+
+    with pytest.raises(DirectumError) as info:
+        client.query("IAssignments", top=2)
+
+    assert "Используйте фильтрацию" in info.value.safe_message
+    assert info.value.status_code == 400
+
+
+def test_get_metadata_xml_returns_raw_text():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["accept"] = request.headers.get("accept")
+        seen["auth"] = request.headers.get("authorization")
+        return httpx.Response(200, text="<edmx:Edmx/>")
+
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert client.get_metadata_xml() == "<edmx:Edmx/>"
+    assert seen["url"].endswith("/$metadata")
+    assert "xml" in seen["accept"]
+    assert seen["auth"] == "Basic token"
+
+
+def test_get_metadata_xml_raises_on_error_status():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(401)),
+    )
+
+    with pytest.raises(DirectumError) as info:
+        client.get_metadata_xml()
+
+    assert info.value.status_code == 401
