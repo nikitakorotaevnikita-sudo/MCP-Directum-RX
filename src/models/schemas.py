@@ -121,6 +121,44 @@ class DocumentText(BaseModel):
     message: str = ""
 
 
+class QASearchArea(BaseModel):
+    id: int
+    name: str
+
+
+class QASource(BaseModel):
+    name: str
+    url: str | None = None
+    extension: str | None = None
+    fragments: list[str] = Field(default_factory=list)
+
+
+class QAAnswer(BaseModel):
+    status: str
+    task_id: str | None = None
+    answer: str = ""
+    score: float | None = None
+    search_area: str | None = None
+    sources: list[QASource] = Field(default_factory=list)
+    message: str = ""
+
+
+class ExecutiveSummary(BaseModel):
+    action_items: dict[str, int] = Field(default_factory=dict)
+    request_questions: list[dict[str, Any]] = Field(default_factory=list)
+    request_questions_total: int = 0
+    request_question_kinds: int = 0
+    message: str = ""
+
+
+class WorkingDaysResult(BaseModel):
+    date_from: date
+    days: int
+    hours: int = 0
+    result: datetime | None = None
+    result_date: date | None = None
+
+
 class CounterpartySummary(BaseModel):
     id: int
     name: str

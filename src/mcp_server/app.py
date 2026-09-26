@@ -15,7 +15,7 @@ from src.mcp_server.context import ServicesProvider, TtlCache
 from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
-from src.mcp_server.tools import action_items, admin, common, documents, odata
+from src.mcp_server.tools import action_items, admin, common, documents, odata, rx_methods
 
 logger = logging.getLogger("mcp_ogv")
 
@@ -35,6 +35,7 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
 6. Даты передавай в формате YYYY-MM-DD.
 7. Инструменты admin_* видны только администраторам Directum RX: ими смотри данные других сотрудников, когда об этом явно просят.
 8. Ссылки на карточки (поле url) выводи markdown-ссылками: [название](url).
+9. Вопрос о содержании документов («что сказано про…») — ask_documents; документ по реквизитам — find_documents.
 """
 
 
@@ -54,6 +55,7 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir:
     action_items.register(mcp, runner)
     admin.register(mcp, runner)
     documents.register(mcp, runner)
+    rx_methods.register(mcp, runner)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
     resources.register(mcp, guides)

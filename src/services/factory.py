@@ -11,6 +11,8 @@ from src.services.directum_client import DirectumClient
 from src.services.discipline_analytics import DisciplineAnalyticsService
 from src.services.document_search import DocumentSearchService
 from src.services.document_text import DocumentTextService
+from src.services.qa_search import QASearchService
+from src.services.rx_methods import RxMethodsService
 from src.services.meetings import MeetingsService
 
 
@@ -27,6 +29,8 @@ class DirectumServices:
     admin_access: AdminAccessService
     document_search: DocumentSearchService
     document_text: DocumentTextService
+    qa_search: QASearchService
+    rx_methods: RxMethodsService
 
     def close(self) -> None:
         self.client.close()
@@ -52,4 +56,6 @@ def build_directum_services(
         admin_access=AdminAccessService(client, current_user),
         document_search=DocumentSearchService(client, action_items, tz=tz),
         document_text=DocumentTextService(client),
+        qa_search=QASearchService(client),
+        rx_methods=RxMethodsService(client, tz=tz),
     )
