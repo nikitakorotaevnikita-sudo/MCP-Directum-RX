@@ -23,6 +23,8 @@ def test_build_directum_services_wires_one_shared_client():
     assert services.discipline.client is services.client
     assert services.admin_access.client is services.client
     assert services.admin_access.current_user_service is services.current_user
+    assert services.document_search.client is services.client
+    assert services.document_search.action_items is services.action_items
     services.close()
     assert services.client.client.is_closed
 
@@ -38,4 +40,5 @@ def test_build_directum_services_passes_timezone():
     )
 
     assert services.assignments.tz is tz
+    assert services.document_search.tz is tz
     services.close()

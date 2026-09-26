@@ -90,6 +90,25 @@ class DocumentSummary(BaseModel):
     url: str | None = None
 
 
+class DocumentCandidate(BaseModel):
+    id: int
+    name: str
+    kind: str | None = None
+    registration_number: str | None = None
+    registration_date: datetime | None = None
+    created: datetime | None = None
+    url: str | None = None
+    score: int = 0
+    match_reasons: list[str] = Field(default_factory=list)
+
+
+class DocumentSearchResult(BaseModel):
+    items: list[DocumentCandidate] = Field(default_factory=list)
+    candidates_total: int = 0
+    relaxed: list[str] = Field(default_factory=list)
+    message: str = ""
+
+
 class CounterpartySummary(BaseModel):
     id: int
     name: str
