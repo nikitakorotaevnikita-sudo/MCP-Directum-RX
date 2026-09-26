@@ -25,6 +25,7 @@ def test_build_directum_services_wires_one_shared_client():
     assert services.admin_access.current_user_service is services.current_user
     assert services.document_search.client is services.client
     assert services.document_search.action_items is services.action_items
+    assert services.document_text.client is services.client
     services.close()
     assert services.client.client.is_closed
 

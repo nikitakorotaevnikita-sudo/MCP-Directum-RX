@@ -109,6 +109,18 @@ class DocumentSearchResult(BaseModel):
     message: str = ""
 
 
+class DocumentText(BaseModel):
+    document_id: int
+    name: str = ""
+    version: int | None = None
+    extension: str | None = None
+    text: str = ""
+    chars_total: int = 0
+    truncated: bool = False
+    url: str | None = None
+    message: str = ""
+
+
 class CounterpartySummary(BaseModel):
     id: int
     name: str

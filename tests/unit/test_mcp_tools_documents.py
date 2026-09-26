@@ -204,3 +204,55 @@ def test_find_documents_limit_capped_at_twenty():
     result = call_tool(make_server(services), "find_documents", {"text": "ремонт", "limit": 50})
 
     assert result.is_error
+
+
+def text_services(result=None, error=None):
+    seen = {}
+
+    def get_text(document_id, max_chars=20000):
+        seen.update(document_id=document_id, max_chars=max_chars)
+        if error:
+            raise error
+        return result
+
+    return SimpleNamespace(document_text=SimpleNamespace(get_text=get_text)), seen
+
+
+def test_get_document_text_returns_text():
+    from src.models.schemas import DocumentText
+
+    services, seen = text_services(
+        DocumentText(document_id=42, name="Письмо", version=3, extension="docx", text="Текст", chars_total=5, url="https://rx.example/doc/42")
+    )
+
+    data = payload(call_tool(make_server(services), "get_document_text", {"document_id": 42, "max_chars": 5000}))
+
+    assert seen == {"document_id": 42, "max_chars": 5000}
+    assert data["text"] == "Текст"
+    assert data["url"] == "https://rx.example/doc/42"
+
+
+def test_get_document_text_default_max_chars():
+    from src.models.schemas import DocumentText
+
+    services, seen = text_services(DocumentText(document_id=42))
+
+    payload(call_tool(make_server(services), "get_document_text", {"document_id": 42}))
+
+    assert seen["max_chars"] == 20000
+
+
+def test_get_document_text_not_found_is_tool_error():
+    from src.services.directum_client import DirectumError
+
+    services, _ = text_services(error=DirectumError("Документ 42 не найден или у вас нет к нему доступа.", 404))
+
+    assert "не найден" in error_text(call_tool(make_server(services), "get_document_text", {"document_id": 42}))
+
+
+def test_get_document_text_max_chars_bounds():
+    services, _ = text_services()
+    server = make_server(services)
+
+    assert call_tool(server, "get_document_text", {"document_id": 42, "max_chars": 10}).is_error
+    assert call_tool(server, "get_document_text", {"document_id": 42, "max_chars": 60000}).is_error

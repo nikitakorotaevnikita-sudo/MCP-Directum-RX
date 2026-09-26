@@ -91,6 +91,18 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         return await runner.run(ctx, "get_document", action)
 
     @mcp.tool(annotations=READ_ONLY)
+    async def get_document_text(
+        document_id: Annotated[int, Field(description="Id документа", gt=0)],
+        ctx: Context,
+        max_chars: Annotated[int, Field(description="Сколько символов текста вернуть (1000–50000)", ge=1000, le=50000)] = 20000,
+    ) -> dict:
+        """Текст последней версии документа (docx, pdf, txt; иначе — из PDF-представления), чтобы пересказать или найти в нём нужное.
+        truncated=true — текст обрезан до max_chars. message объясняет, если текста нет (скан, неподдерживаемый формат)."""
+        return await runner.run(
+            ctx, "get_document_text", lambda s: to_jsonable(s.document_text.get_text(document_id, max_chars=max_chars))
+        )
+
+    @mcp.tool(annotations=READ_ONLY)
     async def list_documents_by_counterparty(
         counterparty: Annotated[str, Field(description="Название организации или аббревиатура, например «МЦ»")],
         ctx: Context,
