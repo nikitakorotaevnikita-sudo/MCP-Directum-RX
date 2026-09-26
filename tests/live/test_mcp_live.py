@@ -121,3 +121,11 @@ def test_live_ask_documents_answers_or_explains(server):
 
     assert data["status"] in {"completed", "in_progress", "unavailable", "error"}
     assert data["answer"] or data["message"]
+
+
+def test_live_citizen_request_status_by_number(server):
+    data = payload(call_tool(server, "get_citizen_request_status", {"registration_number": "13-ОГ"}))
+
+    for item in data["items"]:
+        assert item["status_text"]
+        assert "Email" not in item and "PIN" not in item

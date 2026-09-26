@@ -5,6 +5,7 @@ import httpx
 
 from src.services.action_items import ActionItemService
 from src.services.admin_access import AdminAccessService
+from src.services.citizen_requests import CitizenRequestService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
 from src.services.directum_client import DirectumClient
@@ -31,6 +32,7 @@ class DirectumServices:
     document_text: DocumentTextService
     qa_search: QASearchService
     rx_methods: RxMethodsService
+    citizen_requests: CitizenRequestService
 
     def close(self) -> None:
         self.client.close()
@@ -58,4 +60,5 @@ def build_directum_services(
         document_text=DocumentTextService(client),
         qa_search=QASearchService(client),
         rx_methods=RxMethodsService(client, tz=tz),
+        citizen_requests=CitizenRequestService(client, tz=tz),
     )

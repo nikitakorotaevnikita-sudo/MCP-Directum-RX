@@ -39,6 +39,15 @@
 `Users.Current.IncludedIn(Roles.Administrators)` — учитывает вложенные группы. `AdminAccessService.is_admin` вызывает
 метод; при ошибке вызова (метод недоступен на стенде) — прежний запрос к `IRoles` по Sid.
 
+## 5. `get_citizen_request_status` — статус обращения (добавлено по запросу)
+
+Данные `IRequests` (OData), а не метод портала. Поиск: `request_id`, `registration_number` (сначала `eq`, затем `contains`),
+`applicant` (`contains(FullName,…)`), до `limit` (1–20). `$select` только служебных полей — `PostalAddress`, `Email`,
+`Phones`, `PIN` не запрашиваются. `$expand`: исполнитель, куда перенаправлено, письмо-ответ, продления, вопросы с
+`ReviewResult`; при 400 — повтор с минимальным `$expand`, затем без него. `status_text` — готовая фраза: прекращено →
+перенаправлено → рассмотрено (дата ответа / письмо) → на рассмотрении (дней до срока / просрочка, «Срок продлён»).
+Дни — по поясу стенда.
+
 ## Не делаем
 
 `CitizenRequests.GetRequestStatus(regNumber, pin)` / `…ByKremlinId` — метод портала: нужен ПИН заявителя или id из ПОС,

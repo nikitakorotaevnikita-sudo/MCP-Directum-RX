@@ -159,6 +159,35 @@ class WorkingDaysResult(BaseModel):
     result_date: date | None = None
 
 
+class CitizenRequestStatus(BaseModel):
+    """Статус обращения для сотрудника. Контакты заявителя (адрес, телефон, email, ПИН) сюда не попадают."""
+
+    id: int
+    name: str = ""
+    registration_number: str | None = None
+    registration_date: date | None = None
+    request_date: date | None = None
+    applicant: str | None = None
+    request_type: str | None = None
+    receipt_form: str | None = None
+    is_repeated: bool = False
+    questions: list[dict[str, Any]] = Field(default_factory=list)
+    assignee: str | None = None
+    execution_state: str | None = None
+    deadline: date | None = None
+    initial_deadline: date | None = None
+    days_left: int | None = None
+    overdue: bool = False
+    prolonged: bool = False
+    prolongations: list[dict[str, Any]] = Field(default_factory=list)
+    answered: bool = False
+    response_date: date | None = None
+    answer_letter: dict[str, Any] | None = None
+    transferred_to: str | None = None
+    status_text: str = ""
+    url: str | None = None
+
+
 class CounterpartySummary(BaseModel):
     id: int
     name: str
