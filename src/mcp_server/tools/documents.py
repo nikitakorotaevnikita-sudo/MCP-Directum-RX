@@ -6,9 +6,19 @@ from pydantic import Field
 
 from src.mcp_server.envelope import MAX_LIMIT, clamp_limit, list_envelope, to_jsonable
 from src.mcp_server.runner import READ_ONLY, ToolRunner
+from src.mcp_server.tools.params import parse_period
+from src.services.document_search import DOCUMENT_KINDS, DocumentCriteria, counterparty_supported
 
 Limit = Annotated[int, Field(description="Сколько записей вернуть (1–100)", ge=1, le=100)]
 IsoDate = Annotated[str | None, Field(description="Дата в формате YYYY-MM-DD")]
+DocumentKind = Annotated[
+    Literal["any", "incoming_letter", "outgoing_letter", "order", "memo", "contract", "citizen_request"],
+    Field(
+        description="Вид: any — любой, incoming_letter/outgoing_letter — входящее/исходящее письмо, order — приказ или "
+        "распоряжение, memo — служебная записка, contract — договорной документ, citizen_request — обращение гражданина"
+    ),
+]
+CandidatesLimit = Annotated[int, Field(description="Сколько вариантов вернуть (1–20)", ge=1, le=20)]
 
 
 def register(mcp: MCPServer, runner: ToolRunner) -> None:
@@ -23,6 +33,47 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         return await runner.run(
             ctx, "search_documents", lambda s: list_envelope(s.action_items.search_documents(query, top=size + 1), size)
         )
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def find_documents(
+        ctx: Context,
+        text: Annotated[str | None, Field(description="Слова из названия или темы, как помнит пользователь")] = None,
+        kind: DocumentKind = "any",
+        counterparty: Annotated[str | None, Field(description="От кого пришёл или кому ушёл документ (организация)")] = None,
+        employee: Annotated[str | None, Field(description="ФИО: кто подготовил, подписал или исполнитель")] = None,
+        date_from: IsoDate = None,
+        date_to: IsoDate = None,
+        registration_number: Annotated[str | None, Field(description="Регистрационный номер или его часть")] = None,
+        limit: CandidatesLimit = 5,
+    ) -> dict:
+        """Найти документ по тому, что помнит пользователь (слова, примерный период, контрагент, вид, сотрудник, номер).
+        Возвращает несколько вариантов по убыванию score: у каждого match_reasons (почему подошёл) и url карточки.
+        relaxed — какие условия пришлось ослабить, если точных совпадений нет: скажи об этом пользователю."""
+        start, end = parse_period(date_from, date_to)
+        criteria = DocumentCriteria(
+            text=text,
+            kind=kind,
+            counterparty=counterparty,
+            employee=employee,
+            date_from=start,
+            date_to=end,
+            registration_number=registration_number,
+        )
+        if not criteria.has_any():
+            raise ToolError(
+                "Укажите хотя бы один признак: слова из названия, период, контрагента, сотрудника или номер."
+            )
+        if (counterparty or "").strip() and not counterparty_supported(kind):
+            raise ToolError(
+                f"Контрагент не применим к виду «{DOCUMENT_KINDS[kind][2]}»: он есть у писем и договорных документов."
+            )
+        size = clamp_limit(limit, default=5, maximum=20)
+
+        def action(s):
+            result = s.document_search.find(criteria, limit=size)
+            return {**to_jsonable(result), "returned": len(result.items)}
+
+        return await runner.run(ctx, "find_documents", action)
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_document(

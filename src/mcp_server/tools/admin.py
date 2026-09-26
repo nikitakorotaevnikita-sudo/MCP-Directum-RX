@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Annotated, Any, Literal
 
 from mcp.server.mcpserver import Context, MCPServer
@@ -8,6 +7,7 @@ from pydantic import Field
 from src.mcp_server.envelope import clamp_limit, list_envelope
 from src.mcp_server.runner import READ_ONLY, ToolRunner
 from src.mcp_server.tools.action_items import Due, check_due
+from src.mcp_server.tools.params import parse_period
 from src.models.schemas import EmployeeSummary
 from src.services.assignments import OVERDUE_COMPATIBLE_STATUSES, ActionItemFilters
 
@@ -17,15 +17,6 @@ MAX_CANDIDATES = 10
 
 Limit = Annotated[int, Field(description="Сколько записей вернуть (1–100)", ge=1, le=100)]
 IsoDate = Annotated[str | None, Field(description="Дата в формате YYYY-MM-DD, граница включительно")]
-
-
-def parse_iso_date(value: str | None, label: str) -> date | None:
-    if value is None or not value.strip():
-        return None
-    try:
-        return date.fromisoformat(value.strip())
-    except ValueError:
-        raise ToolError(f"{label}: ожидается дата в формате YYYY-MM-DD, получено «{value}».") from None
 
 
 def resolve_employee(action_items: Any, query: str) -> EmployeeSummary:
@@ -78,10 +69,7 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
             raise ToolError(
                 "Просроченными бывают только поручения в работе: уберите only_overdue или укажите status=in_process."
             )
-        start = parse_iso_date(date_from, "date_from")
-        end = parse_iso_date(date_to, "date_to")
-        if start and end and start > end:
-            raise ToolError("date_from позже date_to.")
+        start, end = parse_period(date_from, date_to)
         filters = ActionItemFilters(
             status=status, only_overdue=only_overdue, date_field=date_field, date_from=start, date_to=end, due=due
         )

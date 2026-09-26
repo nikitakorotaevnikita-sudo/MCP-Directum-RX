@@ -99,3 +99,108 @@ def test_list_my_meetings_returns_envelope():
 
     assert seen["days"] == 14
     assert data["items"][0]["subject"] == "Планёрка"
+
+
+def search_services(result=None, error=None):
+    from src.models.schemas import DocumentSearchResult
+
+    seen = {}
+
+    def find(criteria, limit=5):
+        seen.update(criteria=criteria, limit=limit)
+        if error:
+            raise error
+        return result or DocumentSearchResult()
+
+    return SimpleNamespace(document_search=SimpleNamespace(find=find)), seen
+
+
+def test_find_documents_passes_criteria_and_returns_candidates():
+    from datetime import date
+
+    from src.models.schemas import DocumentCandidate, DocumentSearchResult
+    from src.services.document_search import DocumentCriteria
+
+    result = DocumentSearchResult(
+        items=[DocumentCandidate(id=5, name="Письмо", url="https://rx.example/doc/5", score=20, match_reasons=["слова: ремонт"])],
+        candidates_total=7,
+        relaxed=["период расширен на 30 дней"],
+    )
+    services, seen = search_services(result)
+
+    data = payload(
+        call_tool(
+            make_server(services),
+            "find_documents",
+            {
+                "text": "ремонт дорог",
+                "kind": "incoming_letter",
+                "counterparty": "Минфин",
+                "employee": "Концева",
+                "date_from": "2026-08-01",
+                "date_to": "2026-08-31",
+                "registration_number": "139",
+                "limit": 3,
+            },
+        )
+    )
+
+    assert seen["criteria"] == DocumentCriteria(
+        text="ремонт дорог",
+        kind="incoming_letter",
+        counterparty="Минфин",
+        employee="Концева",
+        date_from=date(2026, 8, 1),
+        date_to=date(2026, 8, 31),
+        registration_number="139",
+    )
+    assert seen["limit"] == 3
+    assert data["returned"] == 1
+    assert data["candidates_total"] == 7
+    assert data["relaxed"] == ["период расширен на 30 дней"]
+    assert data["items"][0]["url"] == "https://rx.example/doc/5"
+    assert data["items"][0]["match_reasons"] == ["слова: ремонт"]
+
+
+def test_find_documents_default_limit_is_five():
+    services, seen = search_services()
+
+    payload(call_tool(make_server(services), "find_documents", {"text": "ремонт"}))
+
+    assert seen["limit"] == 5
+
+
+def test_find_documents_requires_some_criterion():
+    services, seen = search_services()
+
+    text = error_text(call_tool(make_server(services), "find_documents", {"text": "про"}))
+
+    assert "хотя бы один признак" in text
+    assert seen == {}
+
+
+def test_find_documents_rejects_counterparty_for_orders():
+    services, seen = search_services()
+
+    text = error_text(call_tool(make_server(services), "find_documents", {"kind": "order", "counterparty": "Минфин"}))
+
+    assert "Контрагент" in text
+    assert seen == {}
+
+
+def test_find_documents_rejects_bad_dates():
+    services, _ = search_services()
+    server = make_server(services)
+
+    assert "YYYY-MM-DD" in error_text(call_tool(server, "find_documents", {"date_from": "август"}))
+    assert "date_from позже date_to" in error_text(
+        call_tool(server, "find_documents", {"date_from": "2026-09-01", "date_to": "2026-08-01"})
+    )
+
+
+def test_find_documents_limit_capped_at_twenty():
+    services, _ = search_services()
+
+    result = call_tool(make_server(services), "find_documents", {"text": "ремонт", "limit": 50})
+
+    assert result.is_error
