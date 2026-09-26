@@ -6,10 +6,21 @@ from src.services.directum_client import DirectumError
 
 
 class FakeClient:
-    def __init__(self, rows=None, error=None):
+    """По умолчанию метода IsCurrentUserAdmin «нет» — проверяется фолбэк на IRoles."""
+
+    def __init__(self, rows=None, error=None, method_result=None, method_error=DirectumError("no method", 404)):
         self.rows = rows or []
         self.error = error
+        self.method_result = method_result
+        self.method_error = method_error if method_result is None else None
         self.calls = []
+        self.functions = []
+
+    def call_function(self, path, params=None):
+        self.functions.append(path)
+        if self.method_error:
+            raise self.method_error
+        return self.method_result
 
     def query(self, entity_set, **kwargs):
         self.calls.append((entity_set, kwargs))
@@ -43,3 +54,28 @@ def test_is_admin_propagates_errors():
 
     with pytest.raises(DirectumError):
         service.is_admin()
+
+
+@pytest.mark.parametrize("answer", [True, False])
+def test_is_admin_uses_platform_method_first(answer):
+    client = FakeClient(method_result=answer)
+
+    assert AdminAccessService(client, FakeCurrentUser()).is_admin() is answer
+    assert client.functions == ["Company/IsCurrentUserAdmin"]
+    assert client.calls == []
+
+
+def test_is_admin_falls_back_to_roles_when_method_fails():
+    client = FakeClient(rows=[{"Id": 2}])
+
+    assert AdminAccessService(client, FakeCurrentUser()).is_admin() is True
+    assert client.functions == ["Company/IsCurrentUserAdmin"]
+    assert client.calls[0][0] == "IRoles"
+
+
+def test_auth_error_from_method_is_not_masked_by_fallback():
+    client = FakeClient(method_error=DirectumError("unauthorized", 401))
+
+    with pytest.raises(DirectumError):
+        AdminAccessService(client, FakeCurrentUser()).is_admin()
+    assert client.calls == []

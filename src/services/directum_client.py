@@ -1,7 +1,8 @@
 from typing import Any
 from types import TracebackType
 import re
-from urllib.parse import urlencode
+from datetime import datetime
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -17,6 +18,29 @@ DIRECTUM_CARD_GUIDS_BY_ENTITY = {
     "ISimpleTasks": DIRECTUM_TASK_CARD_GUID,
     "IMeetings": DIRECTUM_MEETING_CARD_GUID,
 }
+
+
+# Разделители аргументов OData-функции не кодируем, остальное (включая + и : в датах) — кодируем.
+ODATA_ARGUMENT_SAFE_CHARS = "=,'"
+
+
+def _odata_literal(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def unwrap_method_result(data: Any) -> Any:
+    """Примитив и коллекция приходят в value, комплексный тип — полями объекта (служебные @odata.* отбрасываем)."""
+    if isinstance(data, dict):
+        if "value" in data:
+            return data["value"]
+        return {key: item for key, item in data.items() if not key.startswith("@odata.")}
+    return data
 
 
 def sanitize_error_detail(detail: str) -> str:
@@ -146,6 +170,15 @@ class DirectumClient:
     def get_one(self, entity_path: str) -> dict[str, Any]:
         response = self.client.get(self.build_url(entity_path), headers=self._headers())
         return self._json_or_error(response)
+
+    def call_function(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        """GET-метод модуля (OData Function): Модуль/Метод(парам=литерал,...)."""
+        arguments = ",".join(f"{name}={_odata_literal(value)}" for name, value in (params or {}).items())
+        url = f"{self.build_url(path)}({quote(arguments, safe=ODATA_ARGUMENT_SAFE_CHARS)})"
+        response = self.client.get(url, headers=self._headers())
+        if response.status_code == 204:
+            return None
+        return unwrap_method_result(self._json_or_error(response))
 
     def get_metadata_xml(self) -> str:
         response = self.client.get(

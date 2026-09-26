@@ -315,3 +315,69 @@ def test_get_metadata_xml_raises_on_error_status():
         client.get_metadata_xml()
 
     assert info.value.status_code == 401
+
+
+def function_client(handler):
+    return DirectumClient(
+        base_url="https://rx.example/Integration/odata/",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(handler),
+    )
+
+
+def test_call_function_without_params_uses_empty_parens_and_unwraps_value():
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        seen["method"] = request.method
+        return httpx.Response(200, json={"@odata.context": "x", "value": True})
+
+    assert function_client(handler).call_function("Company/IsCurrentUserAdmin") is True
+    assert seen == {"url": "https://rx.example/Integration/odata/Company/IsCurrentUserAdmin()", "method": "GET"}
+
+
+def test_call_function_formats_odata_literals():
+    from datetime import datetime, timedelta, timezone
+
+    seen = {}
+
+    def handler(request):
+        seen["path"] = request.url.raw_path.decode()
+        return httpx.Response(200, json={"value": "2026-10-08T00:00:00+04:00"})
+
+    result = function_client(handler).call_function(
+        "Docflow/AddWorkingDaysAndHours",
+        {"date": datetime(2026, 9, 26, tzinfo=timezone(timedelta(hours=4))), "days": 8, "hours": 0},
+    )
+
+    assert result == "2026-10-08T00:00:00+04:00"
+    assert seen["path"] == (
+        "/Integration/odata/Docflow/AddWorkingDaysAndHours(date=2026-09-26T00%3A00%3A00%2B04%3A00,days=8,hours=0)"
+    )
+
+
+def test_call_function_quotes_strings_and_booleans():
+    seen = {}
+
+    def handler(request):
+        seen["path"] = request.url.raw_path.decode()
+        return httpx.Response(200, json={"value": 1})
+
+    function_client(handler).call_function("M/F", {"name": "O'Neil", "flag": False})
+
+    assert seen["path"].endswith("/M/F(name='O''Neil',flag=false)")
+
+
+def test_call_function_returns_complex_object_as_is():
+    client = function_client(lambda request: httpx.Response(200, json={"@odata.context": "x", "TotalCount": 5, "OverdueCount": 1}))
+
+    assert client.call_function("Dashboard/GetActionItemsMetric") == {"TotalCount": 5, "OverdueCount": 1}
+
+
+def test_call_function_raises_on_error_status():
+    client = function_client(lambda request: httpx.Response(404, json={"error": {"message": "no such function"}}))
+
+    with pytest.raises(DirectumError) as exc:
+        client.call_function("M/Missing")
+    assert exc.value.status_code == 404
