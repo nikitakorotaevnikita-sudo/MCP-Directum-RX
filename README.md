@@ -182,7 +182,7 @@ Fuzzy-fallback использует стемминг словоформ и ст�
 Отдельный процесс, который даёт агентной платформе на базе LibreChat доступ к Directum RX по протоколу MCP (Streamable HTTP). Работает **от имени пользователя**: логин и пароль Directum пользователь вводит в LibreChat (`customUserVars`), они приходят в заголовках и в mcpOGV не сохраняются.
 
 **Состав (этап 1):**
-- курируемые тулы: `get_current_user`, `search_employees`, `list_my_assignments`, `list_action_items`, `get_action_item`, `get_discipline_analytics`, `get_outgoing_action_items_analytics`, `search_documents`, `get_document`, `list_documents_by_counterparty`, `list_letters`, `list_my_meetings`;
+- курируемые тулы: `get_current_user`, `search_employees`, `list_my_assignments`, `list_action_items`, `get_action_item`, `get_discipline_analytics`, `get_outgoing_action_items_analytics`, `search_documents`, `find_documents`, `get_document`, `get_document_text`, `list_documents_by_counterparty`, `list_letters`, `list_my_meetings`;
 - только для администраторов DRX (роль «Администраторы», прямое членство): `admin_list_employee_action_items` — поручения любого сотрудника (входящие/исходящие, статус, просрочка, период, срок сегодня/7 дней — `due`). Не-администраторам тул не показывается и не вызывается;
 - универсальное чтение: `odata_list_domains`, `odata_describe_entity`, `odata_query`, `odata_count`, `odata_get` (фильтр обязателен, чувствительные наборы закрыты);
 - справочники доменов — ресурсы `drx://domains/*`;
@@ -195,6 +195,12 @@ Fuzzy-fallback использует стемминг словоформ и ст�
 ```
 
 Проверка: `http://localhost:8010/health`. Нужные переменные — в `.env.example` (раздел mcpOGV).
+
+**Поиск документа «по памяти»:** `find_documents` принимает любые известные признаки — слова из названия/темы, вид
+(`incoming_letter`, `outgoing_letter`, `order`, `memo`, `contract`, `citizen_request`), контрагента, сотрудника, период, номер —
+и возвращает несколько вариантов с `match_reasons` и ссылкой на карточку; если точных совпадений нет, ослабляет условия
+и сообщает об этом в `relaxed`. `get_document_text` отдаёт текст последней версии (docx, pdf через `pypdf`, txt; иначе — PDF-представление).
+Ссылки на документы ведут в веб-клиент (`/Client/#/card/<GUID электронного документа>/<id>`).
 
 `list_action_items` принимает `due` (`today` — срок сегодня, `week` — ближайшие 7 дней): «мои поручения со сроком на неделе».
 Границы дней считаются в часовом поясе стенда: `MCP_UTC_OFFSET` (например `+04:00`), по умолчанию — пояс машины с сервером. В Docker-контейнере пояс UTC, поэтому там переменную нужно задать явно.

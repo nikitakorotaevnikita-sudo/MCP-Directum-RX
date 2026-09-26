@@ -82,3 +82,23 @@ def test_live_action_items_due_window(server, due):
 
     assert data["total"] is not None
     assert data["returned"] <= 3
+
+
+def test_live_find_documents_returns_linked_candidates(server):
+    data = payload(call_tool(server, "find_documents", {"text": "ответ", "limit": 3}))
+
+    assert data["returned"] <= 3
+    for item in data["items"]:
+        assert "/Client/#/card/" in item["url"]
+        assert item["match_reasons"]
+
+
+def test_live_get_document_text_for_found_document(server):
+    found = payload(call_tool(server, "find_documents", {"text": "ответ", "limit": 1}))
+    if not found["items"]:
+        pytest.skip("на стенде нет подходящего документа")
+
+    data = payload(call_tool(server, "get_document_text", {"document_id": found["items"][0]["id"], "max_chars": 2000}))
+
+    assert data["document_id"] == found["items"][0]["id"]
+    assert data["text"] or data["message"]
