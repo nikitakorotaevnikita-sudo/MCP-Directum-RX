@@ -102,3 +102,22 @@ def test_live_get_document_text_for_found_document(server):
 
     assert data["document_id"] == found["items"][0]["id"]
     assert data["text"] or data["message"]
+
+
+def test_live_add_working_days(server):
+    data = payload(call_tool(server, "add_working_days", {"days": 5, "date": "2026-09-28"}))
+
+    assert data["result_date"] >= "2026-10-02"
+
+
+def test_live_executive_summary(server):
+    data = payload(call_tool(server, "get_executive_summary"))
+
+    assert set(data["action_items"]) == {"total", "in_work", "overdue"}
+
+
+def test_live_ask_documents_answers_or_explains(server):
+    data = payload(call_tool(server, "ask_documents", {"question": "Какой срок рассмотрения обращения граждан?", "wait_seconds": 40}))
+
+    assert data["status"] in {"completed", "in_progress", "unavailable", "error"}
+    assert data["answer"] or data["message"]
