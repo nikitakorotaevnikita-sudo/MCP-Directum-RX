@@ -178,6 +178,7 @@ class ActionItemService:
                 subject=row.get("Subject"),
                 registration_number=row.get("RegistrationNumber"),
                 registration_date=row.get("RegistrationDate"),
+                url=self._document_url("IOfficialDocuments", int(row["Id"])),
             )
             for row in rows
         ]
@@ -340,8 +341,9 @@ class ActionItemService:
         )
 
     def _document_url(self, entity_set: str, document_id: int) -> str | None:
-        if hasattr(self.client, "build_url"):
-            return self.client.build_url(f"{entity_set}({document_id})")
+        # Ссылка на карточку в веб-клиенте: адрес OData API пользователю открыть нельзя.
+        if hasattr(self.client, "build_document_card_url"):
+            return self.client.build_document_card_url(document_id)
         return None
 
     @staticmethod

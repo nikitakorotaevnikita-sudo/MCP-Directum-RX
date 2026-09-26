@@ -31,6 +31,19 @@ def test_build_client_card_url_uses_client_route_for_task_entities():
     )
 
 
+def test_build_document_card_url_uses_electronic_document_base_type():
+    client = DirectumClient(
+        base_url="https://rx.example/Integration/odata/",
+        auth_token="Basic token",
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"value": []})),
+    )
+
+    assert (
+        client.build_document_card_url(16660)
+        == "https://rx.example/Client/#/card/030d8d67-9b94-4f0d-bcc6-691016eb70f3/16660"
+    )
+
+
 def test_count_hits_count_endpoint_with_filter_and_returns_int():
     seen = {}
 

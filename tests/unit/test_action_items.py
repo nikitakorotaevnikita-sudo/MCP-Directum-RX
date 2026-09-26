@@ -36,6 +36,9 @@ class FakeClient:
         directum_id = entity_path.split("(", 1)[1].rstrip(")")
         return f"https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/{directum_id}"
 
+    def build_document_card_url(self, document_id):
+        return f"https://rx.example/Client/#/card/030d8d67-9b94-4f0d-bcc6-691016eb70f3/{document_id}"
+
 
 def test_action_item_create_defaults_to_preview_mode():
     request = ActionItemCreateRequest(
@@ -395,6 +398,7 @@ def test_search_documents_falls_back_to_keyword_stem_for_inflected_query():
         "(contains(Name,'Минцифр') or contains(Subject,'Минцифр')) and RegistrationDate ne null",
     ]
     assert result[0].id == 576
+    assert result[0].url == "https://rx.example/Client/#/card/030d8d67-9b94-4f0d-bcc6-691016eb70f3/576"
 
 
 def test_search_documents_expands_mc_abbreviation_to_mincifry_stem():
@@ -485,7 +489,7 @@ def test_search_documents_by_counterparty_takes_first_match_and_aggregates_typed
     assert filters["IUniversalTransferDocuments"] == "Counterparty/Id eq 100"
     # Documents carry a link.
     contract = next(d for d in result.documents if d.id == 1)
-    assert contract.url == "https://rx.example/Integration/odata/IContractualDocuments(1)"
+    assert contract.url == "https://rx.example/Client/#/card/030d8d67-9b94-4f0d-bcc6-691016eb70f3/1"
 
 
 def test_search_documents_by_counterparty_includes_letters_via_correspondent_nav():
@@ -519,7 +523,7 @@ def test_search_documents_by_counterparty_includes_letters_via_correspondent_nav
     assert filters["IIncomingLetters"] == "Correspondent/Id eq 2"
     assert filters["IOutgoingLetters"] == "Correspondent/Id eq 2"
     letter = result.documents[0]
-    assert letter.url == "https://rx.example/Integration/odata/IIncomingLetters(587)"
+    assert letter.url == "https://rx.example/Client/#/card/030d8d67-9b94-4f0d-bcc6-691016eb70f3/587"
 
 
 def test_search_documents_by_counterparty_skips_sets_that_reject_filter():
@@ -657,7 +661,7 @@ def test_list_letters_incoming_filters_registered_and_period():
     assert "RegistrationDate le 2026-05-31T23:59:59" in flt
     assert kwargs["orderby"] == "RegistrationDate desc"
     assert result[0].id == 585
-    assert result[0].url == "https://rx.example/Integration/odata/IIncomingLetters(585)"
+    assert result[0].url == "https://rx.example/Client/#/card/030d8d67-9b94-4f0d-bcc6-691016eb70f3/585"
 
 
 def test_list_letters_outgoing_without_dates_only_registered():

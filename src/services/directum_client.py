@@ -8,6 +8,8 @@ import httpx
 
 DIRECTUM_TASK_CARD_GUID = "83f2a537-0cf0-4429-ae76-e9a386ca53aa"
 DIRECTUM_MEETING_CARD_GUID = "dbc0dd63-4d23-4f41-92ae-cab59bb70c8c"
+# Платформенный базовый тип «Электронный документ»: карточка открывается для любого вида документа.
+ELECTRONIC_DOCUMENT_CARD_GUID = "030d8d67-9b94-4f0d-bcc6-691016eb70f3"
 DIRECTUM_CARD_GUIDS_BY_ENTITY = {
     "IAssignments": DIRECTUM_TASK_CARD_GUID,
     "IActionItemExecutionAssignments": DIRECTUM_TASK_CARD_GUID,
@@ -70,6 +72,9 @@ class DirectumClient:
         if card_guid is None:
             return None
         return f"{self._client_base_url()}/Client/#/card/{card_guid}/{entity_id}"
+
+    def build_document_card_url(self, document_id: int) -> str:
+        return f"{self._client_base_url()}/Client/#/card/{ELECTRONIC_DOCUMENT_CARD_GUID}/{int(document_id)}"
 
     def _client_base_url(self) -> str:
         marker = "/Integration/odata"
