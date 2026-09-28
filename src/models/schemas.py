@@ -194,6 +194,17 @@ class CitizenRequestStatus(BaseModel):
     url: str | None = None
 
 
+class CitizenRequestsDue(BaseModel):
+    """Обращения в работе со сроком в окне: просроченные и те, у которых срок в ближайшие дни."""
+
+    within_days: int
+    include_overdue: bool = True
+    items: list[CitizenRequestStatus] = Field(default_factory=list)
+    total: int = 0
+    overdue_total: int = 0
+    due_soon_total: int = 0
+
+
 class CitizenRequestAnalytics(BaseModel):
     """Счёт по ТОТК. requests — обращений в группе; questions — вопросов (в одном обращении их может быть несколько)."""
 

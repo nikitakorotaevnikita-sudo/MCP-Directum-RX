@@ -200,3 +200,60 @@ def test_limit_passed_as_top():
     service(client).find(applicant="Иванов", limit=3)
 
     assert client.calls[0][1]["top"] == 3
+
+
+class DueClient(FakeClient):
+    def __init__(self, rows, counts):
+        super().__init__(rows_for=lambda f: rows)
+        self.counts_by_marker = counts
+        self.counts = []
+
+    def count(self, entity_set, filter_=None):
+        self.counts.append((entity_set, filter_))
+        for marker, value in self.counts_by_marker.items():
+            if marker in filter_:
+                return value
+        return 0
+
+
+def test_due_filters_in_work_requests_by_deadline_window():
+    from src.services.citizen_requests import IN_WORK_FILTER
+
+    client = DueClient(rows=[request_row()], counts={"Deadline lt 2026-09-26T00:00:00+04:00": 4, "Deadline lt 2026-09-30": 9})
+
+    result = service(client).due(within_days=3)
+
+    _, kwargs = client.calls[0]
+    assert kwargs["filter_"] == f"{IN_WORK_FILTER} and Deadline lt 2026-09-30T00:00:00+04:00"
+    assert kwargs["orderby"] == "Deadline asc"
+    assert kwargs["top"] == 20
+    assert result.total == 9
+    assert result.overdue_total == 4
+    assert result.due_soon_total == 5
+    assert len(result.items) == 1
+
+
+def test_due_without_overdue_starts_today():
+    client = DueClient(rows=[], counts={})
+
+    service(client).due(within_days=0, include_overdue=False)
+
+    assert client.calls[0][1]["filter_"].endswith(
+        "and Deadline ge 2026-09-26T00:00:00+04:00 and Deadline lt 2026-09-27T00:00:00+04:00"
+    )
+
+
+def test_due_by_assignee():
+    client = DueClient(rows=[], counts={})
+
+    service(client).due(within_days=7, assignee_id=48, limit=5)
+
+    assert "Assignee/Id eq 48" in client.calls[0][1]["filter_"]
+    assert client.calls[0][1]["top"] == 5
+
+
+def test_in_work_filter_excludes_closed_and_transferred():
+    from src.services.citizen_requests import IN_WORK_FILTER
+
+    for part in ("ResponseDate eq null", "RegistrationDate ne null", "TransferredTo eq null", "AnswerLetter eq null", "'Executed'", "'Aborted'", "'WithoutExecut'"):
+        assert part in IN_WORK_FILTER

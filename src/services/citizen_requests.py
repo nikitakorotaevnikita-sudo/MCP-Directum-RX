@@ -1,8 +1,8 @@
 from collections.abc import Callable
-from datetime import date, datetime, timezone, tzinfo
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
-from src.models.schemas import CitizenRequestStatus
+from src.models.schemas import CitizenRequestStatus, CitizenRequestsDue
 from src.services.citizen_request_analytics import REVIEW_RESULT_LABELS
 from src.services.directum_client import DirectumError
 
@@ -32,6 +32,13 @@ EXECUTION_STATES = {
     "ControlRemoved": "снято с контроля",
 }
 ANSWERED_STATES = ("Executed", "WithoutExecut")
+# «В работе»: зарегистрировано, есть срок, ответа нет, не перенаправлено и не закрыто.
+# ExecutionState у многих обращений пуст — пустое состояние тоже считаем «в работе».
+IN_WORK_FILTER = (
+    "RegistrationDate ne null and Deadline ne null and ResponseDate eq null and AnswerLetter eq null "
+    "and TransferredTo eq null and (ExecutionState eq null or (ExecutionState ne 'Executed' "
+    "and ExecutionState ne 'WithoutExecut' and ExecutionState ne 'Aborted'))"
+)
 
 
 def _literal(value: str) -> str:
@@ -94,7 +101,35 @@ class CitizenRequestService:
                 break
         return [self._status(row) for row in rows]
 
-    def _query(self, filter_: str, limit: int) -> list[dict[str, Any]]:
+    def due(
+        self,
+        within_days: int = 3,
+        include_overdue: bool = True,
+        assignee_id: int | None = None,
+        limit: int = 20,
+    ) -> CitizenRequestsDue:
+        """Горящие обращения по 59-ФЗ: срок уже нарушен или истекает в ближайшие within_days дней."""
+        today = self._now().astimezone(self.tz).date()
+        base = IN_WORK_FILTER + (f" and Assignee/Id eq {int(assignee_id)}" if assignee_id is not None else "")
+        window = [] if include_overdue else [f"Deadline ge {self._day_literal(today)}"]
+        window.append(f"Deadline lt {self._day_literal(today + timedelta(days=within_days + 1))}")
+        filter_ = " and ".join([base] + window)
+        rows = self._query(filter_, limit, orderby="Deadline asc")
+        total = self.client.count("IRequests", filter_=filter_)
+        overdue = self.client.count("IRequests", filter_=f"{base} and Deadline lt {self._day_literal(today)}") if include_overdue else 0
+        return CitizenRequestsDue(
+            within_days=within_days,
+            include_overdue=include_overdue,
+            items=[self._status(row) for row in rows],
+            total=total,
+            overdue_total=overdue,
+            due_soon_total=max(total - overdue, 0),
+        )
+
+    def _day_literal(self, day: date) -> str:
+        return datetime(day.year, day.month, day.day, tzinfo=self.tz).isoformat()
+
+    def _query(self, filter_: str, limit: int, orderby: str = "RegistrationDate desc") -> list[dict[str, Any]]:
         last_error: DirectumError | None = None
         for expand in EXPAND_FALLBACKS:
             try:
@@ -103,7 +138,7 @@ class CitizenRequestService:
                     filter_=filter_,
                     select=REQUEST_SELECT,
                     expand=expand,
-                    orderby="RegistrationDate desc",
+                    orderby=orderby,
                     top=limit,
                 )
             except DirectumError as exc:

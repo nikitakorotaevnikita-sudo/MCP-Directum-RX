@@ -6,6 +6,7 @@ from pydantic import Field
 
 from src.mcp_server.envelope import to_jsonable
 from src.mcp_server.runner import READ_ONLY, ToolRunner
+from src.mcp_server.tools.admin import resolve_employee
 from src.mcp_server.tools.params import parse_period
 from src.services.citizen_request_analytics import CLASSIFIER_CODE
 
@@ -87,3 +88,24 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
             "search_citizen_request_classifier",
             lambda s: {"items": to_jsonable(s.citizen_request_analytics.search_classifier(query))},
         )
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def list_citizen_requests_due(
+        ctx: Context,
+        within_days: Annotated[int, Field(description="Срок истекает в ближайшие N дней (0 — сегодня), 0–30", ge=0, le=30)] = 3,
+        include_overdue: Annotated[bool, Field(description="Включать обращения с уже нарушенным сроком")] = True,
+        assignee: Annotated[str | None, Field(description="ФИО или id исполнителя; пусто — все")] = None,
+        limit: Annotated[int, Field(description="Сколько обращений вернуть (1–50)", ge=1, le=50)] = 20,
+    ) -> dict:
+        """Горящие обращения граждан по 59-ФЗ: в работе и срок уже нарушен или истекает в ближайшие within_days дней,
+        по возрастанию срока. У каждого status_text (сколько дней осталось / на сколько просрочено), исполнитель,
+        ссылка. total — всего в окне, overdue_total — с нарушенным сроком, due_soon_total — срок ещё не прошёл."""
+
+        def action(s):
+            assignee_id = resolve_employee(s.action_items, assignee).id if (assignee or "").strip() else None
+            result = s.citizen_requests.due(
+                within_days=within_days, include_overdue=include_overdue, assignee_id=assignee_id, limit=limit
+            )
+            return {**to_jsonable(result), "returned": len(result.items)}
+
+        return await runner.run(ctx, "list_citizen_requests_due", action)

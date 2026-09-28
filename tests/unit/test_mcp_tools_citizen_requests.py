@@ -117,3 +117,45 @@ def test_search_classifier_requires_text():
     server, _ = analytics_server()
 
     assert "слово" in error_text(call_tool(server, "search_citizen_request_classifier", {"query": " "}))
+
+
+def due_server(employees=None):
+    from src.models.schemas import CitizenRequestsDue, EmployeeSummary
+
+    seen = {}
+
+    def due(within_days=3, include_overdue=True, assignee_id=None, limit=20):
+        seen.update(within_days=within_days, include_overdue=include_overdue, assignee_id=assignee_id, limit=limit)
+        return CitizenRequestsDue(within_days=within_days, total=7, overdue_total=5, due_soon_total=2)
+
+    people = employees if employees is not None else [EmployeeSummary(id=48, name="Иванов Иван Иванович")]
+    services = SimpleNamespace(
+        citizen_requests=SimpleNamespace(due=due),
+        action_items=SimpleNamespace(search_employee=lambda query: people, get_employee=lambda employee_id: None),
+    )
+    return build_server(FakeProvider(services)), seen
+
+
+def test_due_defaults():
+    server, seen = due_server()
+
+    data = payload(call_tool(server, "list_citizen_requests_due", {}))
+
+    assert seen == {"within_days": 3, "include_overdue": True, "assignee_id": None, "limit": 20}
+    assert data["overdue_total"] == 5
+    assert data["due_soon_total"] == 2
+
+
+def test_due_with_assignee_and_window():
+    server, seen = due_server()
+
+    payload(call_tool(server, "list_citizen_requests_due", {"within_days": 7, "include_overdue": False, "assignee": "Иванов", "limit": 5}))
+
+    assert seen == {"within_days": 7, "include_overdue": False, "assignee_id": 48, "limit": 5}
+
+
+def test_due_unknown_assignee():
+    server, seen = due_server(employees=[])
+
+    assert "не найден" in error_text(call_tool(server, "list_citizen_requests_due", {"assignee": "Никто"}))
+    assert seen == {}
