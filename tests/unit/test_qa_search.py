@@ -182,3 +182,22 @@ def test_value_wrapped_responses_are_unwrapped():
     )
 
     assert service(client).ask("вопрос").status == "completed"
+
+
+def test_in_progress_placeholder_result_is_not_completion():
+    # Стенд присылает в InProgress пустую заготовку Result — это ещё не ответ.
+    placeholder = {"Id": "t1", "Status": "InProgress", "ErrorMessage": "", "Result": {"Answer": None, "Score": 0.0, "Entities": []}}
+    client = FakeClient(infos=[placeholder, COMPLETED_INFO])
+    clock = FakeClock()
+
+    answer = service(client, clock).ask("вопрос", wait_seconds=30)
+
+    assert answer.status == "completed"
+    assert answer.answer == "Срок рассмотрения обращения — 30 дней."
+    assert clock.sleeps == [POLL_INTERVAL_SECONDS]
+
+
+def test_empty_error_message_is_not_an_error():
+    info = {**COMPLETED_INFO, "ErrorMessage": ""}
+
+    assert service(FakeClient(infos=[info])).ask("вопрос").status == "completed"

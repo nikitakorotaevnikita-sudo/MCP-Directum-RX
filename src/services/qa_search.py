@@ -69,7 +69,9 @@ class QASearchService:
         if info.get("ErrorMessage") or status in ERROR_STATUSES:
             reason = _safe(info.get("ErrorMessage") or (result or {}).get("ErrorMessage")) or "без описания"
             return QAAnswer(status="error", task_id=task_id, message=f"Поиск завершился ошибкой: {reason}")
-        if result or status in COMPLETED_STATUSES:
+        # В InProgress стенд уже присылает пустую заготовку Result — завершением считаем только статус
+        # (или ответ при отсутствии статуса).
+        if status in COMPLETED_STATUSES or (not status and (result or {}).get("Answer")):
             result = result or {}
             return QAAnswer(
                 status="completed",
