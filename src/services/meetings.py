@@ -5,6 +5,9 @@ from src.models.schemas import ActionItemDetail, MeetingSummary
 from src.services.current_user import CurrentUserService
 from src.services.directum_client import DirectumClient, DirectumError
 
+# Так OData сообщает о несовпадении полей со схемой стенда (в отличие от «запись не существует»).
+SCHEMA_MISMATCH_MARKER = "Could not find a property"
+
 
 class MeetingsService:
     def __init__(self, client: DirectumClient, current_user_service: CurrentUserService):
@@ -116,24 +119,49 @@ class MeetingsService:
         value = self._first_value(row, *keys)
         return str(value) if value is not None else ""
 
-    def get_action_item_details(self, action_item_id: int) -> ActionItemDetail:
-        try:
-            row = self._query_action_item_details(action_item_id)
-        except DirectumError as exc:
-            if exc.status_code == 404:
+    def get_action_item_details(self, action_item_id: int, require_author: bool = True) -> ActionItemDetail:
+        """Карточка поручения по id задачи или id задания (входящие поручения приходят заданиями).
+
+        require_author=False — без проверки «автор или исполнитель» (для администратора; права всё равно проверяет RX).
+        """
+        row = self._task_row(action_item_id)
+        if row is None:
+            task_id = self._task_id_for_assignment(action_item_id)
+            row = self._task_row(task_id) if task_id else None
+        if row is None:
+            raise DirectumError(f"Поручение #{action_item_id} не найдено.", status_code=404)
+        if require_author:
+            current_user = self.current_user_service.get_current_user()
+            participants = {self._person_id(row, "Author", "AssignedBy"), self._person_id(row, "Assignee", "Performer")}
+            if current_user.id not in participants:
                 raise DirectumError(
-                    f"Поручение #{action_item_id} не найдено.",
-                    status_code=404,
-                ) from exc
-            raise
-        current_user = self.current_user_service.get_current_user()
-        author_id = self._person_id(row, "Author", "AssignedBy")
-        if author_id != current_user.id:
-            raise DirectumError(
-                "Поручение найдено, но вы не являетесь его автором.",
-                status_code=403,
-            )
+                    "Поручение найдено, но вы не являетесь его автором или исполнителем.",
+                    status_code=403,
+                )
         return self._to_action_item_detail(row)
+
+    def _task_row(self, task_id: int) -> dict[str, Any] | None:
+        try:
+            return self._query_action_item_details(task_id)
+        except DirectumError as exc:
+            # Стенд отвечает на несуществующий id 400 «Запись не существует», а не 404.
+            if exc.status_code in (400, 404):
+                return None
+            raise
+
+    def _task_id_for_assignment(self, assignment_id: int) -> int | None:
+        try:
+            rows = self.client.query(
+                "IActionItemExecutionAssignments",
+                filter_=f"Id eq {int(assignment_id)}",
+                select="Id",
+                expand="Task($select=Id)",
+                top=1,
+            )
+        except DirectumError:
+            return None
+        task = rows[0].get("Task") if rows else None
+        return task.get("Id") if isinstance(task, dict) and isinstance(task.get("Id"), int) else None
 
     def _query_action_item_details(self, action_item_id: int) -> dict[str, Any]:
         live_expand = (
@@ -152,8 +180,8 @@ class MeetingsService:
             "ActionItemExecutionAssignments($select=Status,DeadLine,Note,ActualExecutionDate)"
         )
         legacy_select = "Id,Subject,Text,Status,DeadLine,Created"
-        last_error: DirectumError | None = None
-        for expand, select in ((live_expand, live_select), (legacy_expand, legacy_select)):
+        attempts = ((live_expand, live_select), (legacy_expand, legacy_select))
+        for index, (expand, select) in enumerate(attempts):
             entity_path = (
                 f"IActionItemExecutionTasks({action_item_id})"
                 f"?$expand={expand}"
@@ -162,11 +190,10 @@ class MeetingsService:
             try:
                 return self.client.get_one(entity_path)
             except DirectumError as exc:
-                if exc.status_code != 400:
+                # Старая схема поручений — только при несовпадении полей; «запись не найдена» не маскируем.
+                schema_mismatch = exc.status_code == 400 and SCHEMA_MISMATCH_MARKER in exc.safe_message
+                if not schema_mismatch or index == len(attempts) - 1:
                     raise
-                last_error = exc
-        if last_error is not None:
-            raise last_error
         return {}
 
     def _to_action_item_detail(self, row: dict[str, Any]) -> ActionItemDetail:

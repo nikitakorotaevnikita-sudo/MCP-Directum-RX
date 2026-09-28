@@ -21,6 +21,14 @@ Due = Annotated[
 ]
 
 
+def _is_admin(services) -> bool:
+    """Ошибка проверки — «не администратор»: доступ не расширяем при сбое."""
+    try:
+        return bool(services.admin_access.is_admin())
+    except Exception:
+        return False
+
+
 def check_due(due: str | None, status: str = "in_process", only_overdue: bool = False, has_period: bool = False) -> None:
     """Окно срока задаёт свой период и статус «в работе» — с другими фильтрами срока не сочетается."""
     if due is None:
@@ -67,13 +75,20 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_action_item(
-        action_item_id: Annotated[int, Field(description="Id поручения", gt=0)],
+        action_item_id: Annotated[
+            int, Field(description="Id поручения: задачи или задания — как пришёл из list_action_items / admin_list_*", gt=0)
+        ],
         ctx: Context,
     ) -> dict:
-        """Карточка поручения: тема, исполнитель, автор, статус, даты, ссылка. Отчёт о поручении формулируй сам по этим фактам."""
-        return await runner.run(
-            ctx, "get_action_item", lambda s: to_jsonable(s.meetings.get_action_item_details(action_item_id))
-        )
+        """Карточка поручения: тема, текст, исполнитель, автор, статус, срок, ссылка. Принимает id задачи-поручения
+        и id задания по нему. Своё поручение (автор или исполнитель) видит любой; администратор — любое.
+        Отчёт о поручении формулируй сам по этим фактам."""
+
+        def action(s):
+            detail = s.meetings.get_action_item_details(action_item_id, require_author=not _is_admin(s))
+            return to_jsonable(detail)
+
+        return await runner.run(ctx, "get_action_item", action)
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_discipline_analytics(

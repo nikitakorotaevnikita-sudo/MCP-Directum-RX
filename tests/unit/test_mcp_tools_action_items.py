@@ -103,12 +103,58 @@ def test_get_action_item_returns_details():
         created_date=date(2026, 9, 20),
         client_card_url="https://rx.example/Client/#/card/x/42",
     )
-    services = SimpleNamespace(meetings=SimpleNamespace(get_action_item_details=lambda action_item_id: detail))
+    services = SimpleNamespace(
+        meetings=SimpleNamespace(get_action_item_details=lambda action_item_id, require_author=True: detail)
+    )
 
     data = payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 42}))
 
     assert data["id"] == 42
     assert data["performer"] == "Иванова М.П."
+
+
+def _detail_services(is_admin):
+    from src.models.schemas import ActionItemDetail
+
+    seen = {}
+
+    def details(action_item_id, require_author=True):
+        seen.update(action_item_id=action_item_id, require_author=require_author)
+        return ActionItemDetail(
+            id=action_item_id, subject="П", performer="И", author="А", status="InProcess",
+            created_date=date(2026, 9, 1), client_card_url="https://rx/card/1",
+        )
+
+    admin = SimpleNamespace(is_admin=is_admin) if is_admin is not None else None
+    services = SimpleNamespace(meetings=SimpleNamespace(get_action_item_details=details), admin_access=admin)
+    return services, seen
+
+
+def test_get_action_item_admin_reads_any_action_item():
+    services, seen = _detail_services(lambda: True)
+
+    payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 1155}))
+
+    assert seen == {"action_item_id": 1155, "require_author": False}
+
+
+def test_get_action_item_regular_user_keeps_participant_check():
+    services, seen = _detail_services(lambda: False)
+
+    payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 1155}))
+
+    assert seen["require_author"] is True
+
+
+def test_get_action_item_admin_check_failure_keeps_participant_check():
+    def boom():
+        raise RuntimeError("stand down")
+
+    services, seen = _detail_services(boom)
+
+    payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 1155}))
+
+    assert seen["require_author"] is True
 
 
 def test_get_discipline_analytics_passes_filters():
