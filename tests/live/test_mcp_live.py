@@ -129,3 +129,28 @@ def test_live_citizen_request_status_by_number(server):
     for item in data["items"]:
         assert item["status_text"]
         assert "Email" not in item and "PIN" not in item
+
+
+def test_live_citizen_requests_analytics_matches_server_count(server):
+    data = payload(call_tool(server, "get_citizen_requests_analytics", {"level": "section", "top": 3}))
+    if not data["groups"]:
+        pytest.skip("на стенде нет классифицированных обращений")
+    group = data["groups"][0]
+
+    count = payload(
+        call_tool(
+            server,
+            "odata_count",
+            {"entity_set": "IRequests", "filter": f"Questions/any(q: startswith(q/Question/FullCode,'{group['code']}'))"},
+        )
+    )["count"]
+
+    assert group["requests"] == count
+    assert data["question_entries_total"] >= data["requests_classified"]
+
+
+def test_live_search_classifier_returns_codes(server):
+    data = payload(call_tool(server, "search_citizen_request_classifier", {"query": "дорог"}))
+
+    for item in data["items"]:
+        assert item["code"][:4].isdigit()

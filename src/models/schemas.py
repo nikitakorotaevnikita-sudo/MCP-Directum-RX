@@ -194,6 +194,32 @@ class CitizenRequestStatus(BaseModel):
     url: str | None = None
 
 
+class CitizenRequestAnalytics(BaseModel):
+    """Счёт по ТОТК. requests — обращений в группе; questions — вопросов (в одном обращении их может быть несколько)."""
+
+    level: str
+    level_label: str
+    date_from: date | None = None
+    date_to: date | None = None
+    classifier_code: str | None = None
+    requests_total: int = 0
+    requests_classified: int = 0
+    requests_unclassified: int = 0
+    question_entries_total: int = 0
+    groups: list[dict[str, Any]] = Field(default_factory=list)
+    groups_total: int = 0
+    review_results: list[dict[str, Any]] = Field(default_factory=list)
+    truncated: bool = False
+
+
+class ClassifierMatch(BaseModel):
+    level: str
+    level_label: str
+    code: str
+    name: str
+    path: str = ""
+
+
 class CounterpartySummary(BaseModel):
     id: int
     name: str

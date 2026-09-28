@@ -33,7 +33,7 @@ def request_row(**overrides):
         "TransferredTo": None,
         "AnswerLetter": None,
         "ProlongationDeadline": [],
-        "Questions": [{"ReviewResult": "Explained", "Question": {"Name": "Ремонт дорог"}}],
+        "Questions": [{"ReviewResult": "Explained", "Question": {"Name": "Ремонт дорог", "FullCode": "0003.0008.0086.0567"}}],
     }
     row.update(overrides)
     return row
@@ -117,7 +117,9 @@ def test_in_work_status_with_days_left_and_no_personal_contacts():
     assert item.status_text == "На рассмотрении (на исполнении), до срока 24.10.2026 осталось 28 дн."
     assert item.applicant == "Степанова Валентина Григорьевна"
     assert item.assignee == "Концева Надежда Ивановна"
-    assert item.questions == [{"question": "Ремонт дорог", "review_result": "Explained"}]
+    assert item.questions == [
+        {"question": "Ремонт дорог", "code": "0003.0008.0086.0567", "review_result": "Explained", "review_result_label": "Разъяснено"}
+    ]
     assert item.url == "https://rx.example/doc/900"
     dumped = item.model_dump_json()
     for secret in ("секретный адрес", "secret@mail.ru", "+7 900", "1234"):

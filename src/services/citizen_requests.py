@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone, tzinfo
 from typing import Any
 
 from src.models.schemas import CitizenRequestStatus
+from src.services.citizen_request_analytics import REVIEW_RESULT_LABELS
 from src.services.directum_client import DirectumError
 
 # Только служебные реквизиты: контакты заявителя (PostalAddress, Email, Phones, PIN) не запрашиваем.
@@ -14,7 +15,7 @@ FULL_EXPAND = (
     "Assignee($select=Name),TransferredTo($select=Name),"
     "AnswerLetter($select=Id,Name,RegistrationNumber,RegistrationDate),"
     "ProlongationDeadline($select=Number,NewDeadline,ReasonChangeDeadline),"
-    "Questions($select=ReviewResult;$expand=Question($select=Name))"
+    "Questions($select=ReviewResult;$expand=Question($select=Name,FullCode))"
 )
 # Если конфигурация стенда не поддерживает часть навигаций — сужаем запрос, а не падаем.
 MINIMAL_EXPAND = "Assignee($select=Name),AnswerLetter($select=Id,Name,RegistrationNumber,RegistrationDate)"
@@ -141,11 +142,16 @@ class CitizenRequestService:
         today = self._now().astimezone(self.tz).date()
         days_left = (deadline - today).days if (in_work and deadline) else None
         questions = [
-            {"question": _name(item.get("Question")) or "", "review_result": item.get("ReviewResult")}
+            {
+                "question": _name(item.get("Question")) or "",
+                "code": (item.get("Question") or {}).get("FullCode"),
+                "review_result": item.get("ReviewResult"),
+                "review_result_label": REVIEW_RESULT_LABELS.get(item.get("ReviewResult"), item.get("ReviewResult")),
+            }
             for item in row.get("Questions") or []
         ]
         if not questions and row.get("QuestionsNames"):
-            questions = [{"question": row["QuestionsNames"], "review_result": None}]
+            questions = [{"question": row["QuestionsNames"], "code": None, "review_result": None, "review_result_label": None}]
 
         status = CitizenRequestStatus(
             id=int(row["Id"]),
