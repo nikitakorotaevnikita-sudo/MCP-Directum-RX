@@ -84,6 +84,7 @@ class AssignmentsService:
             entity_set,
             filter_=action_filter,
             select="Id,Subject,Deadline,Status",
+            expand="Author($select=Name),Task($select=Id)",
             orderby="Deadline asc",
             top=top,
         )
@@ -120,7 +121,7 @@ class AssignmentsService:
             entity_set,
             filter_=action_filter,
             select="Id,Subject,Deadline,Status",
-            expand="Assignee($select=Name)" if direction == "outgoing" else "Author($select=Name)",
+            expand="Assignee($select=Name)" if direction == "outgoing" else "Author($select=Name),Task($select=Id)",
             orderby="Deadline asc",
             top=top,
         )
@@ -203,8 +204,17 @@ class AssignmentsService:
             url=client_url.strip() if isinstance(client_url, str) and client_url.strip() else None,
             performer=self._performer_name(row),
             author=self._person_name(row, "Author"),
+            task_id=self._task_id(row, entity_type, directum_id),
             days_overdue=self._days_overdue(row),
         )
+
+    @staticmethod
+    def _task_id(row: dict[str, Any], entity_type: str, directum_id: int) -> int | None:
+        if entity_type == "action_item_task":
+            return directum_id
+        task = row.get("Task")
+        task_id = task.get("Id") if isinstance(task, dict) else None
+        return task_id if isinstance(task_id, int) else None
 
     def _days_overdue(self, row: dict[str, Any]) -> int | None:
         if row.get("Status") != "InProcess" or not isinstance(row.get("Deadline"), str):

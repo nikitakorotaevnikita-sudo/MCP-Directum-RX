@@ -75,6 +75,8 @@ class AssignmentSummary(BaseModel):
     performer: str | None = None
     # Кто выдал поручение (для входящих — автор задания).
     author: str | None = None
+    # Id задачи-поручения: у входящих (заданий) свой номер, и он может совпасть с номером чужой задачи.
+    task_id: int | None = None
     # Сколько полных дней просрочено по поясу стенда; None — не просрочено или не в работе.
     days_overdue: int | None = None
 

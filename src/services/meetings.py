@@ -119,13 +119,19 @@ class MeetingsService:
         value = self._first_value(row, *keys)
         return str(value) if value is not None else ""
 
-    def get_action_item_details(self, action_item_id: int, require_author: bool = True) -> ActionItemDetail:
+    def get_action_item_details(
+        self, action_item_id: int, require_author: bool = True, kind: str | None = None
+    ) -> ActionItemDetail:
         """Карточка поручения по id задачи или id задания (входящие поручения приходят заданиями).
 
+        У задач и заданий раздельная нумерация: один и тот же номер может быть у задания и у чужой задачи.
+        kind="assignment"/"task" трактует номер строго; None — сначала задача, потом задание (неоднозначно).
         require_author=False — без проверки «автор или исполнитель» (для администратора; права всё равно проверяет RX).
         """
-        row = self._task_row(action_item_id)
-        if row is None:
+        if kind not in (None, "task", "assignment"):
+            raise ValueError(f"Unknown action item kind: {kind}")
+        row = None if kind == "assignment" else self._task_row(action_item_id)
+        if row is None and kind != "task":
             task_id = self._task_id_for_assignment(action_item_id)
             row = self._task_row(task_id) if task_id else None
         if row is None:

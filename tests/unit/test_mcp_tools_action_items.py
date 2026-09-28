@@ -104,7 +104,7 @@ def test_get_action_item_returns_details():
         client_card_url="https://rx.example/Client/#/card/x/42",
     )
     services = SimpleNamespace(
-        meetings=SimpleNamespace(get_action_item_details=lambda action_item_id, require_author=True: detail)
+        meetings=SimpleNamespace(get_action_item_details=lambda action_item_id, require_author=True, kind=None: detail)
     )
 
     data = payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 42}))
@@ -118,8 +118,8 @@ def _detail_services(is_admin):
 
     seen = {}
 
-    def details(action_item_id, require_author=True):
-        seen.update(action_item_id=action_item_id, require_author=require_author)
+    def details(action_item_id, require_author=True, kind=None):
+        seen.update(action_item_id=action_item_id, require_author=require_author, kind=kind)
         return ActionItemDetail(
             id=action_item_id, subject="П", performer="И", author="А", status="InProcess",
             created_date=date(2026, 9, 1), client_card_url="https://rx/card/1",
@@ -135,7 +135,7 @@ def test_get_action_item_admin_reads_any_action_item():
 
     payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 1155}))
 
-    assert seen == {"action_item_id": 1155, "require_author": False}
+    assert seen == {"action_item_id": 1155, "require_author": False, "kind": None}
 
 
 def test_get_action_item_regular_user_keeps_participant_check():
@@ -262,3 +262,14 @@ def test_list_action_items_rejects_unknown_due():
     result = call_tool(make_server(services), "list_action_items", {"direction": "incoming", "due": "month"})
 
     assert result.is_error
+
+
+def test_get_action_item_passes_entity_type_as_kind():
+    services, seen = _detail_services(lambda: True)
+    server = make_server(services)
+
+    payload(call_tool(server, "get_action_item", {"action_item_id": 1078, "entity_type": "action_item_assignment"}))
+    assert seen["kind"] == "assignment"
+
+    payload(call_tool(server, "get_action_item", {"action_item_id": 595, "entity_type": "action_item_task"}))
+    assert seen["kind"] == "task"

@@ -75,17 +75,20 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_action_item(
-        action_item_id: Annotated[
-            int, Field(description="Id поручения: задачи или задания — как пришёл из list_action_items / admin_list_*", gt=0)
-        ],
+        action_item_id: Annotated[int, Field(description="Id из списка поручений (поле id) или task_id", gt=0)],
         ctx: Context,
+        entity_type: Annotated[
+            Literal["action_item_task", "action_item_assignment"] | None,
+            Field(description="entity_type элемента списка. Передавай всегда: у задач и заданий пересекаются номера"),
+        ] = None,
     ) -> dict:
-        """Карточка поручения: тема, текст, исполнитель, автор, статус, срок, ссылка. Принимает id задачи-поручения
-        и id задания по нему. Своё поручение (автор или исполнитель) видит любой; администратор — любое.
-        Отчёт о поручении формулируй сам по этим фактам."""
+        """Карточка поручения: тема, текст, исполнитель, автор, статус, срок, ссылка. Своё поручение (автор или
+        исполнитель) видит любой; администратор — любое. Передавай id и entity_type из элемента списка
+        (или task_id с entity_type=action_item_task). Отчёт о поручении формулируй сам по этим фактам."""
+        kind = {"action_item_task": "task", "action_item_assignment": "assignment"}.get(entity_type or "")
 
         def action(s):
-            detail = s.meetings.get_action_item_details(action_item_id, require_author=not _is_admin(s))
+            detail = s.meetings.get_action_item_details(action_item_id, require_author=not _is_admin(s), kind=kind)
             return to_jsonable(detail)
 
         return await runner.run(ctx, "get_action_item", action)

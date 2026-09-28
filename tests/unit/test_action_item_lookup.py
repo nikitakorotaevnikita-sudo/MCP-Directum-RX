@@ -120,3 +120,28 @@ def test_access_check_can_be_disabled():
     detail = service(FakeClient(tasks={1072: task_row()}), me=5).get_action_item_details(1072, require_author=False)
 
     assert detail.id == 1072
+
+
+def test_assignment_kind_never_reads_task_with_same_number():
+    # Номер 1078 есть и у задания (→ задача 955), и у чужой задачи 1078: трактуем строго как задание.
+    client = FakeClient(tasks={1078: task_row(task_id=1078), 955: task_row(task_id=955)}, assignment_tasks={1078: 955})
+
+    detail = service(client).get_action_item_details(1078, kind="assignment")
+
+    assert detail.id == 955
+    assert all("IActionItemExecutionTasks(1078)" not in path for path in client.paths)
+
+
+def test_task_kind_does_not_fall_back_to_assignment():
+    client = FakeClient(tasks={}, assignment_tasks={1155: 1072})
+
+    with pytest.raises(DirectumError) as exc:
+        service(client).get_action_item_details(1155, kind="task")
+
+    assert exc.value.status_code == 404
+    assert client.queries == []
+
+
+def test_unknown_kind_rejected():
+    with pytest.raises(ValueError):
+        service(FakeClient()).get_action_item_details(1, kind="meeting")

@@ -131,7 +131,7 @@ def test_list_employee_incoming_expands_author():
     items = svc.list_employee_action_items("incoming", 63)
 
     _, kwargs = svc.client.calls[0]
-    assert kwargs["expand"] == "Author($select=Name)"
+    assert kwargs["expand"] == "Author($select=Name),Task($select=Id)"
     assert items[0].entity_type == "action_item_assignment"
 
 
@@ -238,3 +238,20 @@ def test_default_timezone_is_machine_local():
     svc = AssignmentsService(client=FakeClient(), current_user_service=FakeCurrentUser())
 
     assert svc.tz.utcoffset(None) == datetime.now().astimezone().utcoffset()
+
+
+def test_incoming_items_carry_task_id():
+    rows = [{"Id": 1078, "Subject": "Исполните", "Status": "InProcess", "Task": {"Id": 955}}]
+    svc = AssignmentsService(client=DeadlineClient(rows), current_user_service=FakeCurrentUser(), tz=STAND_TZ, now=lambda: FIXED_NOW)
+
+    items = svc.list_employee_action_items("incoming", 63)
+
+    assert svc.client.calls[0][1]["expand"] == "Author($select=Name),Task($select=Id)"
+    assert items[0].task_id == 955
+
+
+def test_outgoing_items_task_id_is_own_id():
+    rows = [{"Id": 595, "Subject": "Поручение", "Status": "InProcess"}]
+    svc = AssignmentsService(client=DeadlineClient(rows), current_user_service=FakeCurrentUser(), tz=STAND_TZ, now=lambda: FIXED_NOW)
+
+    assert svc.list_employee_action_items("outgoing", 63)[0].task_id == 595
