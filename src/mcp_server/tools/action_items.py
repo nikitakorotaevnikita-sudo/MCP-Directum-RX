@@ -5,6 +5,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
 from src.mcp_server.envelope import clamp_limit, list_envelope, to_jsonable
+from src.mcp_server.access import can_view_employee, is_admin
 from src.mcp_server.runner import READ_ONLY, ToolRunner
 from src.services.assignments import OVERDUE_COMPATIBLE_STATUSES, ActionItemFilters
 from src.services.outgoing_analytics import categorize_outgoing
@@ -19,14 +20,6 @@ Due = Annotated[
     Literal["today", "week"] | None,
     Field(description="Срок: today — сегодня, week — ближайшие 7 дней начиная с сегодня. Только поручения в работе"),
 ]
-
-
-def _is_admin(services) -> bool:
-    """Ошибка проверки — «не администратор»: доступ не расширяем при сбое."""
-    try:
-        return bool(services.admin_access.is_admin())
-    except Exception:
-        return False
 
 
 def check_due(due: str | None, status: str = "in_process", only_overdue: bool = False, has_period: bool = False) -> None:
@@ -83,12 +76,18 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         ] = None,
     ) -> dict:
         """Карточка поручения: тема, текст, исполнитель, автор, статус, срок, ссылка. Своё поручение (автор или
-        исполнитель) видит любой; администратор — любое. Передавай id и entity_type из элемента списка
+        исполнитель) видит любой; руководитель — поручения подчинённых; администратор — любое. Передавай id и entity_type из элемента списка
         (или task_id с entity_type=action_item_task). Отчёт о поручении формулируй сам по этим фактам."""
         kind = {"action_item_task": "task", "action_item_assignment": "assignment"}.get(entity_type or "")
 
         def action(s):
-            detail = s.meetings.get_action_item_details(action_item_id, require_author=not _is_admin(s), kind=kind)
+            detail = s.meetings.get_action_item_details(
+                action_item_id,
+                require_author=not is_admin(s),
+                kind=kind,
+                # Руководитель видит поручение, если автор или исполнитель — его подчинённый.
+                can_view=lambda people: any(person is not None and can_view_employee(s, person) for person in people),
+            )
             return to_jsonable(detail)
 
         return await runner.run(ctx, "get_action_item", action)

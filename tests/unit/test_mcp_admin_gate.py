@@ -1,10 +1,23 @@
 from types import SimpleNamespace
 
-from src.mcp_server.app import build_server
 from src.models.schemas import AssignmentSummary, EmployeeSummary
 from tests.unit.mcp_fakes import FakeProvider, call_tool, error_text, list_tools
 
-TOOL = "admin_list_employee_action_items"
+TOOL = "admin_probe"
+
+
+def build_server(provider):
+    """Сервер с тестовым admin_-тулом: боевых admin_-тулов сейчас нет, а шлюз должен работать для любых."""
+    from src.mcp_server.app import build_server as build
+
+    server = build(provider)
+
+    @server.tool()
+    def admin_probe(employee: str, direction: str) -> dict:
+        provider.services.assignments.list_employee_action_items(direction, 63)
+        return {"ok": True}
+
+    return server
 
 
 class Counter:

@@ -15,7 +15,7 @@ from src.mcp_server.context import ServicesProvider, TtlCache
 from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
-from src.mcp_server.tools import action_items, admin, citizen_requests, common, documents, odata, rx_methods
+from src.mcp_server.tools import action_items, citizen_requests, common, documents, employee_items, odata, rx_methods
 
 logger = logging.getLogger("mcp_ogv")
 
@@ -33,9 +33,10 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
 4. Универсальные odata_* используй для того, чего нет в курируемых. Всегда указывай filter — Directum отклоняет запросы без фильтра. Поля смотри через odata_describe_entity, наборы данных — в справочниках drx://domains/*.
 5. Инструменты drx_native_* — встроенные инструменты самой Directum RX.
 6. Даты передавай в формате YYYY-MM-DD.
-7. Инструменты admin_* видны только администраторам Directum RX: ими смотри данные других сотрудников, когда об этом явно просят.
-   Списки поручений сотрудника (тема, срок, дни просрочки, ссылка) — admin_list_employee_action_items; get_discipline_analytics даёт только счётчики.
-   Не оставляй пропусков вида {{уточнить}}: если данных нет — вызови нужный инструмент или прямо скажи, чего не хватает.
+7. Поручения другого сотрудника — list_employee_action_items: свои видит любой, подчинённых — их руководитель,
+   любых — администратор. Списки (тема, срок, дни просрочки, ссылка) бери оттуда; get_discipline_analytics и
+   get_department_discipline дают только счётчики. Не оставляй пропусков вида {{уточнить}}: вызови нужный
+   инструмент или прямо скажи, чего не хватает.
 8. Ссылки на карточки (поле url) выводи markdown-ссылками: [название](url).
 9. Вопрос о содержании документов («что сказано про…») — ask_documents; документ по реквизитам — find_documents.
 10. Обращения граждан: статус — get_citizen_request_status; счёт по тематикам — get_citizen_requests_analytics,
@@ -58,7 +59,7 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir:
     mcp = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, middleware=[admin_gate, native])
     common.register(mcp, runner)
     action_items.register(mcp, runner)
-    admin.register(mcp, runner)
+    employee_items.register(mcp, runner)
     documents.register(mcp, runner)
     rx_methods.register(mcp, runner)
     citizen_requests.register(mcp, runner)

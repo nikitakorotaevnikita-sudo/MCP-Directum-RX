@@ -145,3 +145,16 @@ def test_task_kind_does_not_fall_back_to_assignment():
 def test_unknown_kind_rejected():
     with pytest.raises(ValueError):
         service(FakeClient()).get_action_item_details(1, kind="meeting")
+
+
+def test_can_view_callback_admits_manager_of_participant():
+    seen = []
+
+    def can_view(ids):
+        seen.append(ids)
+        return 48 in ids
+
+    detail = service(FakeClient(tasks={1072: task_row()}), me=5).get_action_item_details(1072, can_view=can_view)
+
+    assert detail.id == 1072
+    assert seen == [{63, 48}]

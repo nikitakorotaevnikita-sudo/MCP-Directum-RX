@@ -6,7 +6,7 @@ from src.models.schemas import AssignmentSummary, EmployeeSummary
 from src.services.assignments import ActionItemFilters
 from tests.unit.mcp_fakes import FakeProvider, call_tool, error_text, list_tools, payload
 
-TOOL = "admin_list_employee_action_items"
+TOOL = "list_employee_action_items"
 NADYA = EmployeeSummary(id=63, name="Концева Надежда Ивановна", status="Active")
 
 
@@ -24,9 +24,10 @@ class FakeAssignments:
         return 3
 
 
-def make_services(is_admin=True, search=None, by_id=None):
+def make_services(is_admin=True, search=None, by_id=None, can_view=False):
     return SimpleNamespace(
         admin_access=SimpleNamespace(is_admin=lambda: is_admin),
+        subordination=SimpleNamespace(can_view=lambda employee_id: can_view),
         action_items=SimpleNamespace(
             search_employee=lambda query: search if search is not None else [NADYA],
             get_employee=lambda employee_id: by_id,
@@ -39,7 +40,7 @@ def call(services, **arguments):
     return call_tool(build_server(FakeProvider(services)), TOOL, arguments)
 
 
-def test_admin_tool_listed_for_admin():
+def test_tool_listed_for_admin():
     assert TOOL in [tool.name for tool in list_tools(build_server(FakeProvider(make_services())))]
 
 
@@ -146,13 +147,27 @@ def test_reversed_period_rejected():
     assert "date_from позже date_to" in text
 
 
-def test_non_admin_rejected_inside_tool():
-    services = make_services(is_admin=False)
+def test_stranger_rejected():
+    services = make_services(is_admin=False, by_id=NADYA, can_view=False)
 
     text = error_text(call(services, employee="63", direction="incoming"))
 
-    assert "только администраторам" in text
+    assert "Нет доступа" in text
     assert services.assignments.listed == []
+
+
+def test_manager_sees_subordinate():
+    services = make_services(is_admin=False, by_id=NADYA, can_view=True)
+
+    data = payload(call(services, employee="63", direction="incoming"))
+
+    assert data["employee"]["id"] == 63
+
+
+def test_tool_visible_to_everyone():
+    server = build_server(FakeProvider(make_services(is_admin=False)))
+
+    assert TOOL in [tool.name for tool in list_tools(server)]
 
 
 def test_due_passed_to_filters_and_echoed():

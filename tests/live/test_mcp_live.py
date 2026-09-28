@@ -59,7 +59,7 @@ def test_live_native_tools_listed(server):
 
 
 def test_live_admin_tool_visibility_matches_role(server):
-    visible = "admin_list_employee_action_items" in [tool.name for tool in list_tools(server)]
+    visible = "list_employee_action_items" in [tool.name for tool in list_tools(server)]
 
     if visible:
         employee = payload(
@@ -68,7 +68,7 @@ def test_live_admin_tool_visibility_matches_role(server):
         data = payload(
             call_tool(
                 server,
-                "admin_list_employee_action_items",
+                "list_employee_action_items",
                 {"employee": str(employee["Id"]), "direction": "incoming", "status": "all", "limit": 3},
             )
         )

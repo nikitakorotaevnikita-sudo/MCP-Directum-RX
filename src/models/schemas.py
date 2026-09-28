@@ -85,6 +85,7 @@ class EmployeeSummary(BaseModel):
     id: int
     name: str
     status: str | None = None
+    department: str | None = None
 
 
 class DocumentSummary(BaseModel):

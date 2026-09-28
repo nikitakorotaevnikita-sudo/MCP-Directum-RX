@@ -15,6 +15,7 @@ from src.services.document_search import DocumentSearchService
 from src.services.document_text import DocumentTextService
 from src.services.qa_search import QASearchService
 from src.services.rx_methods import RxMethodsService
+from src.services.subordination import SubordinationService
 from src.services.meetings import MeetingsService
 
 
@@ -35,6 +36,7 @@ class DirectumServices:
     rx_methods: RxMethodsService
     citizen_requests: CitizenRequestService
     citizen_request_analytics: CitizenRequestAnalyticsService
+    subordination: SubordinationService
 
     def close(self) -> None:
         self.client.close()
@@ -64,4 +66,5 @@ def build_directum_services(
         rx_methods=RxMethodsService(client, tz=tz),
         citizen_requests=CitizenRequestService(client, tz=tz),
         citizen_request_analytics=CitizenRequestAnalyticsService(client, tz=tz),
+        subordination=SubordinationService(client, current_user),
     )

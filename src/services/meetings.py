@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -120,7 +121,11 @@ class MeetingsService:
         return str(value) if value is not None else ""
 
     def get_action_item_details(
-        self, action_item_id: int, require_author: bool = True, kind: str | None = None
+        self,
+        action_item_id: int,
+        require_author: bool = True,
+        kind: str | None = None,
+        can_view: Callable[[set[int | None]], bool] | None = None,
     ) -> ActionItemDetail:
         """Карточка поручения по id задачи или id задания (входящие поручения приходят заданиями).
 
@@ -139,7 +144,7 @@ class MeetingsService:
         if require_author:
             current_user = self.current_user_service.get_current_user()
             participants = {self._person_id(row, "Author", "AssignedBy"), self._person_id(row, "Assignee", "Performer")}
-            if current_user.id not in participants:
+            if current_user.id not in participants and not (can_view and can_view(participants)):
                 raise DirectumError(
                     "Поручение найдено, но вы не являетесь его автором или исполнителем.",
                     status_code=403,

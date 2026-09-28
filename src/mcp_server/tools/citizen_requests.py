@@ -6,7 +6,7 @@ from pydantic import Field
 
 from src.mcp_server.envelope import to_jsonable
 from src.mcp_server.runner import READ_ONLY, ToolRunner
-from src.mcp_server.tools.admin import resolve_employee
+from src.mcp_server.tools.employee_items import resolve_employee
 from src.mcp_server.tools.params import parse_period
 from src.services.citizen_request_analytics import CLASSIFIER_CODE
 

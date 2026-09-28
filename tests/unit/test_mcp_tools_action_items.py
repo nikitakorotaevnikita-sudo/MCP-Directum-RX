@@ -104,7 +104,7 @@ def test_get_action_item_returns_details():
         client_card_url="https://rx.example/Client/#/card/x/42",
     )
     services = SimpleNamespace(
-        meetings=SimpleNamespace(get_action_item_details=lambda action_item_id, require_author=True, kind=None: detail)
+        meetings=SimpleNamespace(get_action_item_details=lambda action_item_id, require_author=True, kind=None, can_view=None: detail)
     )
 
     data = payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 42}))
@@ -118,8 +118,9 @@ def _detail_services(is_admin):
 
     seen = {}
 
-    def details(action_item_id, require_author=True, kind=None):
+    def details(action_item_id, require_author=True, kind=None, can_view=None):
         seen.update(action_item_id=action_item_id, require_author=require_author, kind=kind)
+        seen["can_view"] = can_view
         return ActionItemDetail(
             id=action_item_id, subject="П", performer="И", author="А", status="InProcess",
             created_date=date(2026, 9, 1), client_card_url="https://rx/card/1",
@@ -135,7 +136,7 @@ def test_get_action_item_admin_reads_any_action_item():
 
     payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 1155}))
 
-    assert seen == {"action_item_id": 1155, "require_author": False, "kind": None}
+    assert (seen["action_item_id"], seen["require_author"], seen["kind"]) == (1155, False, None)
 
 
 def test_get_action_item_regular_user_keeps_participant_check():
@@ -273,3 +274,13 @@ def test_get_action_item_passes_entity_type_as_kind():
 
     payload(call_tool(server, "get_action_item", {"action_item_id": 595, "entity_type": "action_item_task"}))
     assert seen["kind"] == "task"
+
+
+def test_get_action_item_regular_user_gets_subordinate_check():
+    services, seen = _detail_services(lambda: False)
+    services.subordination = SimpleNamespace(can_view=lambda employee_id: employee_id == 48)
+
+    payload(call_tool(make_server(services), "get_action_item", {"action_item_id": 1155}))
+
+    assert seen["can_view"]({None, 48}) is True
+    assert seen["can_view"]({None, 99}) is False
