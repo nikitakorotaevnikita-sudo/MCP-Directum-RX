@@ -40,9 +40,23 @@ class DisciplineAnalyticsService:
                     employee=None,
                     message=f"Сотрудник «{employee.strip()}» не найден.",
                 )
-            employee_summary = matches[0]
-            scope = "employee"
-            base_filters.append(f"Performer/Id eq {employee_summary.id}")
+            return self.employee_discipline(matches[0], date_from=date_from, date_to=date_to)
+        return self._summary(scope, employee_summary, base_filters, date_from, date_to)
+
+    def employee_discipline(
+        self, employee: EmployeeSummary, date_from: str | None = None, date_to: str | None = None
+    ) -> DisciplineSummary:
+        """Метрики по уже известному сотруднику (без поиска по ФИО) — для отчётов по подразделению."""
+        return self._summary("employee", employee, [f"Performer/Id eq {int(employee.id)}"], date_from, date_to)
+
+    def _summary(
+        self,
+        scope: str,
+        employee_summary: EmployeeSummary | None,
+        base_filters: list[str],
+        date_from: str | None,
+        date_to: str | None,
+    ) -> DisciplineSummary:
 
         start = self.action_item_service._normalize_filter_datetime(date_from)
         end = self.action_item_service._normalize_filter_datetime(date_to, end_of_day=True)

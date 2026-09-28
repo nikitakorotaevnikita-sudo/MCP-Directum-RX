@@ -258,6 +258,21 @@ class DisciplineSummary(BaseModel):
     message: str = ""
 
 
+class DepartmentDiscipline(BaseModel):
+    """Дисциплина по сотрудникам подразделения: строка на сотрудника, итоги по подразделению."""
+
+    departments: list[str] = Field(default_factory=list)
+    date_from: str | None = None
+    date_to: str | None = None
+    sort_by: str = "overdue"
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    employees_total: int = 0
+    truncated: bool = False
+    totals: dict[str, int] = Field(default_factory=dict)
+    on_time_rate: float | None = None
+    message: str = ""
+
+
 class ActionItemCreateRequest(BaseModel):
     subject: str = Field(min_length=1)
     performer_id: int = Field(gt=0)

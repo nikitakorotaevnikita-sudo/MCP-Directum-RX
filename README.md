@@ -183,7 +183,10 @@ Fuzzy-fallback использует стемминг словоформ и ст�
 
 **Состав (этап 1):**
 - курируемые тулы: `get_current_user`, `search_employees`, `list_my_assignments`, `list_action_items`, `get_action_item`, `get_discipline_analytics`, `get_outgoing_action_items_analytics`, `search_documents`, `find_documents`, `get_document`, `get_document_text`, `list_documents_by_counterparty`, `list_letters`, `list_my_meetings`;
-- только для администраторов DRX (роль «Администраторы», прямое членство): `admin_list_employee_action_items` — поручения любого сотрудника (входящие/исходящие, статус, просрочка, период, срок сегодня/7 дней — `due`). Не-администраторам тул не показывается и не вызывается;
+- `list_employee_action_items` — поручения сотрудника (входящие/исходящие, статус, просрочка, период, срок сегодня/7 дней — `due`).
+  Доступ: свои — любому, подчинённых — руководителю подразделения (`Manager`, включая вложенные по `HeadOffice`), любых — администратору;
+- `get_department_discipline` — дисциплина по каждому сотруднику подразделения одним вызовом (параллельные `$count`), итоги и % в срок;
+- `list_citizen_requests_due` — горящие обращения по 59-ФЗ: срок нарушен или истекает в ближайшие N дней;
 - универсальное чтение: `odata_list_domains`, `odata_describe_entity`, `odata_query`, `odata_count`, `odata_get` (фильтр обязателен, чувствительные наборы закрыты);
 - справочники доменов — ресурсы `drx://domains/*`;
 - тулы встроенного MCP Directum (`drx_native_*`, только read-only).

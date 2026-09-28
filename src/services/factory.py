@@ -7,6 +7,7 @@ from src.services.action_items import ActionItemService
 from src.services.admin_access import AdminAccessService
 from src.services.citizen_request_analytics import CitizenRequestAnalyticsService
 from src.services.citizen_requests import CitizenRequestService
+from src.services.department_discipline import DepartmentDisciplineService
 from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
 from src.services.directum_client import DirectumClient
@@ -37,6 +38,7 @@ class DirectumServices:
     citizen_requests: CitizenRequestService
     citizen_request_analytics: CitizenRequestAnalyticsService
     subordination: SubordinationService
+    department_discipline: DepartmentDisciplineService
 
     def close(self) -> None:
         self.client.close()
@@ -52,13 +54,14 @@ def build_directum_services(
     client = DirectumClient(base_url, auth_token, timeout, transport=transport)
     current_user = CurrentUserService(client, auth_token)
     action_items = ActionItemService(client)
+    discipline = DisciplineAnalyticsService(client, action_items)
     return DirectumServices(
         client=client,
         current_user=current_user,
         assignments=AssignmentsService(client, current_user, tz=tz),
         action_items=action_items,
         meetings=MeetingsService(client, current_user),
-        discipline=DisciplineAnalyticsService(client, action_items),
+        discipline=discipline,
         admin_access=AdminAccessService(client, current_user),
         document_search=DocumentSearchService(client, action_items, tz=tz),
         document_text=DocumentTextService(client),
@@ -67,4 +70,5 @@ def build_directum_services(
         citizen_requests=CitizenRequestService(client, tz=tz),
         citizen_request_analytics=CitizenRequestAnalyticsService(client, tz=tz),
         subordination=SubordinationService(client, current_user),
+        department_discipline=DepartmentDisciplineService(discipline),
     )

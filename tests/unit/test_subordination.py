@@ -116,3 +116,32 @@ def test_subordinates_of_specific_department_must_be_managed():
 
     assert sorted(person.id for person in svc.subordinates(department_ids=[501])) == [71, 72]
     assert svc.subordinates(department_ids=[600]) == []
+
+
+def test_department_tree_from_any_root():
+    assert service().department_tree([500]) == [500, 501]
+
+
+def test_employees_of_departments_without_manager_restriction():
+    people = service(me=72).employees_of([600])
+
+    assert sorted(person.id for person in people) == [80, 81]
+    assert people[0].department == "Правовой отдел"
+
+
+def test_find_departments_by_name_or_id():
+    class Client(FakeClient):
+        def query(self, entity_set, **kwargs):
+            if entity_set == "IDepartments" and "contains(Name" in kwargs["filter_"]:
+                self.calls.append((entity_set, kwargs))
+                return [{"Id": 445, "Name": "Отдел документационного обеспечения"}]
+            if entity_set == "IDepartments" and kwargs["filter_"].startswith("Id eq"):
+                self.calls.append((entity_set, kwargs))
+                return [{"Id": 600, "Name": "Правовой отдел"}]
+            return super().query(entity_set, **kwargs)
+
+    svc = SubordinationService(Client(), Me(63))
+
+    assert [d["id"] for d in svc.find_departments("документационного")] == [445]
+    assert "Status eq 'Active'" in svc.client.calls[-1][1]["filter_"]
+    assert svc.find_departments("600") == [{"id": 600, "name": "Правовой отдел"}]

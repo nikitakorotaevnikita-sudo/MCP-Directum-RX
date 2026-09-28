@@ -37,9 +37,14 @@ class SubordinationService:
             select="Id",
             top=MAX_DEPARTMENTS,
         )
+        self._managed = self.department_tree([int(row["Id"]) for row in roots])
+        return self._managed
+
+    def department_tree(self, root_ids: list[int]) -> list[int]:
+        """Подразделения и все вложенные (по HeadOffice), в порядке обхода в ширину."""
         found: list[int] = []
         seen: set[int] = set()
-        frontier = [int(row["Id"]) for row in roots]
+        frontier = [int(item) for item in root_ids]
         while frontier and len(found) < MAX_DEPARTMENTS:
             fresh = [item for item in frontier if item not in seen]
             seen.update(fresh)
@@ -54,8 +59,16 @@ class SubordinationService:
                 )
                 children.extend(int(row["Id"]) for row in rows)
             frontier = [item for item in children if item not in seen]
-        self._managed = found[:MAX_DEPARTMENTS]
-        return self._managed
+        return found[:MAX_DEPARTMENTS]
+
+    def find_departments(self, query: str, top: int = 10) -> list[dict[str, Any]]:
+        text = query.strip()
+        if text.isdigit():
+            filter_ = f"Id eq {int(text)}"
+        else:
+            filter_ = "contains(Name,'{}') and Status eq 'Active'".format(text.replace("'", "''"))
+        rows = self.client.query("IDepartments", filter_=filter_, select="Id,Name", top=top)
+        return [{"id": int(row["Id"]), "name": row.get("Name") or ""} for row in rows]
 
     def is_subordinate(self, employee_id: int) -> bool:
         managed = self.managed_department_ids()
@@ -75,9 +88,12 @@ class SubordinationService:
 
     def subordinates(self, department_ids: list[int] | None = None) -> list[EmployeeSummary]:
         managed = self.managed_department_ids()
-        scope = [item for item in (department_ids or managed) if item in managed]
+        return self.employees_of([item for item in (department_ids or managed) if item in managed])
+
+    def employees_of(self, department_ids: list[int]) -> list[EmployeeSummary]:
+        """Активные сотрудники подразделений. Доступ проверяет вызывающий код."""
         people: list[EmployeeSummary] = []
-        for chunk in _chunks(scope):
+        for chunk in _chunks(list(department_ids)):
             rows = self.client.query(
                 "IEmployees",
                 filter_=f"{_or('Department', chunk)} and Status eq 'Active'",

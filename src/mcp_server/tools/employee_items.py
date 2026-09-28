@@ -4,8 +4,8 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import Field
 
-from src.mcp_server.envelope import clamp_limit, list_envelope
-from src.mcp_server.access import ensure_can_view_employee
+from src.mcp_server.envelope import clamp_limit, list_envelope, to_jsonable
+from src.mcp_server.access import NO_EMPLOYEE_ACCESS, ensure_can_view_employee, is_admin
 from src.mcp_server.runner import READ_ONLY, ToolRunner
 from src.mcp_server.tools.action_items import Due, check_due
 from src.mcp_server.tools.params import parse_period
@@ -13,6 +13,8 @@ from src.models.schemas import EmployeeSummary
 from src.services.assignments import OVERDUE_COMPATIBLE_STATUSES, ActionItemFilters
 
 MAX_CANDIDATES = 10
+# Больше — отчёт становится медленным (4 запроса $count на сотрудника) и нечитаемым в чате.
+MAX_REPORT_EMPLOYEES = 150
 
 Limit = Annotated[int, Field(description="Сколько записей вернуть (1–100)", ge=1, le=100)]
 IsoDate = Annotated[str | None, Field(description="Дата в формате YYYY-MM-DD, граница включительно")]
@@ -97,3 +99,67 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
             }
 
         return await runner.run(ctx, "list_employee_action_items", action)
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def get_department_discipline(
+        ctx: Context,
+        department: Annotated[
+            str | None, Field(description="Название или id подразделения; пусто — подразделения, которыми вы руководите")
+        ] = None,
+        include_subdepartments: Annotated[bool, Field(description="Включать вложенные подразделения")] = True,
+        date_from: IsoDate = None,
+        date_to: IsoDate = None,
+        sort_by: Annotated[
+            Literal["overdue", "on_time_rate", "in_process"],
+            Field(description="Сортировка: overdue — больше просрочено, on_time_rate — худший % в срок, in_process — больше в работе"),
+        ] = "overdue",
+        top: Annotated[int, Field(description="Сколько сотрудников показать (1–100)", ge=1, le=100)] = 30,
+    ) -> dict:
+        """Исполнительская дисциплина по КАЖДОМУ сотруднику подразделения одним вызовом: в работе, просрочено,
+        завершено, в срок, с опозданием, % в срок; итоги по подразделению. Период — по дате завершения.
+        Доступ: руководителю — свои подразделения, администратору — любое. Вместо многократных get_discipline_analytics.
+        Списки конкретных поручений сотрудника — list_employee_action_items."""
+        start, end = parse_period(date_from, date_to)
+
+        def action(s):
+            admin = is_admin(s)
+            managed = s.subordination.managed_department_ids()
+            if (department or "").strip():
+                chosen = _resolve_department(s.subordination.find_departments(department), department)
+                if not admin and chosen["id"] not in managed:
+                    raise ToolError(NO_EMPLOYEE_ACCESS)
+                department_ids = s.subordination.department_tree([chosen["id"]]) if include_subdepartments else [chosen["id"]]
+            elif admin:
+                raise ToolError(
+                    "Укажите подразделение. Для организации в целом — get_discipline_analytics без сотрудника."
+                )
+            elif managed:
+                department_ids = managed
+            else:
+                raise ToolError("Вы не руководитель подразделения в Directum RX: укажите подразделение, к которому есть доступ.")
+            employees = s.subordination.employees_of(department_ids)[:MAX_REPORT_EMPLOYEES]
+            names = list(dict.fromkeys(person.department for person in employees if person.department))
+            report = s.department_discipline.compute(
+                employees,
+                departments=names,
+                date_from=start.isoformat() if start else None,
+                date_to=end.isoformat() if end else None,
+                sort_by=sort_by,
+                top=top,
+            )
+            return to_jsonable(report)
+
+        return await runner.run(ctx, "get_department_discipline", action)
+
+
+def _resolve_department(matches: list[dict], query: str) -> dict:
+    text = query.strip()
+    if not matches:
+        raise ToolError(f"Подразделение «{text}» не найдено. Уточните название.")
+    if len(matches) == 1:
+        return matches[0]
+    exact = [match for match in matches if match["name"].casefold() == text.casefold()]
+    if len(exact) == 1:
+        return exact[0]
+    listing = "; ".join(f"{match['id']} — {match['name']}" for match in matches[:MAX_CANDIDATES])
+    raise ToolError(f"Найдено несколько подразделений: {listing}. Уточните, какое (можно передать id).")
