@@ -73,6 +73,10 @@ class AssignmentSummary(BaseModel):
     entity_type: str
     url: str | None = None
     performer: str | None = None
+    # Кто выдал поручение (для входящих — автор задания).
+    author: str | None = None
+    # Сколько полных дней просрочено по поясу стенда; None — не просрочено или не в работе.
+    days_overdue: int | None = None
 
 
 class EmployeeSummary(BaseModel):

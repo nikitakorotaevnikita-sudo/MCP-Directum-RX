@@ -120,7 +120,7 @@ class AssignmentsService:
             entity_set,
             filter_=action_filter,
             select="Id,Subject,Deadline,Status",
-            expand="Assignee($select=Name)" if direction == "outgoing" else None,
+            expand="Assignee($select=Name)" if direction == "outgoing" else "Author($select=Name)",
             orderby="Deadline asc",
             top=top,
         )
@@ -202,7 +202,25 @@ class AssignmentsService:
             entity_type=entity_type,
             url=client_url.strip() if isinstance(client_url, str) and client_url.strip() else None,
             performer=self._performer_name(row),
+            author=self._person_name(row, "Author"),
+            days_overdue=self._days_overdue(row),
         )
+
+    def _days_overdue(self, row: dict[str, Any]) -> int | None:
+        if row.get("Status") != "InProcess" or not isinstance(row.get("Deadline"), str):
+            return None
+        try:
+            deadline = datetime.fromisoformat(row["Deadline"]).astimezone(self.tz).date()
+        except ValueError:
+            return None
+        days = (self._now().astimezone(self.tz).date() - deadline).days
+        return days if days > 0 else None
+
+    @staticmethod
+    def _person_name(row: dict[str, Any], key: str) -> str | None:
+        person = row.get(key)
+        name = person.get("Name") if isinstance(person, dict) else None
+        return name.strip() if isinstance(name, str) and name.strip() else None
 
     @staticmethod
     def _performer_name(row: dict[str, Any]) -> str | None:

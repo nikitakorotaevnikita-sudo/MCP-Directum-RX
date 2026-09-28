@@ -62,7 +62,10 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         limit: Limit = 20,
         due: Due = None,
     ) -> dict:
-        """Только для администраторов: поручения любого сотрудника — входящие (он исполнитель) или исходящие (он автор), с фильтром по статусу, просрочке, периоду или сроку (сегодня / 7 дней). total — сколько всего."""
+        """Только для администраторов: СПИСОК поручений любого сотрудника — входящие (он исполнитель) или исходящие (он автор),
+        с фильтром по статусу, просрочке, периоду или сроку (сегодня / 7 дней). У каждого: тема, срок, days_overdue
+        (дней просрочки), author (кто выдал), performer, url карточки; подробности — get_action_item(id). total — сколько всего.
+        Для таблиц «просроченные поручения сотрудника» используй этот тул, а не get_discipline_analytics (там только числа)."""
         size = clamp_limit(limit)
         check_due(due, status=status, only_overdue=only_overdue, has_period=bool(date_from or date_to))
         if only_overdue and status not in OVERDUE_COMPATIBLE_STATUSES:

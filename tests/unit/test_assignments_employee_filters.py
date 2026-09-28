@@ -125,14 +125,42 @@ def test_list_employee_outgoing_expands_assignee_and_sorts():
     assert items[0].performer == "Иванов И.И."
 
 
-def test_list_employee_incoming_has_no_expand():
+def test_list_employee_incoming_expands_author():
     svc = service()
 
     items = svc.list_employee_action_items("incoming", 63)
 
     _, kwargs = svc.client.calls[0]
-    assert kwargs["expand"] is None
+    assert kwargs["expand"] == "Author($select=Name)"
     assert items[0].entity_type == "action_item_assignment"
+
+
+class DeadlineClient(FakeClient):
+    def __init__(self, rows):
+        super().__init__()
+        self.rows = rows
+
+    def query(self, entity_set, **kwargs):
+        self.calls.append((entity_set, kwargs))
+        return self.rows
+
+
+def test_items_carry_author_and_days_overdue_in_stand_timezone():
+    rows = [
+        # срок 20.09 по стенду, сейчас 25.09 22:30 по стенду → просрочено на 5 дн.
+        {"Id": 1, "Subject": "Просрочено", "Status": "InProcess", "Deadline": "2026-09-20T00:00:00+04:00", "Author": {"Name": "Петров П.П."}},
+        {"Id": 2, "Subject": "Срок сегодня", "Status": "InProcess", "Deadline": "2026-09-25T00:00:00+04:00"},
+        {"Id": 3, "Subject": "Завершено", "Status": "Completed", "Deadline": "2026-09-01T00:00:00+04:00"},
+        {"Id": 4, "Subject": "Без срока", "Status": "InProcess", "Deadline": None},
+    ]
+    svc = AssignmentsService(
+        client=DeadlineClient(rows), current_user_service=FakeCurrentUser(), tz=STAND_TZ, now=lambda: FIXED_NOW
+    )
+
+    items = svc.list_employee_action_items("incoming", 63)
+
+    assert items[0].author == "Петров П.П."
+    assert [item.days_overdue for item in items] == [5, None, None, None]
 
 
 def test_count_employee_uses_same_filter():
