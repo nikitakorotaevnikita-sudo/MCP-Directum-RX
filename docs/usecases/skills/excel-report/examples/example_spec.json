@@ -1,0 +1,40 @@
+{
+  "properties": {"title": "Выгрузка поручений и обращений", "author": "Аналитический отдел"},
+  "sheets": [
+    {
+      "name": "Просроченные поручения",
+      "title": "Иванов И. И. — просроченные входящие поручения на 28.09.2026",
+      "columns": [
+        {"title": "Тема", "key": "subject", "type": "text", "width": 50},
+        {"title": "Срок", "key": "deadline", "type": "date"},
+        {"title": "Дней просрочки", "key": "days_overdue", "type": "integer"},
+        {"title": "Кто выдал", "key": "author", "type": "text"},
+        {"title": "Ссылка", "key": "url", "type": "url"}
+      ],
+      "rows": [
+        {"id": 101, "subject": "Подготовить информацию о ходе реализации национального проекта «Экология»", "deadline": "2026-08-18T00:00:00+04:00", "days_overdue": 41, "author": "Петров П. П.", "url": "https://rx.example.gov.ru/DirectumRX/#/card/ActionItemExecutionAssignment/101"},
+        {"id": 102, "subject": "Направить предложения по плану мероприятий на IV квартал", "deadline": "2026-08-25T00:00:00+04:00", "days_overdue": 34, "author": "Сидорова А. В.", "url": "https://rx.example.gov.ru/DirectumRX/#/card/ActionItemExecutionAssignment/102"},
+        {"id": 103, "subject": "Согласовать проект распоряжения", "deadline": "2026-09-21T00:00:00+04:00", "days_overdue": 7, "author": "Петров П. П.", "url": "https://rx.example.gov.ru/DirectumRX/#/card/ActionItemExecutionAssignment/103"}
+      ],
+      "totals": {"label": "Итого поручений", "columns": ["url"], "func": "count"},
+      "highlight": [{"column": "days_overdue", "op": ">=", "value": 30, "color": "red", "row": true}]
+    },
+    {
+      "name": "Обращения по тематикам",
+      "title": "Обращения граждан по тематикам ТОТК, 01.01.2026–30.09.2026",
+      "columns": [
+        {"title": "Код", "key": "code", "type": "text"},
+        {"title": "Тематика", "key": "name", "type": "text", "width": 50},
+        {"title": "Обращений", "key": "requests", "type": "integer"},
+        {"title": "Вопросов", "key": "questions", "type": "integer"},
+        {"title": "Доля обращений", "key": "share", "type": "percent"}
+      ],
+      "rows": [
+        {"code": "0003.0008", "name": "Градостроительство и архитектура", "requests": 120, "questions": 150, "share": 0.4},
+        {"code": "0005.0005", "name": "Жилищно-коммунальная сфера", "requests": 90, "questions": 97, "share": 0.3},
+        {"code": "0002.0007", "name": "Социальное обеспечение", "requests": 90, "questions": 91, "share": 0.3}
+      ],
+      "totals": {"label": "Итого", "columns": ["requests", "questions", "share"], "func": "sum"}
+    }
+  ]
+}

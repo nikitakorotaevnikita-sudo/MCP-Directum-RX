@@ -58,20 +58,23 @@ def test_live_native_tools_listed(server):
     assert any(tool.name.startswith("drx_native_") for tool in list_tools(server))
 
 
-def test_live_admin_tool_visibility_matches_role(server):
-    visible = "list_employee_action_items" in [tool.name for tool in list_tools(server)]
+def test_live_employee_action_items_respects_access(server):
+    assert "list_employee_action_items" in [tool.name for tool in list_tools(server)]
+    employee = payload(
+        call_tool(server, "odata_query", {"entity_set": "IEmployees", "filter": "Status eq 'Active'", "top": 1})
+    )["items"][0]
 
-    if visible:
-        employee = payload(
-            call_tool(server, "odata_query", {"entity_set": "IEmployees", "filter": "Status eq 'Active'", "top": 1})
-        )["items"][0]
-        data = payload(
-            call_tool(
-                server,
-                "list_employee_action_items",
-                {"employee": str(employee["Id"]), "direction": "incoming", "status": "all", "limit": 3},
-            )
-        )
+    result = call_tool(
+        server,
+        "list_employee_action_items",
+        {"employee": str(employee["Id"]), "direction": "incoming", "status": "all", "limit": 3},
+    )
+
+    if result.is_error:
+        # Не администратор и не руководитель этого сотрудника — отказ, а не чужие данные.
+        assert "Нет доступа" in result.content[0].text
+    else:
+        data = payload(result)
         assert data["employee"]["id"] == employee["Id"]
         assert data["total"] is not None
 

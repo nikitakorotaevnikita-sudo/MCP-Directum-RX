@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Шрифты и офисные файлы — бинарные: без нормализации концов строк
+*.ttf binary
+*.pdf binary
+*.xlsx binary
