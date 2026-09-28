@@ -49,4 +49,5 @@ def test_build_directum_services_passes_timezone():
     assert services.rx_methods.tz is tz
     assert services.citizen_requests.tz is tz
     assert services.citizen_request_analytics.tz is tz
+    assert services.legal_acts.tz is tz
     services.close()

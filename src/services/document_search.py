@@ -72,6 +72,15 @@ def _literal(value: str) -> str:
     return value.replace("'", "''")
 
 
+def text_condition(stems: list[str]) -> str:
+    """Любая основа слова в названии или теме; contains проверяем и в исходном регистре, и с заглавной."""
+    parts = []
+    for stem in stems:
+        for variant in dict.fromkeys((stem, stem.capitalize())):
+            parts.append(f"contains(Name,'{_literal(variant)}') or contains(Subject,'{_literal(variant)}')")
+    return "(" + " or ".join(parts) + ")"
+
+
 def _parse_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         return value
@@ -225,11 +234,7 @@ class DocumentSearchService:
         conditions: list[str] = []
         stems = text_stems(criteria.text)
         if stems:
-            parts = []
-            for stem in stems:
-                for variant in dict.fromkeys((stem, stem.capitalize())):
-                    parts.append(f"contains(Name,'{_literal(variant)}') or contains(Subject,'{_literal(variant)}')")
-            conditions.append("(" + " or ".join(parts) + ")")
+            conditions.append(text_condition(stems))
         if criteria.has_period:
             conditions.append(self._period_condition(criteria.date_from, criteria.date_to))
         number = (criteria.registration_number or "").strip()

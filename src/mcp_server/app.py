@@ -15,7 +15,16 @@ from src.mcp_server.context import ServicesProvider, TtlCache
 from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
-from src.mcp_server.tools import action_items, citizen_requests, common, documents, employee_items, odata, rx_methods
+from src.mcp_server.tools import (
+    action_items,
+    citizen_requests,
+    common,
+    documents,
+    employee_items,
+    legal_acts,
+    odata,
+    rx_methods,
+)
 
 logger = logging.getLogger("mcp_ogv")
 
@@ -42,6 +51,8 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
 10. Обращения граждан: статус — get_citizen_request_status; счёт по тематикам — get_citizen_requests_analytics,
     код классификатора — search_citizen_request_classifier. Уровни ТОТК: раздел → тематика → тема → вопрос;
     в RX поле Topic — это тематика, Theme — тема. Число обращений и число вопросов различай.
+11. Нормативные правовые акты и проекты (модуль «Правовые акты» RX): find_legal_acts, get_legal_act,
+    list_legal_acts_on_approval (где застряло согласование). Федеральных законов в RX нет — не выдавай их за данные RX.
 """
 
 
@@ -63,6 +74,7 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir:
     documents.register(mcp, runner)
     rx_methods.register(mcp, runner)
     citizen_requests.register(mcp, runner)
+    legal_acts.register(mcp, runner)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
     resources.register(mcp, guides)

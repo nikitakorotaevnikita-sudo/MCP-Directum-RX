@@ -258,6 +258,75 @@ class DisciplineSummary(BaseModel):
     message: str = ""
 
 
+class LegalActSummary(BaseModel):
+    id: int
+    name: str
+    kind: str | None = None
+    is_project: bool = False
+    subject: str | None = None
+    registration_number: str | None = None
+    registration_date: date | None = None
+    is_normative: bool = False
+    is_published: bool = False
+    publication_date: date | None = None
+    publication_place: str | None = None
+    # У проекта — номер принятого акта строкой («От 24.06.2026 № 015/26»).
+    adopted_act_number: str | None = None
+    approval_state: str | None = None
+    approval_state_label: str | None = None
+    lifecycle_state_label: str | None = None
+    url: str | None = None
+
+
+class LegalActSearchResult(BaseModel):
+    items: list[LegalActSummary] = Field(default_factory=list)
+    total: int = 0
+    returned: int = 0
+
+
+class ApprovalStep(BaseModel):
+    """Текущее задание по задаче согласования: у кого и сколько дней."""
+
+    performer: str | None = None
+    action: str = ""
+    since: date | None = None
+    deadline: date | None = None
+    days_waiting: int | None = None
+    overdue: bool = False
+
+
+class LegalActApproval(BaseModel):
+    task_id: int
+    subject: str = ""
+    status: str | None = None
+    status_label: str | None = None
+    started: date | None = None
+    days_in_approval: int | None = None
+    curator: str | None = None
+    internal_approvers: list[str] = Field(default_factory=list)
+    outer_approvers: list[str] = Field(default_factory=list)
+    current_steps: list[ApprovalStep] = Field(default_factory=list)
+    max_days_waiting: int | None = None
+    document: LegalActSummary | None = None
+
+
+class LegalActDetail(BaseModel):
+    act: LegalActSummary
+    prepared_by: str | None = None
+    department: str | None = None
+    signatory: str | None = None
+    has_text: bool = False
+    adopted_act: LegalActSummary | None = None
+    projects: list[LegalActSummary] = Field(default_factory=list)
+    approvals: list[LegalActApproval] = Field(default_factory=list)
+
+
+class LegalActsOnApproval(BaseModel):
+    items: list[LegalActApproval] = Field(default_factory=list)
+    total: int = 0
+    truncated: bool = False
+
+
 class DepartmentDiscipline(BaseModel):
     """Дисциплина по сотрудникам подразделения: строка на сотрудника, итоги по подразделению."""
 

@@ -157,3 +157,17 @@ def test_live_search_classifier_returns_codes(server):
 
     for item in data["items"]:
         assert item["code"][:4].isdigit()
+
+
+def test_live_legal_acts_search_card_and_approval(server):
+    found = payload(call_tool(server, "find_legal_acts", {"kind": "project", "limit": 3}))
+    if not found["items"]:
+        pytest.skip("на стенде нет проектов правовых актов")
+
+    card = payload(call_tool(server, "get_legal_act", {"act_id": found["items"][0]["id"]}))
+    on_approval = payload(call_tool(server, "list_legal_acts_on_approval", {"limit": 3}))
+
+    assert card["act"]["is_project"] is True
+    assert card["act"]["approval_state_label"]
+    for item in on_approval["items"]:
+        assert item["status"] == "InProcess"
