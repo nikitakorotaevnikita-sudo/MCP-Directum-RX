@@ -57,6 +57,19 @@ def _plain_text(data: bytes) -> str:
         return data.decode("cp1251", errors="replace")
 
 
+def _sniff(data: bytes) -> str | None:
+    if data.startswith(b"%PDF"):
+        return "pdf"
+    if data.startswith(b"PK\x03\x04"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                if "word/document.xml" in archive.namelist():
+                    return "docx"
+        except zipfile.BadZipFile:
+            return None
+    return None
+
+
 def _extract(data: bytes, extension: str) -> str:
     if extension == "docx":
         text = _docx_text(data)
@@ -121,10 +134,13 @@ class DocumentTextService:
                 else f"Исходный формат «{extension}» не поддерживается, текст взят из PDF-представления."
             )
             extension = "pdf"
-        result.extension = extension
         if data is None:
+            result.extension = extension
             result.message = "Файл версии пуст."
             return result
+        # Расширение в RX бывает неверным (docx с пометкой pdf): формат определяем по содержимому.
+        extension = _sniff(data) or extension
+        result.extension = extension
         try:
             text = _extract(data, extension)
         except _Unreadable:

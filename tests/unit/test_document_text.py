@@ -240,3 +240,21 @@ def test_storage_failure_without_public_body_is_explained_not_raised():
 
     assert result.text == ""
     assert "хранилищ" in result.message
+
+
+def test_docx_labelled_as_pdf_is_read_by_content():
+    client = FakeClient(versions=[version(5, 1, "pdf")], bodies={body_path(5): make_docx("На самом деле это docx.")})
+
+    result = DocumentTextService(client).get_text(42)
+
+    assert result.text == "На самом деле это docx."
+    assert result.extension == "docx"
+
+
+def test_pdf_labelled_as_txt_is_read_by_content():
+    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): make_text_pdf("Real pdf inside")})
+
+    result = DocumentTextService(client).get_text(42)
+
+    assert "Real pdf inside" in result.text
+    assert result.extension == "pdf"
