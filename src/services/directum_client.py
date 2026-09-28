@@ -1,7 +1,7 @@
 from typing import Any
 from types import TracebackType
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -30,7 +30,8 @@ def _odata_literal(value: Any) -> str:
     if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, datetime):
-        return value.isoformat()
+        # В UTC с «Z»: IIS стенда отвечает 404 на «+» смещения в пути, даже закодированный.
+        return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return "'" + str(value).replace("'", "''") + "'"
 
 
@@ -179,6 +180,28 @@ class DirectumClient:
         if response.status_code == 204:
             return None
         return unwrap_method_result(self._json_or_error(response))
+
+    def get_binary(self, entity_path: str, max_bytes: int) -> bytes | None:
+        """Сырые байты потока (…/Body/$value). Нет тела — None; больше max_bytes — DirectumError 413."""
+        too_large = DirectumError("Файл слишком большой для чтения в чате (больше 20 МБ).", 413)
+        with self.client.stream("GET", self.build_url(entity_path), headers={"Authorization": self.auth_token}) as response:
+            if response.status_code in (204, 404):
+                return None
+            if response.status_code >= 400:
+                raise DirectumError(
+                    f"Directum OData request failed with status {response.status_code}", response.status_code
+                )
+            declared = response.headers.get("Content-Length")
+            if declared and declared.isdigit() and int(declared) > max_bytes:
+                raise too_large
+            chunks = []
+            size = 0
+            for chunk in response.iter_bytes():
+                size += len(chunk)
+                if size > max_bytes:
+                    raise too_large
+                chunks.append(chunk)
+        return b"".join(chunks) or None
 
     def get_metadata_xml(self) -> str:
         response = self.client.get(

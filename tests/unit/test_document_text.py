@@ -73,11 +73,15 @@ class FakeClient:
             return []
         return [{"Id": 42, "Name": "Письмо о ремонте", "Versions": self.versions}]
 
-    def get_one(self, entity_path):
+    def get_binary(self, entity_path, max_bytes):
         self.paths.append(entity_path)
-        if entity_path.endswith("PublicBody") and self.public_error:
-            raise DirectumError("no public body", 404)
-        return self.bodies.get(entity_path, {"Value": None})
+        self.max_bytes = max_bytes
+        if entity_path.endswith("PublicBody/$value") and self.public_error:
+            return None
+        body = self.bodies.get(entity_path)
+        if isinstance(body, DirectumError):
+            raise body
+        return body
 
     def build_document_card_url(self, document_id):
         return f"https://rx.example/doc/{document_id}"
@@ -88,13 +92,13 @@ def version(version_id, number, extension):
 
 
 def body_path(version_id, prop="Body"):
-    return f"IOfficialDocuments(42)/Versions({version_id})/{prop}"
+    return f"IOfficialDocuments(42)/Versions({version_id})/{prop}/$value"
 
 
 def test_reads_latest_docx_version():
     client = FakeClient(
         versions=[version(1, 1, "docx"), version(3, 3, "docx"), version(2, 2, "docx")],
-        bodies={body_path(3): {"Value": b64(make_docx("Прошу отремонтировать дорогу.", "Срок — 30 дней."))}},
+        bodies={body_path(3): make_docx("Прошу отремонтировать дорогу.", "Срок — 30 дней.")},
     )
 
     result = DocumentTextService(client).get_text(42)
@@ -114,7 +118,7 @@ def test_reads_latest_docx_version():
 
 
 def test_reads_pdf_text():
-    client = FakeClient(versions=[version(5, 1, "PDF")], bodies={body_path(5): {"Value": b64(make_text_pdf("Road repair request"))}})
+    client = FakeClient(versions=[version(5, 1, "PDF")], bodies={body_path(5): make_text_pdf("Road repair request")})
 
     result = DocumentTextService(client).get_text(42)
 
@@ -123,7 +127,7 @@ def test_reads_pdf_text():
 
 
 def test_scan_pdf_reports_no_text_layer():
-    client = FakeClient(versions=[version(5, 1, "pdf")], bodies={body_path(5): {"Value": b64(make_blank_pdf())}})
+    client = FakeClient(versions=[version(5, 1, "pdf")], bodies={body_path(5): make_blank_pdf()})
 
     result = DocumentTextService(client).get_text(42)
 
@@ -133,7 +137,7 @@ def test_scan_pdf_reports_no_text_layer():
 
 @pytest.mark.parametrize("encoding", ["utf-8", "cp1251"])
 def test_reads_plain_text_in_utf8_or_cp1251(encoding):
-    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): {"Value": b64("Служебная записка".encode(encoding))}})
+    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): "Служебная записка".encode(encoding)})
 
     assert DocumentTextService(client).get_text(42).text == "Служебная записка"
 
@@ -141,7 +145,7 @@ def test_reads_plain_text_in_utf8_or_cp1251(encoding):
 def test_unsupported_format_falls_back_to_public_body_pdf():
     client = FakeClient(
         versions=[version(5, 1, "odt")],
-        bodies={body_path(5, "PublicBody"): {"Value": b64(make_text_pdf("Public version"))}},
+        bodies={body_path(5, "PublicBody"): make_text_pdf("Public version")},
     )
 
     result = DocumentTextService(client).get_text(42)
@@ -162,7 +166,7 @@ def test_unsupported_format_without_public_body():
 
 
 def test_truncates_to_max_chars():
-    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): {"Value": b64(("а" * 3000).encode())}})
+    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): ("а" * 3000).encode()})
 
     result = DocumentTextService(client).get_text(42, max_chars=1000)
 
@@ -184,7 +188,7 @@ def test_document_not_found_raises():
 
 
 def test_empty_body_reported():
-    client = FakeClient(versions=[version(5, 1, "docx")], bodies={body_path(5): {"Value": None}})
+    client = FakeClient(versions=[version(5, 1, "docx")], bodies={body_path(5): None})
 
     result = DocumentTextService(client).get_text(42)
 
@@ -192,18 +196,47 @@ def test_empty_body_reported():
     assert "пуст" in result.message
 
 
-def test_too_large_body_rejected():
-    huge = "A" * (MAX_BODY_BYTES // 3 * 4 + 8)
-    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): {"Value": huge}})
+def test_body_read_with_size_limit_and_limit_error_propagates():
+    too_big = DirectumError("Файл слишком большой для чтения в чате (больше 20 МБ).", 413)
+    client = FakeClient(versions=[version(5, 1, "txt")], bodies={body_path(5): too_big})
 
     with pytest.raises(DirectumError, match="слишком большой"):
         DocumentTextService(client).get_text(42)
+    assert client.max_bytes == MAX_BODY_BYTES
 
 
 def test_broken_docx_reported():
-    client = FakeClient(versions=[version(5, 1, "docx")], bodies={body_path(5): {"Value": b64(b"not a zip")}})
+    client = FakeClient(versions=[version(5, 1, "docx")], bodies={body_path(5): b"not a zip"})
 
     result = DocumentTextService(client).get_text(42)
 
     assert result.text == ""
     assert "Не удалось прочитать" in result.message
+
+
+def test_storage_failure_falls_back_to_public_body():
+    client = FakeClient(
+        versions=[version(5, 1, "docx")],
+        bodies={
+            body_path(5): DirectumError("Directum OData request failed with status 500", 500),
+            body_path(5, "PublicBody"): make_text_pdf("Public copy"),
+        },
+    )
+
+    result = DocumentTextService(client).get_text(42)
+
+    assert "Public copy" in result.text
+    assert "PDF-представлени" in result.message
+
+
+def test_storage_failure_without_public_body_is_explained_not_raised():
+    client = FakeClient(
+        versions=[version(5, 1, "pdf")],
+        bodies={body_path(5): DirectumError("Directum OData request failed with status 500", 500)},
+        public_error=True,
+    )
+
+    result = DocumentTextService(client).get_text(42)
+
+    assert result.text == ""
+    assert "хранилищ" in result.message

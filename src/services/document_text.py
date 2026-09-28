@@ -1,5 +1,3 @@
-import base64
-import binascii
 import io
 import re
 import zipfile
@@ -97,15 +95,31 @@ class DocumentTextService:
         version_id = int(latest["Id"])
 
         notes = []
+        storage_failed = False
+        data = None
         if extension in SUPPORTED_EXTENSIONS:
-            data = self._body(document_id, version_id, "Body")
-        else:
+            try:
+                data = self._body(document_id, version_id, "Body")
+            except DirectumError as exc:
+                if exc.status_code == 413:
+                    raise
+                # RX не смог отдать файл из хранилища (на стенде бывают версии с потерянным телом).
+                storage_failed = True
+        if extension not in SUPPORTED_EXTENSIONS or storage_failed:
             data = self._public_body(document_id, version_id)
             if data is None:
                 result.extension = extension or None
-                result.message = f"Формат «{extension or 'без расширения'}» не поддерживается, PDF-представления нет."
+                result.message = (
+                    "Файл версии не удалось получить из хранилища RX, PDF-представления нет."
+                    if storage_failed
+                    else f"Формат «{extension or 'без расширения'}» не поддерживается, PDF-представления нет."
+                )
                 return result
-            notes.append(f"Исходный формат «{extension}» не поддерживается, текст взят из PDF-представления.")
+            notes.append(
+                "Исходный файл недоступен в хранилище RX, текст взят из PDF-представления."
+                if storage_failed
+                else f"Исходный формат «{extension}» не поддерживается, текст взят из PDF-представления."
+            )
             extension = "pdf"
         result.extension = extension
         if data is None:
@@ -133,13 +147,7 @@ class DocumentTextService:
             return None
 
     def _body(self, document_id: int, version_id: int, prop: str) -> bytes | None:
-        payload = self.client.get_one(f"IOfficialDocuments({int(document_id)})/Versions({version_id})/{prop}")
-        value = payload.get("Value") if isinstance(payload, dict) else None
-        if not value:
-            return None
-        if len(value) * 3 // 4 > MAX_BODY_BYTES:
-            raise DirectumError("Файл слишком большой для чтения в чате (больше 20 МБ).", 413)
-        try:
-            return base64.b64decode(value)
-        except (binascii.Error, ValueError) as exc:
-            raise DirectumError("Directum вернул тело версии в неожиданном формате.") from exc
+        # Тело отдаётся потоком по …/$value (без $value стенд отвечает 404).
+        return self.client.get_binary(
+            f"IOfficialDocuments({int(document_id)})/Versions({version_id})/{prop}/$value", MAX_BODY_BYTES
+        )

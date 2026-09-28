@@ -353,7 +353,7 @@ def test_call_function_formats_odata_literals():
 
     assert result == "2026-10-08T00:00:00+04:00"
     assert seen["path"] == (
-        "/Integration/odata/Docflow/AddWorkingDaysAndHours(date=2026-09-26T00%3A00%3A00%2B04%3A00,days=8,hours=0)"
+        "/Integration/odata/Docflow/AddWorkingDaysAndHours(date=2026-09-25T20%3A00%3A00Z,days=8,hours=0)"
     )
 
 
@@ -381,3 +381,29 @@ def test_call_function_raises_on_error_status():
     with pytest.raises(DirectumError) as exc:
         client.call_function("M/Missing")
     assert exc.value.status_code == 404
+
+
+def test_get_binary_reads_raw_stream():
+    seen = {}
+
+    def handler(request):
+        seen["url"] = str(request.url)
+        return httpx.Response(200, content=b"PKdocx", headers={"Content-Type": "application/octet-stream"})
+
+    data = function_client(handler).get_binary("IOfficialDocuments(1)/Versions(2)/Body/$value", max_bytes=1000)
+
+    assert data == b"PKdocx"
+    assert seen["url"].endswith("/IOfficialDocuments(1)/Versions(2)/Body/$value")
+
+
+def test_get_binary_missing_body_is_none():
+    assert function_client(lambda r: httpx.Response(404)).get_binary("X/$value", max_bytes=10) is None
+    assert function_client(lambda r: httpx.Response(204)).get_binary("X/$value", max_bytes=10) is None
+
+
+def test_get_binary_enforces_size_limit():
+    client = function_client(lambda r: httpx.Response(200, content=b"x" * 50))
+
+    with pytest.raises(DirectumError) as exc:
+        client.get_binary("X/$value", max_bytes=10)
+    assert exc.value.status_code == 413
