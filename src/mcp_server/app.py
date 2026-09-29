@@ -19,6 +19,7 @@ from src.mcp_server.tools import (
     action_items,
     citizen_requests,
     common,
+    document_control,
     documents,
     employee_items,
     legal_acts,
@@ -53,6 +54,8 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
     в RX поле Topic — это тематика, Theme — тема. Число обращений и число вопросов различай.
 11. Нормативные правовые акты и проекты (модуль «Правовые акты» RX): find_legal_acts, get_legal_act,
     list_legal_acts_on_approval (где застряло согласование). Федеральных законов в RX нет — не выдавай их за данные RX.
+12. Контроль исполнения: контрольных карт нет — объект контроля само поручение с признаком «На контроле».
+    Реестр — list_controlled_action_items, всё по одному поручению (дерево, продления, приёмка) — get_control_dossier.
 """
 
 
@@ -75,6 +78,7 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir:
     rx_methods.register(mcp, runner)
     citizen_requests.register(mcp, runner)
     legal_acts.register(mcp, runner)
+    document_control.register(mcp, runner)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
     resources.register(mcp, guides)

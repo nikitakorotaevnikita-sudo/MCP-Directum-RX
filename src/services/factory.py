@@ -12,6 +12,7 @@ from src.services.assignments import AssignmentsService
 from src.services.current_user import CurrentUserService
 from src.services.directum_client import DirectumClient
 from src.services.discipline_analytics import DisciplineAnalyticsService
+from src.services.document_control import DocumentControlService
 from src.services.document_search import DocumentSearchService
 from src.services.document_text import DocumentTextService
 from src.services.legal_acts import LegalActsService
@@ -41,6 +42,7 @@ class DirectumServices:
     subordination: SubordinationService
     department_discipline: DepartmentDisciplineService
     legal_acts: LegalActsService
+    document_control: DocumentControlService
 
     def close(self) -> None:
         self.client.close()
@@ -74,4 +76,5 @@ def build_directum_services(
         subordination=SubordinationService(client, current_user),
         department_discipline=DepartmentDisciplineService(discipline),
         legal_acts=LegalActsService(client, tz=tz),
+        document_control=DocumentControlService(client, tz=tz),
     )

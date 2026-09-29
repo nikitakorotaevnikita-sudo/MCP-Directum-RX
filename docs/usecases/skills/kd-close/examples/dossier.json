@@ -1,0 +1,17 @@
+{
+  "action_item": {"id": 1005, "subject": "Подготовить ответ в министерство", "deadline": "2026-10-01", "actual_date": "2026-09-28",
+                  "status": "InProcess", "execution_state_label": "на приёмке у контролёра", "days_overdue": null,
+                  "url": "https://rx.example.gov.ru/Client/#/card/task/1005"},
+  "summary": {"nodes_total": 3},
+  "tree": [
+    {"id": 1005, "level": 0, "status": "InProcess", "execution_state_label": "на приёмке у контролёра", "assignee": "Кузнецова Е. С.", "report": "Ответ подготовлен и направлен письмом № 12-исх."},
+    {"id": 1011, "level": 1, "status": "Completed", "execution_state_label": "исполнено", "assignee": "Петров П. П.", "report": "Сведения представлены."},
+    {"id": 1012, "level": 1, "status": "InProcess", "execution_state_label": "на исполнении", "assignee": "Сидоров С. С.", "report": null, "days_overdue": 2}
+  ],
+  "deadline_history": [
+    {"id": 1, "action_item_id": 1011, "state": "одобрено", "shift_days": 5, "new_deadline": "2026-09-25"},
+    {"id": 2, "action_item_id": 1012, "state": "на рассмотрении", "new_deadline": "2026-10-05"}
+  ],
+  "acceptance": [{"id": 7, "action_item_id": 1005, "status": "InProcess", "result": null, "supervisor": "Орлова Е. В."}],
+  "documents": [{"id": 500, "name": "Вх. письмо", "is_source": true}, {"id": 501, "name": "Исходящее письмо № 12-исх.", "is_source": false}]
+}

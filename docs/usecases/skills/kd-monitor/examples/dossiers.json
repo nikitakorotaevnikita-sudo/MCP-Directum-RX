@@ -1,0 +1,11 @@
+[
+  {"action_item": {"id": 1003, "subject": "Организовать проверку исполнения контракта"},
+   "summary": {"nodes_total": 3, "nodes_in_work": 3, "nodes_overdue": 1, "extensions_accepted": 1, "extensions_pending": 0},
+   "tree": [{"id": 1003, "level": 0, "created": "2026-09-10", "actual_date": null},
+            {"id": 1010, "level": 1, "created": "2026-09-11", "actual_date": null}],
+   "deadline_history": [{"requested": "2026-09-12", "state": "одобрено"}], "acceptance": [], "correspondence": [{"created": "2026-09-10"}]},
+  {"action_item": {"id": 1004, "subject": "Представить отчёт о расходовании субсидии"},
+   "summary": {"nodes_total": 1, "nodes_in_work": 1, "nodes_overdue": 0, "extensions_accepted": 0, "extensions_pending": 1},
+   "tree": [{"id": 1004, "level": 0, "created": "2026-09-15", "actual_date": null}],
+   "deadline_history": [{"requested": "2026-09-28", "state": "на рассмотрении"}], "acceptance": [], "correspondence": []}
+]

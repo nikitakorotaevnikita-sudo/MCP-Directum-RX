@@ -1,0 +1,165 @@
+{
+  "today": "2026-09-29",
+  "groups": [
+    {
+      "key": "overdue",
+      "label": "просрочено",
+      "count": 1
+    },
+    {
+      "key": "on_acceptance",
+      "label": "ждёт приёмки",
+      "count": 1
+    },
+    {
+      "key": "high",
+      "label": "сорвётся",
+      "count": 2
+    },
+    {
+      "key": "medium",
+      "label": "под угрозой",
+      "count": 1
+    },
+    {
+      "key": "normal",
+      "label": "в норме",
+      "count": 0
+    },
+    {
+      "key": "no_deadline",
+      "label": "без срока",
+      "count": 1
+    }
+  ],
+  "items": [
+    {
+      "id": 1001,
+      "subject": "Подготовить доклад о ходе ремонта школ",
+      "url": "https://rx.example.gov.ru/Client/#/card/task/1001",
+      "assignee": "Смирнов А. В.",
+      "supervisor": "Орлова Е. В.",
+      "deadline": "2026-09-25",
+      "days_left": null,
+      "days_overdue": 4,
+      "group": "overdue",
+      "score": 0,
+      "reasons": [
+        "Срок нарушен на 4 дн."
+      ],
+      "dossier_used": false
+    },
+    {
+      "id": 1005,
+      "subject": "Подготовить ответ в министерство",
+      "url": "https://rx.example.gov.ru/Client/#/card/task/1005",
+      "assignee": "Кузнецова Е. С.",
+      "supervisor": "Орлова Е. В.",
+      "deadline": "2026-10-01",
+      "days_left": 2,
+      "days_overdue": null,
+      "group": "on_acceptance",
+      "score": 0,
+      "reasons": [
+        "Исполнено и ждёт приёмки — решение за контролёром."
+      ],
+      "dossier_used": false
+    },
+    {
+      "id": 1003,
+      "subject": "Организовать проверку исполнения контракта",
+      "url": "https://rx.example.gov.ru/Client/#/card/task/1003",
+      "assignee": "Смирнов А. В.",
+      "supervisor": "Орлова Е. В.",
+      "deadline": "2026-10-02",
+      "days_left": 3,
+      "days_overdue": null,
+      "group": "high",
+      "score": 6,
+      "reasons": [
+        "До срока 3 дн.",
+        "Прошло 86 % срока.",
+        "Срок уже переносился.",
+        "Просрочены подпоручения: 1.",
+        "Нет движения больше двух недель (отчётов, подпоручений, переписки)."
+      ],
+      "dossier_used": true
+    },
+    {
+      "id": 1002,
+      "subject": "Направить предложения в план мероприятий",
+      "url": "https://rx.example.gov.ru/Client/#/card/task/1002",
+      "assignee": "Кузнецова Е. С.",
+      "supervisor": "Орлова Е. В.",
+      "deadline": "2026-09-30",
+      "days_left": 1,
+      "days_overdue": null,
+      "group": "high",
+      "score": 3,
+      "reasons": [
+        "Срок завтра.",
+        "Прошло 96 % срока."
+      ],
+      "dossier_used": false
+    },
+    {
+      "id": 1004,
+      "subject": "Представить отчёт о расходовании субсидии",
+      "url": "https://rx.example.gov.ru/Client/#/card/task/1004",
+      "assignee": "Волков Д. И.",
+      "supervisor": "Орлова Е. В.",
+      "deadline": "2026-10-20",
+      "days_left": 21,
+      "days_overdue": null,
+      "group": "medium",
+      "score": 1,
+      "reasons": [
+        "Есть запрос на продление, который ещё не рассмотрен."
+      ],
+      "dossier_used": true
+    },
+    {
+      "id": 1006,
+      "subject": "Разработать порядок взаимодействия",
+      "url": "https://rx.example.gov.ru/Client/#/card/task/1006",
+      "assignee": "Волков Д. И.",
+      "supervisor": "Орлова Е. В.",
+      "deadline": null,
+      "days_left": null,
+      "days_overdue": null,
+      "group": "no_deadline",
+      "score": 0,
+      "reasons": [
+        "У поручения нет срока — проверьте, нужен ли контроль по сроку."
+      ],
+      "dossier_used": false
+    }
+  ],
+  "bottlenecks": [
+    {
+      "assignee": "Смирнов А. В.",
+      "total": 2,
+      "overdue": 1,
+      "high": 1,
+      "medium": 0
+    },
+    {
+      "assignee": "Кузнецова Е. С.",
+      "total": 2,
+      "overdue": 0,
+      "high": 1,
+      "medium": 0
+    }
+  ],
+  "source": {
+    "total": 6,
+    "overdue_total": 1,
+    "on_acceptance_total": 1,
+    "state": "in_work",
+    "due": null
+  },
+  "notes": [
+    "Досье передано для 2 из 6 поручений — у остальных оценка только по срокам."
+  ],
+  "disclaimer": "Прогноз — эвристика по данным RX: он подсказывает, кому позвонить первым, а не оценивает работу исполнителя. Проверьте досье перед выводами."
+}

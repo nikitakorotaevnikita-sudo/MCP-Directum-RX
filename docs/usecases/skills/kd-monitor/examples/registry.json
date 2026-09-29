@@ -1,0 +1,23 @@
+{
+  "state": "in_work", "due": null, "total": 6, "overdue_total": 1, "on_acceptance_total": 1, "returned": 6, "truncated": false,
+  "items": [
+    {"id": 1001, "subject": "Подготовить доклад о ходе ремонта школ", "created": "2026-09-01", "deadline": "2026-09-25", "days_left": null, "days_overdue": 4,
+     "status": "InProcess", "execution_state": "OnExecution", "execution_state_label": "на исполнении", "supervisor": "Орлова Е. В.", "assignee": "Смирнов А. В.",
+     "assigned_by": "Губернатор", "url": "https://rx.example.gov.ru/Client/#/card/task/1001"},
+    {"id": 1002, "subject": "Направить предложения в план мероприятий", "created": "2026-09-05", "deadline": "2026-09-30", "days_left": 1, "days_overdue": null,
+     "status": "InProcess", "execution_state": "OnExecution", "execution_state_label": "на исполнении", "supervisor": "Орлова Е. В.", "assignee": "Кузнецова Е. С.",
+     "assigned_by": "Губернатор", "url": "https://rx.example.gov.ru/Client/#/card/task/1002"},
+    {"id": 1003, "subject": "Организовать проверку исполнения контракта", "created": "2026-09-10", "deadline": "2026-10-02", "days_left": 3, "days_overdue": null,
+     "status": "InProcess", "execution_state": "OnExecution", "execution_state_label": "на исполнении", "supervisor": "Орлова Е. В.", "assignee": "Смирнов А. В.",
+     "assigned_by": "Заместитель губернатора", "url": "https://rx.example.gov.ru/Client/#/card/task/1003"},
+    {"id": 1004, "subject": "Представить отчёт о расходовании субсидии", "created": "2026-09-15", "deadline": "2026-10-20", "days_left": 21, "days_overdue": null,
+     "status": "InProcess", "execution_state": "OnExecution", "execution_state_label": "на исполнении", "supervisor": "Орлова Е. В.", "assignee": "Волков Д. И.",
+     "assigned_by": "Губернатор", "url": "https://rx.example.gov.ru/Client/#/card/task/1004"},
+    {"id": 1005, "subject": "Подготовить ответ в министерство", "created": "2026-09-02", "deadline": "2026-10-01", "days_left": 2, "days_overdue": null,
+     "status": "InProcess", "execution_state": "OnControl", "execution_state_label": "на приёмке у контролёра", "supervisor": "Орлова Е. В.", "assignee": "Кузнецова Е. С.",
+     "assigned_by": "Губернатор", "url": "https://rx.example.gov.ru/Client/#/card/task/1005"},
+    {"id": 1006, "subject": "Разработать порядок взаимодействия", "created": "2026-09-20", "deadline": null, "days_left": null, "days_overdue": null,
+     "status": "InProcess", "execution_state": "OnExecution", "execution_state_label": "на исполнении", "supervisor": "Орлова Е. В.", "assignee": "Волков Д. И.",
+     "assigned_by": "Губернатор", "url": "https://rx.example.gov.ru/Client/#/card/task/1006"}
+  ]
+}
