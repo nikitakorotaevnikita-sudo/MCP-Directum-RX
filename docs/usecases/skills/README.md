@@ -8,6 +8,11 @@ Directum RX, собирает JSON-спецификацию и вызывает 
 |---|---|---|---|
 | [`pdf-report`](pdf-report/SKILL.md) | «сделай отчёт в PDF», справка для руководителя, печать | `pdf-report/scripts/build_pdf.py` | reportlab ≥ 4.0 |
 | [`excel-report`](excel-report/SKILL.md) | «выгрузи в Excel», списки для фильтрации и подсчётов | `excel-report/scripts/build_xlsx.py` | openpyxl ≥ 3.1 |
+| [`pdf-read`](pdf-read/SKILL.md) | прочитать PDF с текстовым слоем: текст по страницам, метаданные, поиск сканов | `pdf-read/scripts/extract_pdf_text.py` | pypdf ≥ 4.0 |
+
+`pdf-read` работает в обратную сторону: вход — PDF, выход — текст (`text`, `json` или `md`), вызов
+`python extract_pdf_text.py ФАЙЛ.pdf [--pages 1-3] [--format json] [--out текст.txt]`. Сканы без текстового слоя
+не распознаёт (OCR нет), но находит и сообщает о них.
 
 Общее для обоих:
 
