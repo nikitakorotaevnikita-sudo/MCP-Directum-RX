@@ -1,4 +1,4 @@
-# Навыки формирования отчётов
+# Навыки агентов
 
 Два переиспользуемых навыка для LLM-агента (например, в LibreChat с mcpOGV): агент берёт данные из тулов
 Directum RX, собирает JSON-спецификацию и вызывает скрипт. Вёрстку, типы ячеек, ссылки и защиту от ошибок
@@ -25,6 +25,27 @@ Directum RX, собирает JSON-спецификацию и вызывает 
 ```
 
 Шрифты DejaVu Sans для кириллицы в PDF лежат в `pdf-report/fonts/` (лицензия — `LICENSE-DejaVu.txt`).
+
+## Навыки правового отдела (правовые акты)
+
+Набор по описанию решения Directum RX 26.2 «Правовые акты органов власти». Данные о проектах и актах — из mcpOGV
+(`find_legal_acts`, `get_legal_act`, `list_legal_acts_on_approval`, `get_document_text`), сведения о
+законодательстве — из MCP «Гарант» (`garant_search`, `garant_document_info`, `garant_document_redactions`,
+`garant_block_changed`, `garant_find_hyperlinks`, `garant_snippets`, `garant_export_*`, `garant_sutyazhnik`, …).
+
+| Навык | Когда | Скрипт |
+|---|---|---|
+| [`pa-route`](pa-route/SKILL.md) | на каком этапе проект, что дальше, кто следующий, почему застрял | — |
+| [`pa-legal-basis`](pa-legal-basis/SKILL.md) | действуют ли акты-основания, редакции, изменения норм, практика (ГАРАНТ) | `extract_legal_refs.py` |
+| [`pa-normcontrol`](pa-normcontrol/SKILL.md) | предварительный нормоконтроль и лингвистическая проверка | `check_structure.py` |
+| [`pa-anticorruption`](pa-anticorruption/SKILL.md) | предварительная АКЭ по Методике № 96 (текст Методики — из ГАРАНТа) | `flag_markers.py` |
+| [`pa-orv`](pa-orv/SKILL.md) | нужна ли ОРВ, материалы к обсуждениям, черновик заключения | — |
+| [`pa-compare`](pa-compare/SKILL.md) | сравнение проекта и акта, версий, акта с нормой из ГАРАНТа | `compare_texts.py` |
+| [`pa-conclusions`](pa-conclusions/SKILL.md) | черновики заключений ГПУ, ведомства, нормоконтроля, ОРВ, текста задания, сопроводительного письма | шаблоны `templates/` |
+
+Скрипты — только стандартная библиотека Python 3.10+, без сети; вход — текст (файл или `-` для stdin, UTF-8 или
+cp1251), выход — JSON или `--format md`; коды выхода 0 / 2 (плохой вход) / 1. Результаты скриптов эвристические —
+агент перепроверяет их по тексту. Все навыки дают предварительный анализ для юриста, а не экспертизу.
 
 ## Упаковка для загрузки на платформу
 
