@@ -201,3 +201,46 @@ def test_empty_error_message_is_not_an_error():
     info = {**COMPLETED_INFO, "ErrorMessage": ""}
 
     assert service(FakeClient(infos=[info])).ask("вопрос").status == "completed"
+
+
+class FlakyStartClient(FakeClient):
+    """Первые N запусков RAG падают, потом проходят — как нестабильный сервис на стенде."""
+
+    def __init__(self, failures):
+        super().__init__()
+        self.failures = failures
+        self.starts = 0
+
+    def post(self, path, payload):
+        if path.endswith("CreateSearchTask"):
+            self.starts += 1
+            self.posts.append((path, payload))
+            if self.starts <= self.failures:
+                return {"Task": None, "ErrorMessage": "QASearchCore. CreateSearchTasks. RAG service request failed"}
+            return self.start
+        return super().post(path, payload)
+
+
+def test_transient_rag_failure_is_retried():
+    from src.services.qa_search import START_RETRIES
+
+    client = FlakyStartClient(failures=START_RETRIES)
+    clock = FakeClock()
+
+    answer = service(client, clock).ask("вопрос")
+
+    assert answer.status == "completed"
+    assert client.starts == START_RETRIES + 1
+    assert clock.sleeps[0] == POLL_INTERVAL_SECONDS
+
+
+def test_persistent_rag_failure_reported_after_retries():
+    from src.services.qa_search import START_RETRIES
+
+    client = FlakyStartClient(failures=99)
+
+    answer = service(client).ask("вопрос")
+
+    assert answer.status == "error"
+    assert client.starts == START_RETRIES + 1
+    assert "временно недоступен" in answer.message

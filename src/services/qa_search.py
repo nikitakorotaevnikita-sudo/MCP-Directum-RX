@@ -6,6 +6,9 @@ from src.models.schemas import QAAnswer, QASearchArea, QASource
 from src.services.directum_client import sanitize_error_detail, unwrap_method_result
 
 POLL_INTERVAL_SECONDS = 2
+# Повторы запуска задачи при кратковременном сбое RAG-сервиса RX.
+START_RETRIES = 2
+TRANSIENT_START_ERROR = "RAG service request failed"
 MAX_FRAGMENTS = 2
 FRAGMENT_CHARS = 500
 MAX_ERROR_CHARS = 300
@@ -42,14 +45,24 @@ class QASearchService:
                 status="unavailable",
                 message="Поиск по документам (QASearch) на стенде не настроен: нет готовых областей поиска.",
             )
-        started = unwrap_method_result(
-            self.client.post("QASearchCore/CreateSearchTask", {"question": question, "searchAreaIds": ids})
-        ) or {}
-        task = started.get("Task") or {}
-        if not task.get("Id"):
-            reason = _safe(started.get("ErrorMessage")) or "сервис поиска не ответил"
-            return QAAnswer(status="error", message=f"Не удалось запустить поиск: {reason}")
-        return self._wait(str(task["Id"]), wait_seconds)
+        for attempt in range(START_RETRIES + 1):
+            started = unwrap_method_result(
+                self.client.post("QASearchCore/CreateSearchTask", {"question": question, "searchAreaIds": ids})
+            ) or {}
+            task = started.get("Task") or {}
+            if task.get("Id"):
+                return self._wait(str(task["Id"]), wait_seconds)
+            reason = _safe(started.get("ErrorMessage"))
+            # Сбой связи RX с RAG-сервисом на стенде бывает кратковременным — пробуем ещё раз.
+            if TRANSIENT_START_ERROR not in reason or attempt == START_RETRIES:
+                break
+            self._sleep(POLL_INTERVAL_SECONDS)
+        if TRANSIENT_START_ERROR in reason:
+            return QAAnswer(
+                status="error",
+                message="Поиск по документам RX временно недоступен (RAG-сервис не ответил). Попробуйте через минуту.",
+            )
+        return QAAnswer(status="error", message=f"Не удалось запустить поиск: {reason or 'сервис поиска не ответил'}")
 
     def result(self, task_id: str) -> QAAnswer:
         return self._wait(task_id, 0)
