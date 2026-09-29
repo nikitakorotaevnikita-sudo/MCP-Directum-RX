@@ -1,0 +1,72 @@
+{
+  "kind": "answer",
+  "kind_label": "ответ заявителю",
+  "words": 97,
+  "summary": {
+    "violations": 4,
+    "warnings": 3,
+    "questions_total": 2,
+    "questions_covered": 1
+  },
+  "issues": [
+    {
+      "code": "placeholder",
+      "severity": "violation",
+      "message": "Незаполненное место (пометка «ЧЕРНОВИК»): «ЧЕРНОВИК — проверить перед созданием документа в Directum RX».",
+      "line": 1
+    },
+    {
+      "code": "placeholder",
+      "severity": "violation",
+      "message": "Незаполненное место (поле в квадратных скобках): «[дата]».",
+      "line": 12
+    },
+    {
+      "code": "placeholder",
+      "severity": "violation",
+      "message": "Незаполненное место (поле в квадратных скобках): «[Должность подписанта]».",
+      "line": 16
+    },
+    {
+      "code": "placeholder",
+      "severity": "violation",
+      "message": "Незаполненное место (поле в квадратных скобках): «[И. О. Фамилия]».",
+      "line": 16
+    },
+    {
+      "code": "question_not_addressed",
+      "severity": "warning",
+      "message": "Похоже, не освещён вопрос «Уличное освещение» (совпало слов: 0 из 2)."
+    },
+    {
+      "code": "personal_data",
+      "severity": "warning",
+      "message": "В тексте адрес электронной почты — проверьте, нужно ли это в письме.",
+      "line": 14
+    },
+    {
+      "code": "personal_data",
+      "severity": "warning",
+      "message": "В тексте номер телефона — проверьте, нужно ли это в письме.",
+      "line": 14
+    }
+  ],
+  "question_coverage": [
+    {
+      "question": "Ремонт дорог",
+      "code": "0003.0009.0096.0684",
+      "matched_share": 1.0,
+      "covered": true
+    },
+    {
+      "question": "Уличное освещение",
+      "code": "0005.0005.0056.1150",
+      "matched_share": 0.0,
+      "covered": false
+    }
+  ],
+  "dates_found": [
+    "2026-09-22"
+  ],
+  "disclaimer": "Проверка формальная и эвристическая: она не оценивает, дан ли ответ по существу. Решение о тексте принимает исполнитель, письмо подписывает уполномоченное лицо."
+}

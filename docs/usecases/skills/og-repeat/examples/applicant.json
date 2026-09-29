@@ -1,0 +1,41 @@
+{
+  "items": [
+    {
+      "id": 611, "registration_number": "140-ОГ", "registration_date": "2026-09-22", "applicant": "Кравцов Игорь Семёнович",
+      "is_repeated": false, "answered": false, "execution_state": "на рассмотрении", "answer_letter": null,
+      "questions": [
+        {"question": "Ремонт дорог", "code": "0003.0009.0096.0684"},
+        {"question": "Уличное освещение", "code": "0005.0005.0056.1150"}
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/611"
+    },
+    {
+      "id": 598, "registration_number": "118-ОГ", "registration_date": "2026-07-14", "applicant": "Кравцов Игорь Семенович",
+      "is_repeated": true, "answered": true, "execution_state": "исполнено",
+      "answer_letter": {"id": 9101, "registration_number": "88-исх", "registration_date": "2026-08-05", "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9101"},
+      "questions": [{"question": "Ремонт дорог", "code": "0003.0009.0096.0684"}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/598"
+    },
+    {
+      "id": 570, "registration_number": "64-ОГ", "registration_date": "2026-05-02", "applicant": "Кравцов Игорь Семёнович",
+      "is_repeated": false, "answered": true, "execution_state": "исполнено",
+      "answer_letter": {"id": 9050, "registration_number": "41-исх", "registration_date": "2026-05-28", "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9050"},
+      "questions": [{"question": "Ремонт дорог", "code": "0003.0009.0096.0684"}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/570"
+    },
+    {
+      "id": 420, "registration_number": "12-ОГ", "registration_date": "2025-11-10", "applicant": "Кравцов Игорь Семёнович",
+      "is_repeated": false, "answered": true, "execution_state": "исполнено", "answer_letter": null,
+      "questions": [{"question": "Уличное освещение", "code": "0005.0005.0056.1150"}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/420"
+    },
+    {
+      "id": 605, "registration_number": "131-ОГ", "registration_date": "2026-09-01", "applicant": "Лебедева Ольга Николаевна",
+      "is_repeated": true, "answered": false, "execution_state": null, "answer_letter": null,
+      "questions": [{"question": "Вывоз твёрдых коммунальных отходов", "code": null}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/605"
+    }
+  ],
+  "returned": 5,
+  "message": ""
+}

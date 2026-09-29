@@ -1,0 +1,64 @@
+{
+  "items": [
+    {
+      "id": 501, "registration_number": "101-ОГ", "registration_date": "2026-08-20", "request_date": "2026-08-19",
+      "applicant": "Иванова Мария Петровна", "is_repeated": false, "assignee": "Смирнов А. В.",
+      "execution_state": "на исполнении", "deadline": "2026-09-18", "initial_deadline": "2026-09-18",
+      "prolongations": [], "answered": false, "response_date": null, "answer_letter": null, "transferred_to": null,
+      "questions": [{"question": "Ремонт дорог", "code": "0003.0009.0096.0684", "review_result": null, "review_result_label": null}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/501"
+    },
+    {
+      "id": 502, "registration_number": "102-ОГ", "registration_date": "2026-09-01", "request_date": "2026-08-25",
+      "applicant": "Петров Олег Иванович", "is_repeated": false, "assignee": "Кузнецова Е. С.",
+      "execution_state": null, "deadline": "2026-10-01", "initial_deadline": "2026-10-01",
+      "prolongations": [], "answered": false, "response_date": null, "answer_letter": null, "transferred_to": null,
+      "questions": [{"question": "Благоустройство дворовых территорий", "code": null, "review_result": null, "review_result_label": null}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/502"
+    },
+    {
+      "id": 503, "registration_number": "103-ОГ", "registration_date": "2026-07-01", "request_date": "2026-07-01",
+      "applicant": "Сидорова Анна Викторовна", "is_repeated": true, "assignee": "Смирнов А. В.",
+      "execution_state": "на исполнении", "deadline": "2026-09-05", "initial_deadline": "2026-07-31",
+      "prolongations": [
+        {"number": 1, "new_deadline": "2026-08-28", "reason": "Запрос сведений в министерство транспорта"},
+        {"number": 2, "new_deadline": "2026-09-05", "reason": ""}
+      ],
+      "answered": true, "response_date": "2026-09-10", "answer_letter": {"id": 9003, "registration_number": "15-исх", "registration_date": "2026-09-10", "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9003"},
+      "transferred_to": null,
+      "questions": [
+        {"question": "Общественный транспорт", "code": "0003.0009.0097.0690", "review_result": "Explained", "review_result_label": "Разъяснено"},
+        {"question": "Тарифы на проезд", "code": "0003.0009.0097.0691", "review_result": null, "review_result_label": null}
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/503"
+    },
+    {
+      "id": 504, "registration_number": "104-ОГ", "registration_date": "2026-09-24", "request_date": "2026-09-24",
+      "applicant": "Орлов Дмитрий Сергеевич", "is_repeated": false, "assignee": "Кузнецова Е. С.",
+      "execution_state": "на рассмотрении", "deadline": "2026-10-24", "initial_deadline": "2026-10-24",
+      "prolongations": [], "answered": false, "response_date": null, "answer_letter": null, "transferred_to": null,
+      "questions": [{"question": "Работа поликлиник", "code": "0002.0007.0070.0444", "review_result": null, "review_result_label": null}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/504"
+    },
+    {
+      "id": 505, "registration_number": "105-ОГ", "registration_date": "2026-09-10", "request_date": "2026-09-09",
+      "applicant": "Волкова Ирина Андреевна", "is_repeated": false, "assignee": null,
+      "execution_state": null, "deadline": null, "initial_deadline": null,
+      "prolongations": [], "answered": false, "response_date": null, "answer_letter": null,
+      "transferred_to": "Министерство здравоохранения края",
+      "questions": [{"question": "Лекарственное обеспечение", "code": "0002.0007.0070.0450", "review_result": "Forwarded", "review_result_label": "Направлено по компетенции"}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/505"
+    },
+    {
+      "id": 506, "registration_number": "106-ОГ", "registration_date": "2026-09-02", "request_date": "2026-09-01",
+      "applicant": "Никитин Павел Олегович", "is_repeated": false, "assignee": "Смирнов А. В.",
+      "execution_state": "на исполнении", "deadline": "2026-10-30", "initial_deadline": "2026-10-02",
+      "prolongations": [{"number": 1, "new_deadline": "2026-10-30", "reason": "Выездная проверка"}],
+      "answered": false, "response_date": null, "answer_letter": null, "transferred_to": null,
+      "questions": [{"question": "Содержание многоквартирных домов", "code": "0005.0005.0055.1130", "review_result": null, "review_result_label": null}],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/506"
+    }
+  ],
+  "returned": 6,
+  "message": ""
+}

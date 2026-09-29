@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": 611, "registration_number": "140-ОГ", "registration_date": "2026-09-22", "request_date": "2026-09-21",
+      "applicant": "Кравцов Игорь Семёнович", "assignee": "Смирнов А. В.", "execution_state": "на рассмотрении",
+      "deadline": "2026-10-22", "initial_deadline": "2026-10-22", "prolongations": [], "answered": false,
+      "questions": [
+        {"question": "Ремонт дорог", "code": "0003.0009.0096.0684"},
+        {"question": "Уличное освещение", "code": "0005.0005.0056.1150"}
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/611"
+    }
+  ],
+  "returned": 1,
+  "message": ""
+}

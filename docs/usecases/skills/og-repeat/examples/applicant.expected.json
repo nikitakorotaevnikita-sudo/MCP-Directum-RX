@@ -1,0 +1,170 @@
+{
+  "period_days": 180,
+  "answered_threshold": 2,
+  "summary": {
+    "requests": 5,
+    "applicants": 2,
+    "without_applicant": 0,
+    "repeats_found": 2,
+    "flag_mismatches": 2,
+    "article_11_check": 1
+  },
+  "requests": [
+    {
+      "id": 420,
+      "registration_number": "12-ОГ",
+      "date": "2025-11-10",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/420",
+      "answered": true,
+      "answer_letter": null,
+      "applicant": "Кравцов Игорь Семёнович",
+      "is_repeated_in_rx": false,
+      "repeat_found": false,
+      "flag_mismatch": false,
+      "earlier": [],
+      "shared_questions": [],
+      "article_11_check": false,
+      "notes": []
+    },
+    {
+      "id": 570,
+      "registration_number": "64-ОГ",
+      "date": "2026-05-02",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/570",
+      "answered": true,
+      "answer_letter": {
+        "registration_number": "41-исх",
+        "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9050"
+      },
+      "applicant": "Кравцов Игорь Семёнович",
+      "is_repeated_in_rx": false,
+      "repeat_found": false,
+      "flag_mismatch": false,
+      "earlier": [],
+      "shared_questions": [],
+      "article_11_check": false,
+      "notes": []
+    },
+    {
+      "id": 598,
+      "registration_number": "118-ОГ",
+      "date": "2026-07-14",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/598",
+      "answered": true,
+      "answer_letter": {
+        "registration_number": "88-исх",
+        "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9101"
+      },
+      "applicant": "Кравцов Игорь Семенович",
+      "is_repeated_in_rx": true,
+      "repeat_found": true,
+      "flag_mismatch": false,
+      "earlier": [
+        {
+          "id": 570,
+          "registration_number": "64-ОГ",
+          "date": "2026-05-02",
+          "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/570",
+          "answered": true,
+          "answer_letter": {
+            "registration_number": "41-исх",
+            "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9050"
+          },
+          "shared_questions": [
+            "Ремонт дорог"
+          ],
+          "days_before": 73
+        }
+      ],
+      "shared_questions": [
+        {
+          "key": "code:0003.0009.0096.0684",
+          "question": "Ремонт дорог",
+          "code": "0003.0009.0096.0684",
+          "earlier_requests": 1,
+          "earlier_answered": 1,
+          "article_11_check": false
+        }
+      ],
+      "article_11_check": false,
+      "notes": []
+    },
+    {
+      "id": 611,
+      "registration_number": "140-ОГ",
+      "date": "2026-09-22",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/611",
+      "answered": false,
+      "answer_letter": null,
+      "applicant": "Кравцов Игорь Семёнович",
+      "is_repeated_in_rx": false,
+      "repeat_found": true,
+      "flag_mismatch": true,
+      "earlier": [
+        {
+          "id": 570,
+          "registration_number": "64-ОГ",
+          "date": "2026-05-02",
+          "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/570",
+          "answered": true,
+          "answer_letter": {
+            "registration_number": "41-исх",
+            "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9050"
+          },
+          "shared_questions": [
+            "Ремонт дорог"
+          ],
+          "days_before": 143
+        },
+        {
+          "id": 598,
+          "registration_number": "118-ОГ",
+          "date": "2026-07-14",
+          "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/598",
+          "answered": true,
+          "answer_letter": {
+            "registration_number": "88-исх",
+            "url": "https://rx.example.gov.ru/DirectumRX/#/card/OutgoingLetter/9101"
+          },
+          "shared_questions": [
+            "Ремонт дорог"
+          ],
+          "days_before": 70
+        }
+      ],
+      "shared_questions": [
+        {
+          "key": "code:0003.0009.0096.0684",
+          "question": "Ремонт дорог",
+          "code": "0003.0009.0096.0684",
+          "earlier_requests": 2,
+          "earlier_answered": 2,
+          "article_11_check": true
+        }
+      ],
+      "article_11_check": true,
+      "notes": [
+        "Есть предыдущее обращение по тому же вопросу, но в RX не отмечено «Повторное»."
+      ]
+    },
+    {
+      "id": 605,
+      "registration_number": "131-ОГ",
+      "date": "2026-09-01",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/605",
+      "answered": false,
+      "answer_letter": null,
+      "applicant": "Лебедева Ольга Николаевна",
+      "is_repeated_in_rx": true,
+      "repeat_found": false,
+      "flag_mismatch": true,
+      "earlier": [],
+      "shared_questions": [],
+      "article_11_check": false,
+      "notes": [
+        "В RX отмечено «Повторное», но предыдущее обращение по тем же вопросам в данных за 180 дн. не найдено (возможно, оно раньше периода или не попало в выборку)."
+      ]
+    }
+  ],
+  "disclaimer": "Совпадение вопросов — повод проверить повторность, а не вывод. Прекратить переписку по ст. 11 59-ФЗ может только руководитель (уполномоченное лицо), если в обращении нет новых доводов и ранее давались ответы по существу; заявитель уведомляется."
+}

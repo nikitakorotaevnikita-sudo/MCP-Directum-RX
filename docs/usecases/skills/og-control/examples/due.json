@@ -1,0 +1,174 @@
+{
+  "within_days": 7,
+  "include_overdue": true,
+  "items": [
+    {
+      "id": 501,
+      "registration_number": "101-ОГ",
+      "registration_date": "2026-08-20",
+      "request_date": "2026-08-19",
+      "applicant": "Иванова Мария Петровна",
+      "is_repeated": false,
+      "assignee": "Смирнов А. В.",
+      "execution_state": "на исполнении",
+      "deadline": "2026-09-18",
+      "initial_deadline": "2026-09-18",
+      "prolongations": [],
+      "answered": false,
+      "response_date": null,
+      "answer_letter": null,
+      "transferred_to": null,
+      "questions": [
+        {
+          "question": "Ремонт дорог",
+          "code": "0003.0009.0096.0684",
+          "review_result": null,
+          "review_result_label": null
+        }
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/501"
+    },
+    {
+      "id": 507,
+      "registration_number": "107-ОГ",
+      "registration_date": "2026-08-10",
+      "request_date": "2026-08-10",
+      "applicant": "Фомина Татьяна Юрьевна",
+      "is_repeated": false,
+      "assignee": "Кузнецова Е. С.",
+      "execution_state": "на исполнении",
+      "deadline": "2026-09-25",
+      "initial_deadline": "2026-09-09",
+      "prolongations": [
+        {
+          "number": 1,
+          "new_deadline": "2026-09-25",
+          "reason": "Запрос в ГИБДД"
+        }
+      ],
+      "answered": false,
+      "response_date": null,
+      "answer_letter": null,
+      "transferred_to": null,
+      "questions": [
+        {
+          "question": "Безопасность дорожного движения",
+          "code": "0003.0009.0096.0686"
+        }
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/507"
+    },
+    {
+      "id": 508,
+      "registration_number": "108-ОГ",
+      "registration_date": "2026-08-31",
+      "request_date": "2026-08-31",
+      "applicant": "Белов Артём Игоревич",
+      "is_repeated": false,
+      "assignee": "Смирнов А. В.",
+      "execution_state": "на исполнении",
+      "deadline": "2026-09-29",
+      "initial_deadline": "2026-09-29",
+      "prolongations": [],
+      "answered": false,
+      "response_date": null,
+      "answer_letter": null,
+      "transferred_to": null,
+      "questions": [
+        {
+          "question": "Уличное освещение",
+          "code": "0005.0005.0056.1150"
+        }
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/508"
+    },
+    {
+      "id": 502,
+      "registration_number": "102-ОГ",
+      "registration_date": "2026-09-01",
+      "request_date": "2026-08-25",
+      "applicant": "Петров Олег Иванович",
+      "is_repeated": false,
+      "assignee": "Кузнецова Е. С.",
+      "execution_state": null,
+      "deadline": "2026-10-01",
+      "initial_deadline": "2026-10-01",
+      "prolongations": [],
+      "answered": false,
+      "response_date": null,
+      "answer_letter": null,
+      "transferred_to": null,
+      "questions": [
+        {
+          "question": "Благоустройство дворовых территорий",
+          "code": null,
+          "review_result": null,
+          "review_result_label": null
+        }
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/502"
+    },
+    {
+      "id": 506,
+      "registration_number": "106-ОГ",
+      "registration_date": "2026-09-02",
+      "request_date": "2026-09-01",
+      "applicant": "Никитин Павел Олегович",
+      "is_repeated": false,
+      "assignee": "Смирнов А. В.",
+      "execution_state": "на исполнении",
+      "deadline": "2026-10-30",
+      "initial_deadline": "2026-10-02",
+      "prolongations": [
+        {
+          "number": 1,
+          "new_deadline": "2026-10-30",
+          "reason": "Выездная проверка"
+        }
+      ],
+      "answered": false,
+      "response_date": null,
+      "answer_letter": null,
+      "transferred_to": null,
+      "questions": [
+        {
+          "question": "Содержание многоквартирных домов",
+          "code": "0005.0005.0055.1130",
+          "review_result": null,
+          "review_result_label": null
+        }
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/506"
+    },
+    {
+      "id": 504,
+      "registration_number": "104-ОГ",
+      "registration_date": "2026-09-24",
+      "request_date": "2026-09-24",
+      "applicant": "Орлов Дмитрий Сергеевич",
+      "is_repeated": false,
+      "assignee": "Кузнецова Е. С.",
+      "execution_state": "на рассмотрении",
+      "deadline": "2026-10-24",
+      "initial_deadline": "2026-10-24",
+      "prolongations": [],
+      "answered": false,
+      "response_date": null,
+      "answer_letter": null,
+      "transferred_to": null,
+      "questions": [
+        {
+          "question": "Работа поликлиник",
+          "code": "0002.0007.0070.0444",
+          "review_result": null,
+          "review_result_label": null
+        }
+      ],
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/504"
+    }
+  ],
+  "total": 8,
+  "overdue_total": 2,
+  "due_soon_total": 6,
+  "returned": 6
+}

@@ -1,0 +1,229 @@
+{
+  "today": "2026-09-29",
+  "soon_days": 7,
+  "summary": {
+    "requests": 6,
+    "with_violations": 3,
+    "with_warnings": 2,
+    "in_work": 4,
+    "overdue": 1,
+    "by_code": {
+      "answered_late": 1,
+      "due_soon": 1,
+      "multiple_prolongations": 1,
+      "overdue": 1,
+      "prolongation_over_30": 1,
+      "prolongation_possible": 1,
+      "prolongation_without_reason": 1,
+      "question_not_classified": 1,
+      "registration_late": 1,
+      "review_result_missing": 1,
+      "total_over_60": 1
+    }
+  },
+  "requests": [
+    {
+      "id": 501,
+      "registration_number": "101-ОГ",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/501",
+      "assignee": "Смирнов А. В.",
+      "status": "в работе",
+      "request_date": "2026-08-19",
+      "registration_date": "2026-08-20",
+      "initial_deadline": "2026-09-18",
+      "deadline": "2026-09-18",
+      "response_date": null,
+      "metrics": {
+        "registration_lag_days": 1,
+        "registration_lag_working_days": 1,
+        "review_term_days": 29,
+        "total_term_days": 29,
+        "prolongation_days": null,
+        "prolongations": 0,
+        "days_left": -11,
+        "days_overdue": 11,
+        "answered_late_days": null
+      },
+      "issues": [
+        {
+          "code": "overdue",
+          "severity": "violation",
+          "message": "Срок 18.09.2026 нарушен на 11 дн."
+        }
+      ]
+    },
+    {
+      "id": 502,
+      "registration_number": "102-ОГ",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/502",
+      "assignee": "Кузнецова Е. С.",
+      "status": "в работе",
+      "request_date": "2026-08-25",
+      "registration_date": "2026-09-01",
+      "initial_deadline": "2026-10-01",
+      "deadline": "2026-10-01",
+      "response_date": null,
+      "metrics": {
+        "registration_lag_days": 7,
+        "registration_lag_working_days": 5,
+        "review_term_days": 30,
+        "total_term_days": 30,
+        "prolongation_days": null,
+        "prolongations": 0,
+        "days_left": 2,
+        "days_overdue": null,
+        "answered_late_days": null
+      },
+      "issues": [
+        {
+          "code": "registration_late",
+          "severity": "violation",
+          "message": "Зарегистрировано через 5 раб. дн. (7 календ.) после поступления — больше 3 дней."
+        },
+        {
+          "code": "due_soon",
+          "severity": "warning",
+          "message": "До срока 01.10.2026 осталось 2 дн."
+        },
+        {
+          "code": "prolongation_possible",
+          "severity": "info",
+          "message": "Если ответ не успевают подготовить — продлить срок можно один раз до 30 дней, до истечения срока, с уведомлением заявителя."
+        },
+        {
+          "code": "question_not_classified",
+          "severity": "info",
+          "message": "Вопрос «Благоустройство дворовых территорий» без кода классификатора — не попадёт в отчёты по ТОТК."
+        }
+      ]
+    },
+    {
+      "id": 503,
+      "registration_number": "103-ОГ",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/503",
+      "assignee": "Смирнов А. В.",
+      "status": "рассмотрено",
+      "request_date": "2026-07-01",
+      "registration_date": "2026-07-01",
+      "initial_deadline": "2026-07-31",
+      "deadline": "2026-09-05",
+      "response_date": "2026-09-10",
+      "metrics": {
+        "registration_lag_days": 0,
+        "registration_lag_working_days": 0,
+        "review_term_days": 30,
+        "total_term_days": 66,
+        "prolongation_days": 36,
+        "prolongations": 2,
+        "days_left": null,
+        "days_overdue": null,
+        "answered_late_days": 5
+      },
+      "issues": [
+        {
+          "code": "multiple_prolongations",
+          "severity": "violation",
+          "message": "Срок продлевался несколько раз (2) — по 59-ФЗ продлить можно один раз."
+        },
+        {
+          "code": "prolongation_over_30",
+          "severity": "violation",
+          "message": "Срок продлён на 36 дн. (31.07.2026 → 05.09.2026) — больше 30."
+        },
+        {
+          "code": "total_over_60",
+          "severity": "violation",
+          "message": "Общий срок 66 дн. с регистрации — больше 60."
+        },
+        {
+          "code": "answered_late",
+          "severity": "violation",
+          "message": "Ответ от 10.09.2026 — позже срока 05.09.2026 на 5 дн."
+        },
+        {
+          "code": "prolongation_without_reason",
+          "severity": "warning",
+          "message": "Продление № 2 без указанной причины."
+        },
+        {
+          "code": "review_result_missing",
+          "severity": "warning",
+          "message": "Нет результата рассмотрения по вопросу «Тарифы на проезд»."
+        }
+      ]
+    },
+    {
+      "id": 504,
+      "registration_number": "104-ОГ",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/504",
+      "assignee": "Кузнецова Е. С.",
+      "status": "в работе",
+      "request_date": "2026-09-24",
+      "registration_date": "2026-09-24",
+      "initial_deadline": "2026-10-24",
+      "deadline": "2026-10-24",
+      "response_date": null,
+      "metrics": {
+        "registration_lag_days": 0,
+        "registration_lag_working_days": 0,
+        "review_term_days": 30,
+        "total_term_days": 30,
+        "prolongation_days": null,
+        "prolongations": 0,
+        "days_left": 25,
+        "days_overdue": null,
+        "answered_late_days": null
+      },
+      "issues": []
+    },
+    {
+      "id": 505,
+      "registration_number": "105-ОГ",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/505",
+      "assignee": null,
+      "status": "перенаправлено",
+      "request_date": "2026-09-09",
+      "registration_date": "2026-09-10",
+      "initial_deadline": null,
+      "deadline": null,
+      "response_date": null,
+      "metrics": {
+        "registration_lag_days": 1,
+        "registration_lag_working_days": 1,
+        "review_term_days": null,
+        "total_term_days": null,
+        "prolongation_days": null,
+        "prolongations": 0,
+        "days_left": null,
+        "days_overdue": null,
+        "answered_late_days": null
+      },
+      "issues": []
+    },
+    {
+      "id": 506,
+      "registration_number": "106-ОГ",
+      "url": "https://rx.example.gov.ru/DirectumRX/#/card/Request/506",
+      "assignee": "Смирнов А. В.",
+      "status": "в работе",
+      "request_date": "2026-09-01",
+      "registration_date": "2026-09-02",
+      "initial_deadline": "2026-10-02",
+      "deadline": "2026-10-30",
+      "response_date": null,
+      "metrics": {
+        "registration_lag_days": 1,
+        "registration_lag_working_days": 1,
+        "review_term_days": 30,
+        "total_term_days": 58,
+        "prolongation_days": 28,
+        "prolongations": 1,
+        "days_left": 31,
+        "days_overdue": null,
+        "answered_late_days": null
+      },
+      "issues": []
+    }
+  ],
+  "disclaimer": "Проверка по общим нормам 59-ФЗ в календарных днях (регистрация — также в рабочих днях без учёта праздников). Особые сроки (установленные законом для отдельных категорий обращений, сокращённые сроки по регламенту органа, отметки «Оперативно» и «Срочно») скрипт не знает — сверяйтесь с регламентом."
+}
