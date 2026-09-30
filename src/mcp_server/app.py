@@ -56,6 +56,10 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
     list_legal_acts_on_approval (где застряло согласование). Федеральных законов в RX нет — не выдавай их за данные RX.
 12. Контроль исполнения: контрольных карт нет — объект контроля само поручение с признаком «На контроле».
     Реестр — list_controlled_action_items, всё по одному поручению (дерево, продления, приёмка) — get_control_dossier.
+    Проект резолюции по входящему — get_resolution_history автора + текст документа (get_document_text).
+13. Если get_current_user вернул service_account=true, mcpOGV работает под служебной учёткой, а не под
+    пользователем чата: «мои» тулы (list_my_assignments, list_action_items, get_outgoing_action_items_analytics) и «me»
+    относятся к ней. Спроси ФИО пользователя и передавай его явно (list_employee_action_items, supervisor/author=ФИО).
 """
 
 

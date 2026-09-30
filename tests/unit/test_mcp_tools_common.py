@@ -105,3 +105,16 @@ def test_debug_with_key_logs_warning_without_secrets(tmp_path, caplog):
 
     assert "MCP_ALLOW_ENV_CREDENTIALS" in caplog.text
     assert "key-value-123" not in caplog.text and "dXNlcjpwYXNz" not in caplog.text
+
+
+def test_get_current_user_marks_service_account():
+    services = SimpleNamespace(
+        service_account=True,
+        current_user=SimpleNamespace(get_current_user=lambda: DirectumUser(id=1, name="Administrator", login="Administrator")),
+    )
+
+    data = payload(call_tool(make_server(services), "get_current_user"))
+
+    assert data["service_account"] is True and "служебной учётной записью" in data["message"]
+    assert "service_account" not in payload(call_tool(make_server(SimpleNamespace(
+        current_user=SimpleNamespace(get_current_user=lambda: DirectumUser(id=2, name="Надя", login="nadya")))), "get_current_user"))

@@ -29,6 +29,8 @@ class Credentials:
     auth_token: str = field(repr=False)
     fingerprint: str  # ключ in-memory кешей; зависит от пароля, поэтому на диск не пишется
     usage_id: str  # обезличенный id пользователя для метрик: HMAC логина, от пароля не зависит
+    # True — запрос без личных кредов, mcpOGV работает под служебной учёткой из окружения (MCP_ALLOW_ENV_CREDENTIALS).
+    service_account: bool = False
 
 
 def _from_latin1(value: str) -> str:
@@ -58,17 +60,20 @@ def credentials_from_headers(headers: Mapping[str, str] | None, settings: McpSet
     lowered = {str(key).lower(): str(value) for key, value in (headers or {}).items()}
     login = _from_latin1(lowered.get(LOGIN_HEADER, "")).strip()
     password = _from_latin1(lowered.get(PASSWORD_HEADER, ""))
+    service_account = False
     if login and password:
         token = build_basic_auth_token(login, password)
     elif settings.MCP_ALLOW_ENV_CREDENTIALS and settings.env_auth_token:
         token = settings.env_auth_token
         login = _login_from_basic_token(token)
+        service_account = True
     else:
         raise ToolError(MISSING_CREDENTIALS_MESSAGE)
     return Credentials(
         auth_token=token,
         fingerprint=hashlib.sha256(token.encode("utf-8")).hexdigest(),
         usage_id=usage_id_for(login, settings),
+        service_account=service_account,
     )
 
 
@@ -118,6 +123,7 @@ class ServicesProvider:
             transport=self.transport,
             tz=self.settings.stand_timezone,
         )
+        services.service_account = credentials.service_account
         cached_user = self.user_cache.get(credentials.fingerprint)
         if cached_user is not None:
             services.current_user.prime(cached_user)

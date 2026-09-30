@@ -67,3 +67,42 @@ def test_dossier_kinds():
     assert seen["dossier"] == (3609, "assignment")
     payload(call_tool(server, "get_control_dossier", {"action_item_id": 3609, "entity_type": None}))
     assert seen["dossier"] == (3609, None)
+
+
+def make_history():
+    seen = {}
+
+    def history(author_id, date_from=None, date_to=None, limit=1000):
+        seen["history"] = (author_id, date_from, date_to, limit)
+        return {"items": [], "total": 0}
+
+    services = SimpleNamespace(
+        resolution_history=SimpleNamespace(history=history),
+        action_items=SimpleNamespace(search_employee=lambda query: [EmployeeSummary(id=53, name="Босов")], get_employee=lambda i: EmployeeSummary(id=i, name="X")),
+        current_user=SimpleNamespace(get_current_user=lambda: SimpleNamespace(id=5)),
+    )
+    return build_server(FakeProvider(services)), seen
+
+
+def test_resolution_history_tool():
+    server, seen = make_history()
+    payload(call_tool(server, "get_resolution_history", {"author": "Босов"}))
+    assert seen["history"] == (53, None, None, 1000)
+    payload(call_tool(server, "get_resolution_history", {"author": "me", "date_from": "2025-01-01", "limit": 50}))
+    assert seen["history"] == (5, date(2025, 1, 1), None, 50)
+    assert "Укажите автора" in error_text(call_tool(server, "get_resolution_history", {"author": "  "}))
+
+
+def test_me_under_service_account_is_refused():
+    # Служебная учётка: «me» не подставляется молча.
+    svc = SimpleNamespace(
+        service_account=True,
+        document_control=SimpleNamespace(list_controlled=lambda f, limit=30: {"items": []}),
+        resolution_history=SimpleNamespace(history=lambda *a, **k: {"items": []}),
+        action_items=SimpleNamespace(search_employee=lambda q: [EmployeeSummary(id=77, name="Иванов")], get_employee=lambda i: None),
+        current_user=SimpleNamespace(get_current_user=lambda: SimpleNamespace(id=1)),
+    )
+    srv = build_server(FakeProvider(svc))
+    assert "служебной учётной записью" in error_text(call_tool(srv, "list_controlled_action_items", {"supervisor": "me"}))
+    assert "служебной учётной записью" in error_text(call_tool(srv, "get_resolution_history", {"author": "мне"}))
+    payload(call_tool(srv, "list_controlled_action_items", {"supervisor": "Иванов"}))

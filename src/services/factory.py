@@ -17,6 +17,7 @@ from src.services.document_search import DocumentSearchService
 from src.services.document_text import DocumentTextService
 from src.services.legal_acts import LegalActsService
 from src.services.qa_search import QASearchService
+from src.services.resolution_history import ResolutionHistoryService
 from src.services.rx_methods import RxMethodsService
 from src.services.subordination import SubordinationService
 from src.services.meetings import MeetingsService
@@ -43,6 +44,9 @@ class DirectumServices:
     department_discipline: DepartmentDisciplineService
     legal_acts: LegalActsService
     document_control: DocumentControlService
+    resolution_history: ResolutionHistoryService
+    # Запрос идёт под служебной учёткой, а не под пользователем чата: «я / me» — это она.
+    service_account: bool = False
 
     def close(self) -> None:
         self.client.close()
@@ -77,4 +81,5 @@ def build_directum_services(
         department_discipline=DepartmentDisciplineService(discipline),
         legal_acts=LegalActsService(client, tz=tz),
         document_control=DocumentControlService(client, tz=tz),
+        resolution_history=ResolutionHistoryService(client, tz=tz),
     )

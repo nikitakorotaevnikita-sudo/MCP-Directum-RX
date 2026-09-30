@@ -224,3 +224,10 @@ def test_provider_passes_stand_timezone_to_services():
 
     with provider.open({"X-Directum-Login": "u", "X-Directum-Password": "p"}) as (_, services):
         assert services.assignments.tz.utcoffset(None) == timedelta(hours=5)
+
+
+def test_service_account_flag():
+    debug = make_settings(MCP_ALLOW_ENV_CREDENTIALS=True, DIRECTUM_AUTH_TOKEN=basic("Administrator", "pass"))
+    assert credentials_from_headers({}, debug).service_account is True
+    personal = credentials_from_headers({"X-Directum-Login": "nadya", "X-Directum-Password": "1"}, debug)
+    assert personal.service_account is False

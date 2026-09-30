@@ -1,0 +1,247 @@
+{
+ "author_id": 53,
+ "total": 12,
+ "returned": 12,
+ "truncated": false,
+ "items": [
+  {
+   "id": 101,
+   "created": "2026-09-10",
+   "subject": "\"Прошу организовать проверку и доложить о…\" по Вх. письмо Минздрава края «О работе прививочных кабинетов»",
+   "text": "Прошу организовать проверку и доложить о результатах.",
+   "source_document": {
+    "id": 5101,
+    "name": "Вх. письмо Минздрава края «О работе прививочных кабинетов»"
+   },
+   "assignee": "Петрова В. А.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 10,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/101"
+  },
+  {
+   "id": 102,
+   "created": "2026-08-20",
+   "subject": "\"Прошу подготовить информацию о ходе вакц…\" по Вх. письмо «О вакцинации населения против гриппа»",
+   "text": "Прошу подготовить информацию о ходе вакцинации.",
+   "source_document": {
+    "id": 5102,
+    "name": "Вх. письмо «О вакцинации населения против гриппа»"
+   },
+   "assignee": "Петрова В. А.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 14,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/102"
+  },
+  {
+   "id": 103,
+   "created": "2026-06-11",
+   "subject": "\"Прошу рассмотреть и подготовить ответ за…\" по Обращение «Очереди в поликлинике и прививочном кабинете»",
+   "text": "Прошу рассмотреть и подготовить ответ заявителю.",
+   "source_document": {
+    "id": 5103,
+    "name": "Обращение «Очереди в поликлинике и прививочном кабинете»"
+   },
+   "assignee": "Петрова В. А.",
+   "co_assignees": [
+    "Орлов Д. С."
+   ],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 20,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/103"
+  },
+  {
+   "id": 104,
+   "created": "2026-07-05",
+   "subject": "\"Прошу организовать участие школ в олимпи…\" по Вх. письмо «Олимпиада по математике для школьников»",
+   "text": "Прошу организовать участие школ в олимпиаде.",
+   "source_document": {
+    "id": 5104,
+    "name": "Вх. письмо «Олимпиада по математике для школьников»"
+   },
+   "assignee": "Мокрушин И. С.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 21,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/104"
+  },
+  {
+   "id": 105,
+   "created": "2026-05-15",
+   "subject": "\"Прошу подготовить информацию о готовност…\" по Вх. письмо «Подготовка школ к новому учебному году»",
+   "text": "Прошу подготовить информацию о готовности школ.",
+   "source_document": {
+    "id": 5105,
+    "name": "Вх. письмо «Подготовка школ к новому учебному году»"
+   },
+   "assignee": "Мокрушин И. С.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 21,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/105"
+  },
+  {
+   "id": 106,
+   "created": "2026-09-01",
+   "subject": "\"Прошу подготовить план ремонта дорог.…\" по Вх. письмо «О ремонте автомобильных дорог регионального значения»",
+   "text": "Прошу подготовить план ремонта дорог.",
+   "source_document": {
+    "id": 5106,
+    "name": "Вх. письмо «О ремонте автомобильных дорог регионального значения»"
+   },
+   "assignee": "Смирнов А. В.",
+   "co_assignees": [
+    "Кузнецова Е. С."
+   ],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 15,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/106"
+  },
+  {
+   "id": 107,
+   "created": "2026-07-18",
+   "subject": "\"Прошу рассмотреть и подготовить ответ за…\" по Обращение «Ямочный ремонт дороги по ул. Садовой»",
+   "text": "Прошу рассмотреть и подготовить ответ заявителю.",
+   "source_document": {
+    "id": 5107,
+    "name": "Обращение «Ямочный ремонт дороги по ул. Садовой»"
+   },
+   "assignee": "Смирнов А. В.",
+   "co_assignees": [
+    "Кузнецова Е. С."
+   ],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 20,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/107"
+  },
+  {
+   "id": 108,
+   "created": "2026-04-02",
+   "subject": "\"Прошу доложить о готовности техники.…\" по Вх. письмо «Содержание дорог в зимний период»",
+   "text": "Прошу доложить о готовности техники.",
+   "source_document": {
+    "id": 5108,
+    "name": "Вх. письмо «Содержание дорог в зимний период»"
+   },
+   "assignee": "Смирнов А. В.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 10,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/108"
+  },
+  {
+   "id": 109,
+   "created": "2026-09-05",
+   "subject": "\"Прошу провести совещание и доложить о ре…\" по Вх. письмо Аппарата Правительства РФ «О выдаче поручения по цифровизации»",
+   "text": "Прошу провести совещание и доложить о результатах.",
+   "source_document": {
+    "id": 5109,
+    "name": "Вх. письмо Аппарата Правительства РФ «О выдаче поручения по цифровизации»"
+   },
+   "assignee": "Иванов И. И.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": true,
+   "supervisor": "Орлова Е. В.",
+   "term_days": 30,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/109"
+  },
+  {
+   "id": 110,
+   "created": "2026-06-20",
+   "subject": "\"Прошу представить доклад о ходе реализац…\" по Вх. письмо Аппарата Правительства РФ «О реализации национального проекта»",
+   "text": "Прошу представить доклад о ходе реализации.",
+   "source_document": {
+    "id": 5110,
+    "name": "Вх. письмо Аппарата Правительства РФ «О реализации национального проекта»"
+   },
+   "assignee": "Иванов И. И.",
+   "co_assignees": [
+    "Смирнов А. В."
+   ],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": true,
+   "supervisor": "Орлова Е. В.",
+   "term_days": 25,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/110"
+  },
+  {
+   "id": 111,
+   "created": "2026-03-10",
+   "subject": "\"Прошу представить информацию.…\" по Вх. письмо Аппарата Правительства РФ «О мониторинге цифровых сервисов»",
+   "text": "Прошу представить информацию.",
+   "source_document": {
+    "id": 5111,
+    "name": "Вх. письмо Аппарата Правительства РФ «О мониторинге цифровых сервисов»"
+   },
+   "assignee": "",
+   "co_assignees": [],
+   "parts_assignees": [
+    "Иванов И. И.",
+    "Смирнов А. В."
+   ],
+   "is_compound": true,
+   "under_control": true,
+   "supervisor": "Орлова Е. В.",
+   "term_days": 20,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/111"
+  },
+  {
+   "id": 112,
+   "created": "2025-01-15",
+   "subject": "\"Прошу подготовить предложения.…\" по Вх. письмо «О благоустройстве дворовых территорий»",
+   "text": "Прошу подготовить предложения.",
+   "source_document": {
+    "id": 5112,
+    "name": "Вх. письмо «О благоустройстве дворовых территорий»"
+   },
+   "assignee": "Волков Д. И.",
+   "co_assignees": [],
+   "parts_assignees": [],
+   "is_compound": false,
+   "under_control": false,
+   "supervisor": null,
+   "term_days": 30,
+   "status": "Completed",
+   "url": "https://rx.example.gov.ru/Client/#/card/task/112"
+  }
+ ]
+}

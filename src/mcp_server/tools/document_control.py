@@ -12,6 +12,10 @@ from src.services.document_control import ControlFilters
 
 Person = Annotated[str | None, Field(description="ФИО или id сотрудника; «me» — текущий пользователь")]
 ME = {"me", "я", "мне", "мои"}
+ME_UNDER_SERVICE_ACCOUNT = (
+    "mcpOGV работает под служебной учётной записью, поэтому «me» — это она, а не пользователь чата. "
+    "Спросите у пользователя его ФИО и передайте его вместо «me»."
+)
 
 
 def _person_id(services, value: str | None) -> int | None:
@@ -19,6 +23,8 @@ def _person_id(services, value: str | None) -> int | None:
     if not text:
         return None
     if text.casefold() in ME:
+        if getattr(services, "service_account", False):
+            raise ToolError(ME_UNDER_SERVICE_ACCOUNT)
         return services.current_user.get_current_user().id
     return resolve_employee(services.action_items, text).id
 
@@ -89,3 +95,26 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
             "get_control_dossier",
             lambda s: to_jsonable(s.document_control.dossier(action_item_id, kind=kind)),
         )
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def get_resolution_history(
+        author: Annotated[str, Field(description="Автор резолюций (кто выдаёт поручения): ФИО, id или «me»")],
+        ctx: Context,
+        date_from: Annotated[str | None, Field(description="Созданы с, YYYY-MM-DD (по умолчанию — 2 года назад)")] = None,
+        date_to: Annotated[str | None, Field(description="Созданы по, YYYY-MM-DD")] = None,
+        limit: Annotated[int, Field(description="Сколько поручений вернуть (1–2000), новые первыми", ge=1, le=2000)] = 1000,
+    ) -> dict:
+        """История резолюций автора — для проекта резолюции по новому входящему «как обычно у этого руководителя».
+        Поручения верхнего уровня, которые автор выдавал: тема, текст поручения, документ-основание, исполнитель,
+        соисполнители, исполнители пунктов, на контроле ли и кто контролёр, срок в днях от создания. Итоги:
+        under_control_share (доля на контроле), top_assignees (частые исполнители). Ответ целиком передавай
+        скрипту навыка kd-resolution."""
+        start, end = parse_period(date_from, date_to)
+
+        def action(s):
+            author_id = _person_id(s, author)
+            if author_id is None:
+                raise ToolError("Укажите автора резолюций: ФИО, id или «me».")
+            return to_jsonable(s.resolution_history.history(author_id, date_from=start, date_to=end, limit=limit))
+
+        return await runner.run(ctx, "get_resolution_history", action)

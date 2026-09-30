@@ -76,7 +76,7 @@ cp1251), выход — JSON или `--format md`; коды выхода 0 / 2 (
 ## Навыки контроля исполнения (контролёр)
 
 Контроль без контрольных карт: объект контроля — поручение с признаком «На контроле». Данные — из mcpOGV
-(`list_controlled_action_items`, `get_control_dossier`). Концепция — `docs/usecases/2026-09-29-document-control-agent-design.md`,
+(`list_controlled_action_items`, `get_control_dossier`, `get_resolution_history`). Концепция — `docs/usecases/2026-09-29-document-control-agent-design.md`,
 промпт агента — `docs/prompts/control-agent.md`.
 
 | Навык | Когда | Скрипт |
@@ -84,6 +84,7 @@ cp1251), выход — JSON или `--format md`; коды выхода 0 / 2 (
 | [`kd-monitor`](kd-monitor/SKILL.md) | утренняя сводка: прогноз срыва с причинами, ждёт приёмки, узкие места | `risk_score.py` |
 | [`kd-dossier`](kd-dossier/SKILL.md) | что с поручением: дерево исполнения, кто держит, переносы, приёмка | — |
 | [`kd-close`](kd-close/SKILL.md) | готовность к снятию с контроля, что мешает, черновик причины | `close_readiness.py` |
+| [`kd-resolution`](kd-resolution/SKILL.md) | проект резолюции по входящему по истории поручений руководителя: исполнитель, соисполнители, срок, контроль | `suggest_resolution.py` |
 
 ## Упаковка для загрузки на платформу
 

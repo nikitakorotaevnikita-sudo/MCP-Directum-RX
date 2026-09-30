@@ -12,7 +12,7 @@ description: Готовность поручения к снятию с конт
 ## Данные
 
 - Досье: `get_control_dossier(action_item_id)` → сохрани JSON как есть.
-- Кандидаты на снятие: `list_controlled_action_items(state="on_acceptance", supervisor="me")` — исполнено и ждёт
+- Кандидаты на снятие: `list_controlled_action_items(state="on_acceptance", supervisor=ФИО контролёра)` — исполнено и ждёт
   вашей приёмки.
 
 ## Скрипт
