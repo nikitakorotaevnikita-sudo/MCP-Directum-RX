@@ -122,8 +122,11 @@ class ServicesProvider:
             self.settings.MCP_DIRECTUM_TIMEOUT_SECONDS,
             transport=self.transport,
             tz=self.settings.stand_timezone,
+            grant_rights_guid=self.settings.MCP_WRITE_GRANT_RIGHTS_GUID,
         )
         services.service_account = credentials.service_account
+        services.credentials_fingerprint = credentials.fingerprint
+        services.usage_id = credentials.usage_id
         cached_user = self.user_cache.get(credentials.fingerprint)
         if cached_user is not None:
             services.current_user.prime(cached_user)

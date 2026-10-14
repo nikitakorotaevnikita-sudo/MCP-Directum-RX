@@ -4,6 +4,7 @@ import uuid
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
 
+from src.services.document_create import CreateError
 from src.services.directum_client import DirectumError
 
 logger = logging.getLogger("mcp_ogv")
@@ -15,6 +16,8 @@ def to_tool_error(exc: Exception) -> tuple[ToolError, str]:
     """Превращает исключение в понятную агенту ошибку тула. Внутренние детали наружу не уходят."""
     if isinstance(exc, ToolError):
         return exc, "tool"
+    if isinstance(exc, CreateError):
+        return ToolError(str(exc)), "invalid"
     if isinstance(exc, DirectumError):
         if exc.status_code == 401:
             return ToolError(

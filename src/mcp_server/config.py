@@ -51,6 +51,11 @@ class McpSettings(BaseSettings):
     MCP_METRICS_SALT: SecretStr | None = Field(default=None, repr=False)
     # Часовой пояс стенда RX (например +04:00); пусто — пояс машины, где запущен сервер.
     MCP_UTC_OFFSET: str | None = None
+    # Запись в RX (создание документов и задач). Выключено по умолчанию: тулы записи не регистрируются.
+    MCP_WRITE_ENABLED: bool = False
+    MCP_WRITE_AUDIT_PATH: str = "data/mcp_writes.log"
+    # GUID типа прав, которые выдаются сотруднику on_behalf_of на созданный документ; пусто — права не выдаются.
+    MCP_WRITE_GRANT_RIGHTS_GUID: str | None = None
 
     @field_validator("MCP_UTC_OFFSET")
     @classmethod

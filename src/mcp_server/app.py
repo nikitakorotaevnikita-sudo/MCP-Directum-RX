@@ -15,6 +15,7 @@ from src.mcp_server.context import ServicesProvider, TtlCache
 from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
+from src.mcp_server.write_guard import ConfirmTokens, WriteAudit
 from src.mcp_server.tools import (
     action_items,
     citizen_requests,
@@ -25,6 +26,7 @@ from src.mcp_server.tools import (
     legal_acts,
     odata,
     rx_methods,
+    write,
 )
 
 logger = logging.getLogger("mcp_ogv")
@@ -60,6 +62,9 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
 13. Если get_current_user вернул service_account=true, mcpOGV работает под служебной учёткой, а не под
     пользователем чата: «мои» тулы (list_my_assignments, list_action_items, get_outgoing_action_items_analytics) и «me»
     относятся к ней. Спроси ФИО пользователя и передавай его явно (list_employee_action_items, supervisor/author=ФИО).
+14. Создание (create_*, send_document_* — если эти тулы включены): всегда два шага. Без confirm_token — предпросмотр; покажи его пользователю,
+    спроси «Создать?» и только после явного «да» повтори вызов с теми же параметрами и confirm_token. on_behalf_of —
+    реальный сотрудник, от чьего имени документ или поручение. Регистрация, подписание и отправка — в RX.
 """
 
 
@@ -69,7 +74,13 @@ def _register_health(mcp: MCPServer) -> None:
         return JSONResponse({"status": "ok", "server": SERVER_NAME})
 
 
-def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir: Path = SKILLS_DIR) -> MCPServer:
+def build_server(
+    provider: Any,
+    usage: ToolUsageStore | None = None,
+    skills_dir: Path = SKILLS_DIR,
+    write_audit: WriteAudit | None = None,
+) -> MCPServer:
+    """write_audit — включить тулы записи в RX (иначе они не регистрируются)."""
     runner = ToolRunner(provider, usage)
     native = NativeProxyMiddleware(provider, TtlCache(NATIVE_TOOLS_TTL_SECONDS), usage)
     admin_gate = AdminGateMiddleware(provider, TtlCache(ADMIN_CHECK_TTL_SECONDS))
@@ -83,6 +94,8 @@ def build_server(provider: Any, usage: ToolUsageStore | None = None, skills_dir:
     citizen_requests.register(mcp, runner)
     legal_acts.register(mcp, runner)
     document_control.register(mcp, runner)
+    if write_audit is not None:
+        write.register(mcp, runner, ConfirmTokens(), write_audit)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
     resources.register(mcp, guides)
@@ -129,7 +142,8 @@ def build_asgi_app(
             )
     provider = provider or ServicesProvider(settings)
     usage = usage or ToolUsageStore(settings.MCP_USAGE_DB_PATH)
-    mcp = build_server(provider, usage)
+    write_audit = WriteAudit(settings.MCP_WRITE_AUDIT_PATH) if settings.MCP_WRITE_ENABLED else None
+    mcp = build_server(provider, usage, write_audit=write_audit)
     app = mcp.streamable_http_app(
         stateless_http=True,
         json_response=True,

@@ -13,6 +13,7 @@ from src.services.current_user import CurrentUserService
 from src.services.directum_client import DirectumClient
 from src.services.discipline_analytics import DisciplineAnalyticsService
 from src.services.document_control import DocumentControlService
+from src.services.document_create import DocumentCreateService
 from src.services.document_search import DocumentSearchService
 from src.services.document_text import DocumentTextService
 from src.services.legal_acts import LegalActsService
@@ -46,7 +47,11 @@ class DirectumServices:
     document_control: DocumentControlService
     resolution_history: ResolutionHistoryService
     # Запрос идёт под служебной учёткой, а не под пользователем чата: «я / me» — это она.
+    document_create: DocumentCreateService | None = None
     service_account: bool = False
+    # Отпечаток кредов текущего запроса (привязка токена подтверждения записи) и обезличенный id для аудита.
+    credentials_fingerprint: str = ""
+    usage_id: str | None = None
 
     def close(self) -> None:
         self.client.close()
@@ -58,6 +63,7 @@ def build_directum_services(
     timeout: float = 30.0,
     transport: httpx.BaseTransport | None = None,
     tz: tzinfo | None = None,
+    grant_rights_guid: str | None = None,
 ) -> DirectumServices:
     client = DirectumClient(base_url, auth_token, timeout, transport=transport)
     current_user = CurrentUserService(client, auth_token)
@@ -82,4 +88,5 @@ def build_directum_services(
         legal_acts=LegalActsService(client, tz=tz),
         document_control=DocumentControlService(client, tz=tz),
         resolution_history=ResolutionHistoryService(client, tz=tz),
+        document_create=DocumentCreateService(client, tz=tz, grant_rights_guid=grant_rights_guid),
     )

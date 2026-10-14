@@ -199,22 +199,23 @@ def suggest(text: str, history, title: str = "", today: date | None = None, top:
         return {t: (1 + math.log(c)) * math.log(n / (1 + df.get(t, 0)) + 1) for t, c in counter.items()}
 
     qw = weight(query_terms)
-    qnorm = math.sqrt(sum(v * v for v in qw.values())) or 1.0
+    qnorm = math.sqrt(sum(qw[t] * qw[t] for t in sorted(qw))) or 1.0
     scored = []
     for item, d in zip(items, docs):
         if not d:
             continue
         dw = weight(d)
-        dot = sum(qw[t] * dw[t] for t in qw.keys() & dw.keys())
+        common = sorted(qw.keys() & dw.keys())  # порядок фиксирован: результат не зависит от PYTHONHASHSEED
+        dot = sum(qw[t] * dw[t] for t in common)
         if not dot:
             continue
-        sim = dot / (qnorm * (math.sqrt(sum(v * v for v in dw.values())) or 1.0))
+        sim = dot / (qnorm * (math.sqrt(sum(dw[t] * dw[t] for t in sorted(dw))) or 1.0))
         if sim < MIN_SIMILARITY:
             continue
         created = parse_day(item.get("created"))
         age = (today - created).days if created else HALF_LIFE_DAYS
         recency = 0.5 ** (max(age, 0) / HALF_LIFE_DAYS)
-        shared = sorted(qw.keys() & dw.keys(), key=lambda t: -(qw[t] * dw[t]))[:6]
+        shared = sorted(common, key=lambda t: (-(qw[t] * dw[t]), t))[:6]
         scored.append((sim, sim * recency, item, shared))
     scored.sort(key=lambda s: (-s[1], -s[0], str(s[2].get("id"))))
     neighbours = scored[:NEIGHBOURS]

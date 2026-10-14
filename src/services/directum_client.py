@@ -232,6 +232,15 @@ class DirectumClient:
             return {}
         return self._json_or_error(response)
 
+    def patch(self, entity_path: str, payload: dict[str, Any]) -> None:
+        response = self.client.patch(self.build_url(entity_path), headers=self._headers(), json=payload)
+        if response.status_code >= 400:
+            raise DirectumError(
+                safe_message=f"PATCH {entity_path.split('(')[0]} failed with {response.status_code}: "
+                f"{self._safe_error_detail(response)}",
+                status_code=response.status_code,
+            )
+
     def _headers(self) -> dict[str, str]:
         return {"Authorization": self.auth_token, "Accept": "application/json"}
 
@@ -290,6 +299,9 @@ class DirectumClient:
         return detail[:500]
 
     def _odata_error_message(self, data: Any) -> str:
+        # Ошибки валидации сохранения RX приходят JSON-строкой: "Не заполнено обязательное свойство ...".
+        if isinstance(data, str):
+            return data
         if not isinstance(data, dict):
             return ""
         error = data.get("error")
