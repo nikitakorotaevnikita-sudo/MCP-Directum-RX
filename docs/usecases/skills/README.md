@@ -67,6 +67,7 @@ cp1251), выход — JSON или `--format md`; коды выхода 0 / 2 (
 | [`og-redirect`](og-redirect/SKILL.md) | направление по компетенции (7 дней), сопроводительные документы | — |
 | [`og-repeat`](og-repeat/SKILL.md) | повторные обращения, история ответов, повод проверить ст. 11 | `find_repeats.py` |
 | [`og-letters`](og-letters/SKILL.md) | черновики ответа, уведомлений о продлении и перенаправлении, сопроводительного, запроса, ответа в ПОС | `check_letter.py`, шаблоны `templates/` |
+| [`og-answer-review`](og-answer-review/SKILL.md) | качество ответов постфактум по стандарту навыка (`standard/standard.json`): отписки, формализм, полнота, конкретика, оформление | `review_answers.py` |
 | [`og-control`](og-control/SKILL.md) | сводка сроков по группам и исполнителям, справка руководителю, статистика по ТОТК | `due_digest.py` (в том числе спецификация для `excel-report`) |
 
 Контракт скриптов тот же, что у навыков правового отдела; `check_terms.py` и `due_digest.py` принимают

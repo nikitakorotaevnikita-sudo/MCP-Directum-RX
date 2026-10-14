@@ -118,6 +118,7 @@ class DirectumClient:
         orderby: str | None = None,
         top: int | None = None,
         count: bool = False,
+        skip: int | None = None,
     ) -> list[dict[str, Any]]:
         data = self.get_collection(
             entity_set,
@@ -127,6 +128,7 @@ class DirectumClient:
             orderby=orderby,
             top=top,
             count=count,
+            skip=skip,
         )
         return data["value"]
 
@@ -259,6 +261,7 @@ class DirectumClient:
         orderby: str | None = None,
         top: int | None = None,
         count: bool = False,
+        skip: int | None = None,
     ) -> dict[str, str | int | bool]:
         params: dict[str, str | int | bool] = {}
         if filter_:
@@ -273,6 +276,8 @@ class DirectumClient:
             params["$top"] = top
         if count:
             params["$count"] = "true"
+        if skip:
+            params["$skip"] = int(skip)
         return params
 
     def _json_or_error(self, response: httpx.Response) -> dict[str, Any]:

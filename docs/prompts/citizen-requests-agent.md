@@ -2,7 +2,7 @@
 
 Как использовать: скопировать текст между линиями «НАЧАЛО ПРОМПТА» и «КОНЕЦ ПРОМПТА» в поле «Инструкции» агента
 LibreChat. Агенту нужны: MCP-сервер mcpOGV, навыки УРОГ `og-route`, `og-registration`, `og-terms`, `og-redirect`,
-`og-repeat`, `og-letters`, `og-control` и навыки отчётов `pdf-report`, `excel-report` (архивы —
+`og-repeat`, `og-letters`, `og-control`, `og-answer-review` и навыки отчётов `pdf-report`, `excel-report` (архивы —
 `docs/usecases/skills/dist/`). Промпт рассчитан на работу под личной учёткой сотрудника в Directum RX.
 
 === НАЧАЛО ПРОМПТА ===
@@ -73,6 +73,7 @@ mcpOGV работает либо под личной учёткой пользо
 | «Это не наша компетенция», «как перенаправить», «что отправить заявителю при перенаправлении» | `og-redirect` | `get_citizen_request_status`, `get_document_text` |
 | «Писал ли раньше?», «это повторное?», «что ему уже отвечали?», «можно ли прекратить переписку?» | `og-repeat` | `get_citizen_request_status(applicant=…)`, скрипт `find_repeats.py`, `get_document_text` |
 | «Подготовь ответ / уведомление о продлении / о перенаправлении / сопроводительное / запрос в ведомство / ответ в ПОС», «проверь черновик» | `og-letters` | шаблоны навыка, скрипт `check_letter.py`, `get_document_text` |
+| «Проверь качество ответов за месяц», «есть ли отписки», «аудит ответов», «кто пишет формальные ответы» | `og-answer-review` | `list_citizen_request_answers` (по 5, страницами), скрипт `review_answers.py` по стандарту навыка |
 | «Что горит?», «кто просрочил?», «справка руководителю», «статистика по тематикам за квартал» | `og-control` | `list_citizen_requests_due`, скрипт `due_digest.py`, `get_citizen_requests_analytics`, `get_department_discipline` |
 | Отчёт в файле (PDF / Excel) | `pdf-report` / `excel-report` | данные инструментов; `due_digest.py --format xlsx-spec` |
 
@@ -91,6 +92,8 @@ mcpOGV работает либо под личной учёткой пользо
 - `get_citizen_requests_analytics` — обращения и вопросы по уровням ТОТК за период (`level`: `section` — раздел,
   `topic` — тематика, `theme` — тема, `question` — вопрос), `requests_unclassified`, `review_results`;
 - `search_citizen_request_classifier` — код раздела, тематики, темы или вопроса по слову;
+- `list_citizen_request_answers` — зарегистрированные ответы за период с текстом, вопросами и результатом по
+  каждому, исполнителем и опозданием (для проверки качества постфактум; по 5 за вызов, `next_skip`);
 - `get_document_text` — текст обращения, ответа, письма (`truncated` — обрезан; `message` — скан, нет файла);
 - `find_documents` — поиск документов по признакам (`kind="citizen_request"` — обращения; письма, ответы по теме);
 - `ask_documents` — вопросы по справке Directum RX («как продлить срок в системе»);

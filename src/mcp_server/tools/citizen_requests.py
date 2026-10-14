@@ -90,6 +90,36 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         )
 
     @mcp.tool(annotations=READ_ONLY)
+    async def list_citizen_request_answers(
+        ctx: Context,
+        date_from: Annotated[str | None, Field(description="Ответы, зарегистрированные с, YYYY-MM-DD (по умолчанию — с 1-го числа месяца)")] = None,
+        date_to: Annotated[str | None, Field(description="по, YYYY-MM-DD (по умолчанию — сегодня)")] = None,
+        prepared_by: Annotated[str | None, Field(description="Кто подготовил ответ (исполнитель): ФИО или id")] = None,
+        classifier_code: Annotated[str | None, Field(description="Код ТОТК для сужения, например 0003 или 0003.0009")] = None,
+        include_text: Annotated[bool, Field(description="Вернуть текст писем (для проверки качества)")] = True,
+        max_chars: Annotated[int, Field(description="Символов текста на одно письмо (1000–20000)", ge=1000, le=20000)] = 6000,
+        limit: Annotated[int, Field(description="Сколько ответов за вызов (1–20); с текстом — по 5, чтение медленное", ge=1, le=20)] = 5,
+        skip: Annotated[int, Field(description="Пропустить столько ответов (следующая страница — next_skip)", ge=0)] = 0,
+    ) -> dict:
+        """Зарегистрированные ответы на обращения граждан («Ответное письмо») за период — для проверки качества
+        постфактум (навык og-answer-review). По каждому: номер и дата письма, кто подготовил и подписал, результат,
+        обращения и вопросы с кодом ТОТК и результатом рассмотрения по вопросу, срок обращения и опоздание
+        (days_late), текст письма. Новые первыми; total — всего за период; next_skip — следующая страница.
+        Контактов заявителей нет."""
+        start, end = parse_period(date_from, date_to)
+        code = (classifier_code or "").strip() or None
+        if code is not None and not CLASSIFIER_CODE.match(code):
+            raise ToolError("Код классификатора — цифры по уровням, например 0003 или 0003.0009.")
+
+        def action(s):
+            author_id = resolve_employee(s.action_items, prepared_by).id if (prepared_by or "").strip() else None
+            return s.citizen_answers.list_answers(
+                date_from=start, date_to=end, prepared_by_id=author_id, classifier_code=code,
+                include_text=include_text, max_chars=max_chars, limit=limit, skip=skip)
+
+        return await runner.run(ctx, "list_citizen_request_answers", action)
+
+    @mcp.tool(annotations=READ_ONLY)
     async def list_citizen_requests_due(
         ctx: Context,
         within_days: Annotated[int, Field(description="Срок истекает в ближайшие N дней (0 — сегодня), 0–30", ge=0, le=30)] = 3,
