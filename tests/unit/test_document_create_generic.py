@@ -198,7 +198,7 @@ def test_action_items_batch():
     assert plan["items"][1]["supervisor"] == {"id": 63, "name": "Концева Н. И."}
     result = s.create_action_items(plan)
     assert result["created"] == 2 and result["started"] == 2 and result["failed"] == 0 and result["task_ids"] == [9001, 9001]
-    created = [p for p, _ in client.posts if p == "RecordManagement/CreateActionItemExecution"]
+    created = [p for p, _ in client.posts if p == "IActionItemExecutionTasks"]
     assert len(created) == 2
 
 
@@ -216,7 +216,7 @@ def test_action_items_batch_validation_and_partial_failure():
         n = 0
 
         def post(self, path, payload):
-            if path == "RecordManagement/CreateActionItemExecution":
+            if path == "IActionItemExecutionTasks":
                 Flaky.n += 1
                 if Flaky.n == 2:
                     raise DirectumError("failed with 400. Response detail: Срок раньше даты", status_code=400)
@@ -227,5 +227,5 @@ def test_action_items_batch_validation_and_partial_failure():
                                          {"assignee_id": 66, "deadline": date(2026, 10, 30), "text": "б"}])
     result = s.create_action_items(plan)
     assert result["created"] == 1 and result["failed"] == 1
-    assert result["items"][1]["error"] == "Срок раньше даты"
-    assert "Поручение 2 (Орлова Е. В.): не создано — Срок раньше даты" in result["warnings"]
+    assert result["items"][1]["error"] == "RX не создал поручение: Срок раньше даты."
+    assert "Поручение 2 (Орлова Е. В.): не создано — RX не создал поручение: Срок раньше даты." in result["warnings"]

@@ -84,6 +84,25 @@ mcpOGV на стенде работает под Administrator (`service_account
 Проверено на стенде: шаблоны (26), текст шаблона, ссылки, файл документа в base64, предпросмотры служебной записки,
 письма по шаблону и пакета поручений, создание версии из markdown у тестового письма 16800.
 
+## Живая проверка всех тулов записи (14.10.2026, стенд governmentgenai, служебная учётка Administrator)
+
+| Тул | Итог | Примечание |
+|---|---|---|
+| `create_outgoing_letter` | работает | документ, тело docx |
+| `create_document` — исходящее, приказ, простой документ | работает | простому документу и приложению передаётся «Имя» |
+| `create_document` — по шаблону RX | работает | `Docflow/CreateVersionFromTemplate` |
+| `create_document` — служебная записка | настройка RX | у вида включена автонумерация без настройки нумерации |
+| `create_legal_act` / `create_document(legal_act)` | ограничение RX | набор `ILegalActsLegalActs`; обязательная «Категория» не опубликована в сервисе интеграции |
+| `create_document_body`, `create_document_body_base64` | работает | новая версия docx / файла |
+| `create_action_item`, `create_action_items` | работает | прямая сборка: POST `IActionItemExecutionTasks` (`AssignedBy`, `Assignee`, `Deadline`, контроль, `SourceDocumentGD`) → `CoAssignees` → `Texts` (текст поручения) → `AttachmentDetails` (группа «Документы» 804f50fe…, GUID типа из `DocumentKind.DocumentType`) → `StartTask`. `RecordManagement/CreateActionItemExecution` под служебной учёткой не работает: «Не заполнено „Выдал“» (нет карточки сотрудника) |
+| `send_document_for_review` | работает | |
+| `send_document_for_approval` | настройка RX | создаётся, но RX не запускает: нет настройки регистрации для вида документа |
+| `create_task` | работает | |
+| `request_action_item_report` | работает (простой задачей) | `IStatusReportRequestTasks` через OData — 500 при любом наборе полей; запрос — простая задача «Запрос отчета по поручению № …» с документами поручения; ответ — текст исполнителя в задании, виден в `get_control_dossier.report_requests` (`kind=simple_task`) |
+
+`Shell/AbortTask` прекращает простые задачи, но не находит поручения и задачи рассмотрения («Запись не найдена») —
+тестовые задачи такого типа прекращаются вручную в RX.
+
 ## Вне рамок
 
 Регистрация документов, подписание, отправка корреспондентам, удаление и изменение существующих документов.

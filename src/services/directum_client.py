@@ -241,6 +241,12 @@ class DirectumClient:
                 status_code=response.status_code,
             )
 
+    def delete(self, entity_path: str) -> None:
+        response = self.client.delete(self.build_url(entity_path), headers=self._headers())
+        if response.status_code >= 400:
+            raise DirectumError(f"DELETE {entity_path.split('(')[0]} failed with {response.status_code}: "
+                                f"{self._safe_error_detail(response)}", status_code=response.status_code)
+
     def _headers(self) -> dict[str, str]:
         return {"Authorization": self.auth_token, "Accept": "application/json"}
 

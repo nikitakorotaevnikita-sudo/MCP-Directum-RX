@@ -20,7 +20,11 @@ EMPLOYEES = {
 ACTION_ITEMS = {
     80872: {"Id": 80872, "Subject": ">> Поручение: Подготовить доклад", "Status": "InProcess",
             "Assignee": {"Id": 53, "Name": "Босов А. С."}, "AssignedBy": {"Id": 63, "Name": "Концева Н. И."},
-            "Supervisor": {"Id": 66, "Name": "Орлова Е. В."}, "Author": {"Id": 63, "Name": "Концева Н. И."}},
+            "Supervisor": {"Id": 66, "Name": "Орлова Е. В."}, "Author": {"Id": 63, "Name": "Концева Н. И."},
+            "SourceDocumentGD": {"Id": 500}, "AttachmentDetails": [
+                {"AttachmentId": 500, "GroupId": "804f50fe-f3da-411b-bb2e-e5373936e029"},
+                {"AttachmentId": 501, "GroupId": "804f50fe-f3da-411b-bb2e-e5373936e029"},
+                {"AttachmentId": 777, "GroupId": "other-group"}]},
     80873: {"Id": 80873, "Subject": "Поручение: Составное", "Status": "InProcess", "Assignee": None,
             "AssignedBy": {"Id": 63, "Name": "Концева Н. И."}, "Supervisor": None, "Author": None},
     955: {"Id": 955, "Subject": ">> Поручение: В работу", "Status": "InProcess",
@@ -38,9 +42,11 @@ class FakeClient:
     def __init__(self, counterparties=None, fail=None):
         self.counterparties = counterparties if counterparties is not None else [{"Id": 1464, "Name": "Аппарат Правительства"}]
         self.fail = fail or {}
-        self.posts, self.patches = [], []
+        self.posts, self.patches, self.deleted = [], [], []
 
     def get_one(self, path):
+        if path.startswith("IOfficialDocuments("):
+            return {"Id": 500, "DocumentKind": {"Id": 1, "DocumentType": {"DocumentTypeGuid": "d1d2a452-type"}}}
         if path.startswith("IActionItemExecutionTasks("):
             task_id = int(path.split("(")[1].split(")")[0])
             if task_id not in ACTION_ITEMS:
@@ -70,8 +76,10 @@ class FakeClient:
         self.posts.append((path, payload))
         if path in self.fail:
             raise self.fail[path]
-        if path == "IStatusReportRequestTasks":
-            return {"Id": 9100}
+        if path == "IActionItemExecutionTasks":
+            return {"Id": 9001}
+        if path.endswith(("/CoAssignees", "/Texts", "/AttachmentDetails")):
+            return {}
         if path in ("IOutgoingLetters", "ILegalActsLegalActs"):
             return {"Id": 16800, "Name": "Исх. письмо"}
         if path.endswith("/Versions"):
@@ -80,6 +88,9 @@ class FakeClient:
                     "Docflow/CreateApprovalTask", "Docflow/CreateSimpleTask"):
             return {"value": 9001}
         return {}
+
+    def delete(self, path):
+        self.deleted.append(path)
 
     def patch(self, path, payload):
         self.patches.append((path, payload))
@@ -190,36 +201,6 @@ def test_legal_act():
         svc().plan_legal_act("law", "О", 53, False)
 
 
-def test_action_item_flow():
-    client = FakeClient()
-    s = svc(client)
-    plan = s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Подготовить ответ",
-                              under_control=True, supervisor_id=63)
-    result = s.create_action_item(plan)
-    path, payload = client.posts[0]
-    assert path == "RecordManagement/CreateActionItemExecution"
-    assert payload == {"documentId": 500, "assigneeId": 53, "isUnderControl": True, "supervisorId": 63, "coassigneeId": None,
-                       "deadline": "2026-10-30T00:00:00+04:00", "activeText": "Подготовить ответ"}
-    assert client.patches == [("IActionItemExecutionTasks(9001)", {"AssignedBy": {"Id": 63}})]
-    assert client.posts[1] == ("Docflow/StartTask", {"taskId": 9001})
-    assert result == {"task_id": 9001, "url": "https://rx/card/IActionItemExecutionTasks(9001)", "started": True, "warnings": []}
-
-
-def test_action_item_not_started_when_patch_fails():
-    client = FakeClient(fail={"patch": DirectumError("PATCH failed with 400: нельзя", status_code=400)})
-    s = svc(client)
-    result = s.create_action_item(s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Текст"))
-    assert result["started"] is False and "НЕ запущена" in result["warnings"][0]
-    assert "Docflow/StartTask" not in paths(client)
-
-
-def test_action_item_start_failure():
-    client = FakeClient(fail={"Docflow/StartTask": DirectumError("StartTask failed", status_code=500)})
-    s = svc(client)
-    result = s.create_action_item(s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Текст"))
-    assert result["started"] is False and "не запущена" in result["warnings"][0]
-
-
 def test_action_item_validation():
     with pytest.raises(CreateError, match="уже прошёл"):
         svc().plan_action_item(500, 53, 63, date(2026, 10, 1), "т")
@@ -259,25 +240,6 @@ def test_review_approval_task():
             svc().plan_task(**args)
 
 
-def test_report_request_defaults_and_flow():
-    client = FakeClient()
-    s = svc(client)
-    # 14.10.2026 — среда; +2 рабочих дня = пятница 16.10.
-    plan = s.plan_report_request(80872, 66)
-    assert plan["assignee"] == {"id": 53, "name": "Босов А. С."} and plan["author"]["id"] == 66
-    assert plan["deadline"] == "2026-10-16" and plan["deadline_is_default"] is True
-    assert plan["action_item"]["subject"] == "Подготовить доклад"
-    assert plan["text"] == "Прошу представить отчёт о ходе исполнения поручения."
-    result = s.create_report_request(plan)
-    assert client.posts[0] == ("IStatusReportRequestTasks", {
-        "Subject": "Запрос отчета: Подготовить доклад", "ParentTask": {"Id": 80872}, "Assignee": {"Id": 53},
-        "MaxDeadline": "2026-10-16T00:00:00+04:00"})
-    assert client.posts[1] == ("IStatusReportRequestTasks(9100)/Texts", {"Body": plan["text"]})
-    assert client.patches == [("IStatusReportRequestTasks(9100)", {"Author": {"Id": 66}})]
-    assert client.posts[2] == ("Docflow/StartTask", {"taskId": 9100})
-    assert result["started"] is True and result["warnings"] == []
-
-
 def test_report_request_friday_deadline_skips_weekend():
     s = DocumentCreateService(FakeClient(), tz=TZ, now=lambda: datetime(2026, 10, 16, 12, 0, tzinfo=TZ))
     assert s.plan_report_request(80872, 63)["deadline"] == "2026-10-20"
@@ -297,13 +259,6 @@ def test_report_request_rules():
         svc().plan_report_request(80872, 63, deadline=date(2026, 10, 1))
     plan = svc().plan_report_request(80872, 63, deadline=date(2026, 10, 20), text="  Доложить   о сроках ")
     assert plan["text"] == "Доложить о сроках" and plan["deadline_is_default"] is False
-
-
-def test_report_request_text_failure_is_warning():
-    client = FakeClient(fail={"IStatusReportRequestTasks(9100)/Texts": DirectumError("x failed with 400: нельзя", status_code=400)})
-    s = svc(client)
-    result = s.create_report_request(s.plan_report_request(80872, 63))
-    assert result["started"] is True and "Текст запроса не добавлен" in result["warnings"][0]
 
 
 def test_closed_employee_cannot_receive_work():
@@ -346,3 +301,70 @@ def test_save_errors_are_actionable():
     s = svc(FakeClient(fail={"IOutgoingLetters": other}))
     with pytest.raises(DirectumError, match="«?Адресат.*Повторять с теми же данными бессмысленно"):
         s.create_outgoing_letter(s.plan_outgoing_letter("Тема", "Аппарат", 53), None)
+
+
+
+def test_action_item_direct_flow():
+    client = FakeClient()
+    s = svc(client)
+    plan = s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Подготовить ответ", co_assignee_id=66 if False else 63,
+                              under_control=True, supervisor_id=63)
+    result = s.create_action_item(plan)
+    assert [p for p, _ in client.posts] == ["IActionItemExecutionTasks", "IActionItemExecutionTasks(9001)/CoAssignees",
+                                            "IActionItemExecutionTasks(9001)/Texts", "IActionItemExecutionTasks(9001)/AttachmentDetails",
+                                            "Docflow/StartTask"]
+    assert client.posts[0][1] == {"Assignee": {"Id": 53}, "AssignedBy": {"Id": 63}, "Deadline": "2026-10-30T00:00:00+04:00",
+                                  "IsUnderControl": True, "SourceDocumentGD": {"Id": 500}, "Supervisor": {"Id": 63}}
+    assert client.posts[1][1] == {"Assignee": {"Id": 63}}
+    assert client.posts[2][1] == {"Body": "Подготовить ответ"}
+    assert client.posts[3][1] == {"GroupId": "804f50fe-f3da-411b-bb2e-e5373936e029", "AttachmentId": 500,
+                                  "AttachmentTypeGuid": "d1d2a452-type"}
+    assert client.patches == []  # «Выдал» задаётся при создании, без правки
+    assert result == {"task_id": 9001, "url": "https://rx/card/IActionItemExecutionTasks(9001)", "started": True, "warnings": []}
+
+
+def test_action_item_text_failure_drops_draft():
+    client = FakeClient(fail={"IActionItemExecutionTasks(9001)/Texts": DirectumError("x failed with 400: нельзя", status_code=400)})
+    s = svc(client)
+    with pytest.raises(DirectumError, match="Поручение не создано"):
+        s.create_action_item(s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Текст"))
+    assert client.deleted == ["IActionItemExecutionTasks(9001)"]
+    assert "Docflow/StartTask" not in paths(client)
+
+
+def test_action_item_attachment_and_start_failures_are_warnings():
+    client = FakeClient(fail={"IActionItemExecutionTasks(9001)/AttachmentDetails": DirectumError("x failed with 400: нет", status_code=400),
+                              "Docflow/StartTask": DirectumError("failed with 400. Response detail: Для документа не найдено "
+                                                                 "подходящей настройки регистрации.", status_code=400)})
+    s = svc(client)
+    result = s.create_action_item(s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Текст"))
+    assert result["started"] is False
+    assert "Документ-основание" in result["warnings"][0]
+    assert "настройка RX" in result["warnings"][1]
+
+
+def test_action_item_create_failure():
+    client = FakeClient(fail={"IActionItemExecutionTasks": DirectumError("failed with 400. Response detail: Срок раньше.", status_code=400)})
+    s = svc(client)
+    with pytest.raises(DirectumError, match="RX не создал поручение: Срок раньше."):
+        s.create_action_item(s.plan_action_item(500, 53, 63, date(2026, 10, 30), "Текст"))
+
+
+def test_report_request_as_simple_task():
+    client = FakeClient()
+    s = svc(client)
+    # 14.10.2026 — среда; +2 рабочих дня = пятница 16.10.
+    plan = s.plan_report_request(80872, 66)
+    assert plan["assignee"] == {"id": 53, "name": "Босов А. С."} and plan["author"]["id"] == 66
+    assert plan["deadline"] == "2026-10-16" and plan["deadline_is_default"] is True
+    assert plan["documents"] == [{"id": 500}, {"id": 501}] and "простая задача" in plan["how"]
+    result = s.create_report_request(plan)
+    path, payload = client.posts[0]
+    assert path == "Docflow/CreateSimpleTask"
+    assert payload["subject"] == "Запрос отчета по поручению № 80872: Подготовить доклад"
+    assert payload["performerIds"] == [53] and payload["documentIds"] == [500, 501]
+    assert payload["deadline"] == "2026-10-16T00:00:00+04:00"
+    assert payload["text"].startswith("Прошу представить отчёт о ходе исполнения поручения.")
+    assert "IActionItemExecutionTasks(80872)" in payload["text"]
+    assert client.patches == [("ISimpleTasks(9001)", {"Author": {"Id": 66}})]
+    assert result["started"] is True and result["mode"] == "simple_task"

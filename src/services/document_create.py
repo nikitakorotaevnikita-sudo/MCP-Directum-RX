@@ -30,6 +30,10 @@ MAX_PERFORMERS = 20
 CANDIDATES = 6
 NOTE_TEMPLATE = "Подготовлено ИИ-ассистентом (mcpOGV) по запросу: {name}, {day}."
 REPORT_DEFAULT_WORKDAYS = 2
+REPORT_SUBJECT_PREFIX = "Запрос отчета по поручению № "
+ACTION_ITEMS = "IActionItemExecutionTasks"
+# Группа вложений «Документы» поручения (из вложений поручений, созданных в RX).
+ACTION_ITEM_DOCUMENTS_GROUP = "804f50fe-f3da-411b-bb2e-e5373936e029"
 MAX_BATCH_ACTION_ITEMS = 20
 MAX_FILE_BYTES = 20 * 1024 * 1024
 # Тип документа для create_document → (набор OData, название по-русски, вид по умолчанию, какие поля уместны).
@@ -41,8 +45,8 @@ DOCUMENT_TYPES: dict[str, dict[str, Any]] = {
     "memo": {"set": "IMemos", "label": "служебная записка", "kind": "Служебная записка", "fields": {"addressee"}},
     "order": {"set": "IOrders", "label": "приказ", "kind": None, "fields": set()},
     "directive": {"set": "ICompanyDirectives", "label": "распоряжение", "kind": None, "fields": set()},
-    "simple_document": {"set": "ISimpleDocuments", "label": "простой документ", "kind": None, "fields": set()},
-    "addendum": {"set": "IAddendums", "label": "приложение", "kind": None, "fields": {"leading_document"}},
+    "simple_document": {"set": "ISimpleDocuments", "label": "простой документ", "kind": None, "fields": set(), "name": True},
+    "addendum": {"set": "IAddendums", "label": "приложение", "kind": None, "fields": {"leading_document"}, "name": True},
     # Создавать — только в конкретном наборе: ILegalActsLegalDocumentBases абстрактный (RX отвечает 404 без текста).
     "legal_act": {"set": "ILegalActsLegalActs", "label": "правовой акт или проект",
                   "kind": "Проект правового акта", "fields": {"is_normative"}},
@@ -296,18 +300,63 @@ class DocumentCreateService:
         }
 
     def create_action_item(self, plan: dict[str, Any]) -> dict[str, Any]:
-        payload = {
-            "documentId": plan["document"]["id"],
-            "assigneeId": plan["assignee"]["id"],
-            "isUnderControl": plan["under_control"],
-            "supervisorId": plan["supervisor"]["id"] if plan.get("supervisor") else None,
-            "coassigneeId": plan["co_assignee"]["id"] if plan.get("co_assignee") else None,
-            "deadline": self._deadline_literal(plan["deadline"]),
-            "activeText": plan["text"],
+        """Поручение собирается напрямую, а не через RecordManagement/CreateActionItemExecution: действие берёт
+        «Выдал» из карточки текущего сотрудника, а у служебной учётки её нет («Не заполнено „Выдал“»).
+        Шаги: черновик с «Выдал» → соисполнитель → текст (Texts — из него RX берёт текст поручения) → документ во
+        вложения → запуск. Текст не записался — черновик удаляется, поручение не создаётся."""
+        payload: dict[str, Any] = {
+            "Assignee": _ref(plan["assignee"]),
+            "AssignedBy": _ref(plan["assigned_by"]),
+            "Deadline": self._deadline_literal(plan["deadline"]),
+            "IsUnderControl": plan["under_control"],
+            "SourceDocumentGD": _ref(plan["document"]),
         }
-        task_id = self._action_id(self.client.post("RecordManagement/CreateActionItemExecution", payload))
-        return self._finish_task(task_id, "IActionItemExecutionTasks", {"AssignedBy": _ref(plan["assigned_by"])},
-                                 "«Выдал»")
+        if plan.get("supervisor"):
+            payload["Supervisor"] = _ref(plan["supervisor"])
+        try:
+            task_id = int(self.client.post(ACTION_ITEMS, payload)["Id"])
+        except DirectumError as exc:
+            raise DirectumError(f"RX не создал поручение: {_reason(exc).rstrip('.')}.", status_code=exc.status_code) from None
+        warnings: list[str] = []
+        try:
+            if plan.get("co_assignee"):
+                self.client.post(f"{ACTION_ITEMS}({task_id})/CoAssignees", {"Assignee": _ref(plan["co_assignee"])})
+            self.client.post(f"{ACTION_ITEMS}({task_id})/Texts", {"Body": plan["text"]})
+        except DirectumError as exc:
+            self._drop_draft(ACTION_ITEMS, task_id)
+            raise DirectumError(f"RX не принял текст или соисполнителя поручения: {_reason(exc).rstrip('.')}. "
+                                "Поручение не создано.", status_code=exc.status_code) from None
+        warnings.extend(self._attach_document(ACTION_ITEMS, task_id, ACTION_ITEM_DOCUMENTS_GROUP, plan["document"]))
+        url = self.client.build_client_card_url(f"{ACTION_ITEMS}({task_id})") if hasattr(self.client, "build_client_card_url") else None
+        result: dict[str, Any] = {"task_id": task_id, "url": url, "started": False, "warnings": warnings}
+        try:
+            self.client.post("Docflow/StartTask", {"taskId": task_id})
+        except DirectumError as exc:
+            result["warnings"].append(f"Поручение создано, но не запущено: {_start_reason(exc)}")
+            return result
+        result["started"] = True
+        return result
+
+    def _attach_document(self, entity_set: str, task_id: int, group_id: str, document: dict[str, Any]) -> list[str]:
+        """Документ — во вложения задачи (группа «Документы»). Не вышло — предупреждение, документ остаётся в
+        поле «Документ-основание»."""
+        try:
+            row = self.client.get_one(f"IOfficialDocuments({int(document['id'])})?$select=Id"
+                                      "&$expand=DocumentKind($select=Id;$expand=DocumentType($select=DocumentTypeGuid))")
+            type_guid = ((row.get("DocumentKind") or {}).get("DocumentType") or {}).get("DocumentTypeGuid")
+            if not type_guid:
+                raise DirectumError("не удалось определить тип документа", status_code=None)
+            self.client.post(f"{entity_set}({task_id})/AttachmentDetails",
+                             {"GroupId": group_id, "AttachmentId": int(document["id"]), "AttachmentTypeGuid": type_guid})
+        except DirectumError as exc:
+            return [f"Документ не добавлен во вложения ({_reason(exc).rstrip('.')}); он указан в поле «Документ-основание»."]
+        return []
+
+    def _drop_draft(self, entity_set: str, task_id: int) -> None:
+        try:
+            self.client.delete(f"{entity_set}({task_id})")
+        except (DirectumError, AttributeError):
+            pass
 
     # --- рассмотрение, согласование, простая задача ---
 
@@ -436,6 +485,7 @@ class DocumentCreateService:
         return {
             "operation": "document",
             "document_type": document_type,
+            "set_name": bool(spec.get("name")),
             "entity_set": spec["set"],
             "type_label": spec["label"],
             "subject": _clean(subject, MAX_SUBJECT, "тема (содержание) документа"),
@@ -472,6 +522,8 @@ class DocumentCreateService:
                 payload[field] = _ref(plan[key])
         if plan.get("is_normative") is not None:
             payload["IsNormative"] = plan["is_normative"]
+        if plan.get("set_name"):
+            payload["Name"] = plan["subject"]  # у этих типов RX не формирует «Имя» сам
         payload.update(plan.get("extra_properties") or {})
         return self._create_document(plan["entity_set"], payload, plan, body_text)
 
@@ -663,31 +715,49 @@ class DocumentCreateService:
             "deadline": day.isoformat(),
             "deadline_is_default": deadline is None,
             "text": " ".join((text or "").split())[:MAX_TASK_TEXT] or "Прошу представить отчёт о ходе исполнения поручения.",
+            "documents": self._action_item_documents(task),
+            "how": "простая задача «Запрос отчета по поручению № …» ответственному (штатный запрос отчёта RX через "
+                   "сервис интеграции недоступен); ответ появится в досье поручения",
         }
 
     def create_report_request(self, plan: dict[str, Any]) -> dict[str, Any]:
+        """Штатная задача «Запрос отчёта» (IStatusReportRequestTasks) через сервис интеграции не создаётся — RX
+        отвечает 500 при любом наборе полей. Поэтому запрос — простая задача ответственному с темой
+        «Запрос отчета по поручению № …», ссылкой на поручение и его документами во вложениях; ответ исполнитель
+        пишет при выполнении задания, досье поручения показывает его в report_requests."""
+        item = plan["action_item"]
+        text = plan["text"] + (f"\n\nПоручение: {item['url']}" if item.get("url") else "")
         payload = {
-            "Subject": f"Запрос отчета: {plan['action_item']['subject']}"[:MAX_SUBJECT],
-            "ParentTask": {"Id": plan["action_item"]["id"]},
-            "Assignee": _ref(plan["assignee"]),
-            "MaxDeadline": self._deadline_literal(plan["deadline"]),
+            "assignmentType": "Assignment",
+            "subject": f"{REPORT_SUBJECT_PREFIX}{item['id']}: {item['subject']}"[:MAX_SUBJECT],
+            "deadline": self._deadline_literal(plan["deadline"]),
+            "importance": "Normal",
+            "text": text[:MAX_TASK_TEXT],
+            "performerIds": [plan["assignee"]["id"]],
+            "observerIds": [],
+            "documentIds": [d["id"] for d in plan.get("documents") or []],
         }
-        row = self.client.post("IStatusReportRequestTasks", payload)
-        task_id = int(row["Id"])
-        warnings: list[str] = []
-        try:
-            self.client.post(f"IStatusReportRequestTasks({task_id})/Texts", {"Body": plan["text"]})
-        except DirectumError as exc:
-            warnings.append(f"Текст запроса не добавлен: {_reason(exc)}. Тема задачи и срок заданы.")
-        result = self._finish_task(task_id, "IStatusReportRequestTasks", {"Author": _ref(plan["author"])}, "«Автор»")
-        result["warnings"] = warnings + result["warnings"]
+        task_id = self._action_id(self.client.post("Docflow/CreateSimpleTask", payload))
+        result = self._finish_task(task_id, "ISimpleTasks", {"Author": _ref(plan["author"])}, "«Автор»")
+        result["mode"] = "simple_task"
         return result
+
+    @staticmethod
+    def _action_item_documents(task: dict[str, Any]) -> list[dict[str, Any]]:
+        ids = []
+        source = task.get("SourceDocumentGD")
+        if _id(source) is not None:
+            ids.append(_id(source))
+        ids += [int(a["AttachmentId"]) for a in task.get("AttachmentDetails") or []
+                if isinstance(a.get("AttachmentId"), int) and a.get("GroupId") == ACTION_ITEM_DOCUMENTS_GROUP]
+        return [{"id": i} for i in dict.fromkeys(ids)][:10]
 
     def _action_item_row(self, action_item_id: int) -> dict[str, Any]:
         try:
             return self.client.get_one(
                 f"IActionItemExecutionTasks({int(action_item_id)})?$select=Id,Subject,Status"
-                "&$expand=Assignee($select=Id,Name),AssignedBy($select=Id,Name),Supervisor($select=Id,Name),Author($select=Id,Name)"
+                "&$expand=Assignee($select=Id,Name),AssignedBy($select=Id,Name),Supervisor($select=Id,Name),Author($select=Id,Name),"
+                "SourceDocumentGD($select=Id,Name),AttachmentDetails"
             )
         except DirectumError as exc:
             if exc.status_code in (400, 404):
@@ -757,7 +827,7 @@ class DocumentCreateService:
         try:
             self.client.post("Docflow/StartTask", {"taskId": task_id})
         except DirectumError as exc:
-            result["warnings"].append(f"Задача создана, но не запущена: {_reason(exc)}.")
+            result["warnings"].append(f"Задача создана, но не запущена: {_start_reason(exc)}")
             return result
         result["started"] = True
         return result
@@ -847,7 +917,20 @@ def _save_error(entity_set: str, exc: DirectumError) -> str:
                 "интеграции RX, поэтому заполнить его через ассистента нельзя. Создайте проект в RX вручную (вид "
                 "«Проект правового акта», категория, текст ниже) — или попросите администратора RX опубликовать поле "
                 "«Категория» в сервисе интеграции. Повторять попытку бессмысленно.")
-    return f"RX не сохранил документ: {reason}. Повторять с теми же данными бессмысленно — заполните недостающее."
+    if "нумерац" in reason:
+        return (f"RX не сохранил документ: {reason.rstrip('.')}. У этого вида документа включена автонумерация, а "
+                "подходящей настройки нумерации в RX нет — это настройка RX (администратор: настройки регистрации и "
+                "нумерации), а не ошибка данных. Выберите другой вид документа или создайте документ в RX.")
+    return (f"RX не сохранил документ: {reason.rstrip('.')}. Повторять с теми же данными бессмысленно — заполните "
+            "недостающее.")
+
+
+def _start_reason(exc: Exception) -> str:
+    reason = _reason(exc).rstrip(".")
+    if "настройки регистрации" in reason or "настройки нумерации" in reason:
+        return (f"{reason}. Это настройка RX (правила регистрации для вида документа), а не ошибка данных — задача "
+                "осталась черновиком; нужен администратор RX.")
+    return reason + "."
 
 
 def _reason(exc: Exception) -> str:
