@@ -46,13 +46,63 @@ def _paragraph(block: str) -> str:
     return f'<w:p><w:pPr><w:spacing w:after="120"/><w:ind w:firstLine="709"/><w:jc w:val="both"/></w:pPr>{runs}</w:p>'
 
 
-def build_docx(text: str) -> bytes:
+_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
+_BULLET = re.compile(r"^\s*[-*•]\s+(.*)$")
+_NUMBERED = re.compile(r"^\s*(\d+[.)])\s+(.*)$")
+
+
+def _runs(text: str, bold: bool = False, size: int = 28) -> str:
+    """Текст с **жирными** фрагментами → набор w:r."""
+    out = []
+    pos = 0
+    pieces = []
+    for m in _BOLD.finditer(text):
+        pieces.append((text[pos:m.start()], bold))
+        pieces.append((m.group(1), True))
+        pos = m.end()
+    pieces.append((text[pos:], bold))
+    for piece, is_bold in pieces:
+        if not piece:
+            continue
+        props = RUN_PROPS.replace('<w:sz w:val="28"/>', f'<w:sz w:val="{size}"/>' + ("<w:b/>" if is_bold else ""))
+        out.append(f'<w:r>{props}<w:t xml:space="preserve">{escape(piece)}</w:t></w:r>')
+    return "".join(out)
+
+
+def _markdown_paragraphs(text: str) -> list[str]:
+    """Простой markdown: # заголовки, - / * / • списки, 1. нумерация, **жирный**. Каждая строка — абзац."""
+    text = _INVALID_XML.sub("", (text or "").replace("\r\n", "\n").replace("\r", "\n"))
+    out = []
+    for line in text.split("\n"):
+        if not line.strip():
+            continue
+        if m := _HEADING.match(line.strip()):
+            level = len(m.group(1))
+            size = 32 if level == 1 else 28
+            align = "center" if level == 1 else "left"
+            out.append(f'<w:p><w:pPr><w:spacing w:before="120" w:after="120"/><w:jc w:val="{align}"/></w:pPr>'
+                       f'{_runs(m.group(2), bold=True, size=size)}</w:p>')
+        elif m := _BULLET.match(line):
+            out.append(f'<w:p><w:pPr><w:spacing w:after="60"/><w:ind w:left="709" w:hanging="283"/></w:pPr>'
+                       f'{_runs("• " + m.group(1))}</w:p>')
+        elif m := _NUMBERED.match(line):
+            out.append(f'<w:p><w:pPr><w:spacing w:after="60"/><w:ind w:left="709" w:hanging="425"/></w:pPr>'
+                       f'{_runs(m.group(1) + " " + m.group(2))}</w:p>')
+        else:
+            out.append(f'<w:p><w:pPr><w:spacing w:after="120"/><w:ind w:firstLine="709"/><w:jc w:val="both"/></w:pPr>'
+                       f'{_runs(line.strip())}</w:p>')
+    return out
+
+
+def build_docx(text: str, markdown: bool = False) -> bytes:
+    """markdown=False — абзацы через пустую строку; True — простой markdown (заголовки, списки, жирный)."""
     if len(text or "") > MAX_TEXT_CHARS:
         raise ValueError(f"Текст документа длиннее {MAX_TEXT_CHARS} символов")
-    blocks = paragraphs(text)
-    if not blocks:
+    parts = _markdown_paragraphs(text) if markdown else [_paragraph(b) for b in paragraphs(text)]
+    if not parts:
         raise ValueError("Текст документа пустой")
-    body = "".join(_paragraph(b) for b in blocks)
+    body = "".join(parts)
     document = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'

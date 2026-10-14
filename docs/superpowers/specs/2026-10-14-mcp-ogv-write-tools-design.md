@@ -67,6 +67,23 @@ mcpOGV на стенде работает под Administrator (`service_account
   `CreateDocumentReviewTask`, `GrantAccessRightsToDocument` (нужен GUID типа прав). Проверка — после разрешения
   на создание тестовых задач на стенде.
 
+## Синхронизация с эталонным набором (16.10.2026)
+
+| Эталон | mcpOGV |
+|---|---|
+| `create_document` / `create_doc` | `create_document` — 8 типов (исходящее, входящее, служебная записка, приказ, распоряжение, простой документ, приложение, НПА), вид, реквизиты, `extra_properties` (простые поля, проверка по `$metadata`), тело из текста или markdown либо по шаблону RX (`Docflow/CreateVersionFromTemplate`). `create_outgoing_letter` и `create_legal_act` остаются как упрощённые варианты |
+| `create_document_body` | `create_document_body` — новая версия .docx из текста или markdown; набор OData документа — по `@odata.type` |
+| `create_document_body_base64` | `create_document_body_base64` — новая версия из файла, проверка сигнатуры по расширению, до 20 МБ |
+| `create_action_items` | `create_action_items` — до 20 поручений одним подтверждением, итог по каждому |
+| `get_doc_body_base64` | `get_doc_body_base64` — файл последней версии, до 5 МБ (по умолчанию 1 МБ) |
+| `get_entity_hyperlink` | `get_entity_hyperlink` — документ, задача, поручение, задание, совещание |
+| `get_template_body_md` | `get_template_body_md` — список шаблонов или текст шаблона |
+| `search_doc`, `get_doc_properties`, `get_doc_body_md`, `get_employee_id` | уже есть: `find_documents` / `search_documents`, `get_document`, `get_document_text`, `search_employees` |
+| `begin_upload` / `upload_chunk` / `commit_upload` / `abort_upload` | не делались: передача файлов из чата в MCP в LibreChat неудобна |
+
+Проверено на стенде: шаблоны (26), текст шаблона, ссылки, файл документа в base64, предпросмотры служебной записки,
+письма по шаблону и пакета поручений, создание версии из markdown у тестового письма 16800.
+
 ## Вне рамок
 
 Регистрация документов, подписание, отправка корреспондентам, удаление и изменение существующих документов.

@@ -94,7 +94,9 @@ mcpOGV работает либо под личной учёткой пользо
 `garant_prime_news`, `garant_prime_categories` — новости законодательства; `garant_limits` — остаток лимитов (проверяй
 перед массовой проверкой).
 
-**Запись (если включена):** `create_legal_act` — проект правового акта или правовой акт с текстом;
+**Запись (если включена):** `create_legal_act` (или `create_document(document_type="legal_act", template=…)` — по
+шаблону НПА из `get_template_body_md`) — проект правового акта или правовой акт с текстом; `create_document_body` —
+новая редакция текста проекта;
 `send_document_for_approval` — отправить проект на согласование по регламенту RX; `create_outgoing_letter` —
 сопроводительное письмо ведомству. Только по правилам раздела «Создание в RX».
 

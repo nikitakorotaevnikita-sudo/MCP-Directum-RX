@@ -71,7 +71,7 @@ class WriteAudit:
             "tool": tool,
             "user": usage_id,
             "on_behalf_of": on_behalf_of,
-            "created": {k: result.get(k) for k in ("document_id", "task_id", "version_id", "started") if k in result},
+            "created": {k: result.get(k) for k in ("document_id", "task_id", "version_id", "started", "task_ids", "created", "failed") if k in result},
             "warnings": len(result.get("warnings") or []),
         }
         logger.info("write %s", json.dumps(entry, ensure_ascii=False))

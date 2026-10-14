@@ -1,3 +1,4 @@
+import base64
 import io
 import re
 import zipfile
@@ -13,6 +14,19 @@ TEXT_EXTENSIONS = {"txt", "csv", "md", "xml", "html", "htm", "json"}
 SUPPORTED_EXTENSIONS = {"docx", "pdf"} | TEXT_EXTENSIONS
 WORD_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 VERSIONS_EXPAND = "Versions($select=Id,Number;$expand=AssociatedApplication($select=Extension))"
+# Файл в base64 уходит в контекст модели: по умолчанию 1 МБ, максимум 5 МБ.
+DEFAULT_BODY_BASE64_BYTES = 1024 * 1024
+MAX_BODY_BASE64_BYTES = 5 * 1024 * 1024
+# Вид сущности → (набор для проверки, набор для ссылки на карточку).
+LINK_KINDS = {
+    "document": ("IOfficialDocuments", None),
+    "task": ("ITasks", "ISimpleTasks"),
+    "action_item": ("IActionItemExecutionTasks", "IActionItemExecutionTasks"),
+    "assignment": ("IAssignments", "IAssignments"),
+    "meeting": ("IMeetings", "IMeetings"),
+}
+LINK_LABELS = {"document": "Документ", "task": "Задача", "action_item": "Поручение", "assignment": "Задание",
+               "meeting": "Совещание"}
 
 
 class _Unreadable(Exception):
@@ -153,6 +167,93 @@ class DocumentTextService:
         result.text = text[:max_chars]
         result.message = " ".join(notes)
         return result
+
+    def get_body(self, document_id: int, max_bytes: int = DEFAULT_BODY_BASE64_BYTES) -> dict[str, Any]:
+        """Файл последней версии целиком (base64) — чтобы передать его дальше, например в create_document_body_base64."""
+        rows = self.client.query(
+            "IOfficialDocuments", filter_=f"Id eq {int(document_id)}", select="Id,Name", expand=VERSIONS_EXPAND, top=1
+        )
+        if not rows:
+            raise DirectumError(f"Документ {document_id} не найден или у вас нет к нему доступа.", 404)
+        versions = rows[0].get("Versions") or []
+        result: dict[str, Any] = {"document_id": int(document_id), "name": rows[0].get("Name") or "",
+                                  "url": self._url(document_id)}
+        if not versions:
+            return {**result, "message": "У документа нет файла (версий)."}
+        latest = max(versions, key=lambda item: item.get("Number") or 0)
+        extension = ((latest.get("AssociatedApplication") or {}).get("Extension") or "").lower().lstrip(".")
+        try:
+            data = self._body(document_id, int(latest["Id"]), "Body")
+        except DirectumError as exc:
+            if exc.status_code == 413:
+                raise DirectumError(f"Файл больше {max_bytes // 1024} КБ — в чат не передаётся. Текст — get_document_text.", 413) from None
+            raise
+        if data is None:
+            return {**result, "version": latest.get("Number"), "message": "Файл версии не удалось получить из хранилища RX."}
+        if len(data) > max_bytes:
+            raise DirectumError(
+                f"Файл {len(data) // 1024} КБ больше лимита {max_bytes // 1024} КБ. Увеличьте max_bytes (до "
+                f"{MAX_BODY_BASE64_BYTES // 1024} КБ) или прочитайте текст через get_document_text.", 413)
+        return {**result, "version": latest.get("Number"), "extension": _sniff(data) or extension or None,
+                "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
+
+    def entity_link(self, kind: str, entity_id: int) -> dict[str, Any]:
+        """Ссылка на карточку в веб-клиенте RX: документ, задача, задание или совещание (с проверкой, что есть)."""
+        if kind not in LINK_KINDS:
+            raise ValueError(f"Unknown entity kind: {kind}")
+        entity_set, card_set = LINK_KINDS[kind]
+        name_field = "Name" if kind in ("document", "meeting") else "Subject"
+        rows = self.client.query(entity_set, filter_=f"Id eq {int(entity_id)}", select=f"Id,{name_field}", top=1)
+        if not rows:
+            raise DirectumError(f"{LINK_LABELS[kind]} с id {entity_id} не найден(о) или нет доступа.", 404)
+        url = (self._url(entity_id) if kind == "document"
+               else self.client.build_client_card_url(f"{card_set}({int(entity_id)})"))
+        return {"kind": kind, "id": int(entity_id), "title": rows[0].get(name_field) or "", "url": url}
+
+    def template_text(self, query: str | None = None, max_chars: int = DEFAULT_MAX_CHARS) -> dict[str, Any]:
+        """Шаблоны документов: без запроса или при нескольких совпадениях — список; при одном — текст шаблона."""
+        text = (query or "").strip()
+        if text.isdigit():
+            filter_ = f"Id eq {int(text)}"
+        elif text:
+            filter_ = f"Status eq 'Active' and contains(Name,'{text.replace(chr(39), chr(39) * 2)}')"
+        else:
+            filter_ = "Status eq 'Active'"
+        rows = self.client.query(
+            "IDocumentTemplates", filter_=filter_, select="Id,Name",
+            expand="DocumentKinds($expand=DocumentKind($select=Name))," + VERSIONS_EXPAND, orderby="Name asc", top=101)
+        exact = [r for r in rows if text and (r.get("Name") or "").casefold() == text.casefold()]
+        if exact:
+            rows = exact[:1]
+        if len(rows) != 1:
+            return {"query": text or None, "templates": [{"id": int(r["Id"]), "name": r.get("Name")} for r in rows[:100]],
+                    "truncated": len(rows) > 100,
+                    "message": "Шаблон не найден." if not rows else "Выберите шаблон и запросите его по id."}
+        row = rows[0]
+        result: dict[str, Any] = {
+            "id": int(row["Id"]), "name": row.get("Name"),
+            "document_kinds": [k for k in ((d.get("DocumentKind") or {}).get("Name") for d in row.get("DocumentKinds") or []) if k],
+        }
+        versions = row.get("Versions") or []
+        if not versions:
+            return {**result, "message": "У шаблона нет файла."}
+        latest = max(versions, key=lambda item: item.get("Number") or 0)
+        data = self.client.get_binary(f"IDocumentTemplates({int(row['Id'])})/Versions({int(latest['Id'])})/Body/$value", MAX_BODY_BYTES)
+        if not data:
+            return {**result, "message": "Файл шаблона не удалось получить."}
+        extension = _sniff(data) or ((latest.get("AssociatedApplication") or {}).get("Extension") or "").lower()
+        try:
+            body = _extract(data, extension)
+        except _Unreadable:
+            return {**result, "message": "Файл шаблона повреждён или в неожиданном формате."}
+        markdown = "\n\n".join(line.strip() for line in body.split("\n") if line.strip())
+        return {**result, "extension": extension, "chars_total": len(markdown), "truncated": len(markdown) > max_chars,
+                "body_md": markdown[:max_chars],
+                "message": "Поля шаблона (в угловых скобках, например <Почтовый адрес организации>) RX заполняет из "
+                           "карточки, если создать документ с template (create_document)."}
+
+    def _url(self, document_id: int) -> str | None:
+        return self.client.build_document_card_url(document_id) if hasattr(self.client, "build_document_card_url") else None
 
     def _public_body(self, document_id: int, version_id: int) -> bytes | None:
         try:

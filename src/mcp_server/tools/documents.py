@@ -103,6 +103,41 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         )
 
     @mcp.tool(annotations=READ_ONLY)
+    async def get_doc_body_base64(
+        document_id: Annotated[int, Field(description="Id документа", gt=0)],
+        ctx: Context,
+        max_bytes: Annotated[int, Field(description="Лимит размера файла, байт (до 5 МБ)", ge=1024, le=5 * 1024 * 1024)] = 1024 * 1024,
+    ) -> dict:
+        """Файл последней версии документа целиком в base64 (content_base64, extension, bytes) — чтобы передать
+        его в другой тул (например, create_document_body_base64) или в навык. Прочитать или пересказать
+        документ — get_document_text, не этот тул: base64 занимает много места в контексте."""
+        return await runner.run(ctx, "get_doc_body_base64", lambda s: s.document_text.get_body(document_id, max_bytes=max_bytes))
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def get_entity_hyperlink(
+        kind: Annotated[
+            Literal["document", "task", "action_item", "assignment", "meeting"],
+            Field(description="Что: документ, задача, поручение (задача), задание, совещание"),
+        ],
+        entity_id: Annotated[int, Field(description="Id", gt=0)],
+        ctx: Context,
+    ) -> dict:
+        """Ссылка на карточку в веб-клиенте Directum RX (url) и название — для любого документа, задачи, поручения,
+        задания или совещания; проверяет, что запись есть и доступна. Выводи url markdown-ссылкой."""
+        return await runner.run(ctx, "get_entity_hyperlink", lambda s: s.document_text.entity_link(kind, entity_id))
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def get_template_body_md(
+        ctx: Context,
+        template: Annotated[str | None, Field(description="Название шаблона или его часть, либо id; пусто — список шаблонов")] = None,
+        max_chars: Annotated[int, Field(description="Сколько символов текста вернуть (1000–50000)", ge=1000, le=50000)] = 20000,
+    ) -> dict:
+        """Шаблоны документов RX (письма, уведомления, НПА): без параметра или при нескольких совпадениях — список
+        (id, название); при одном — текст шаблона (body_md) и виды документов, к которым он относится. Документ по
+        шаблону — create_document(template=…): RX сам заполнит поля из карточки."""
+        return await runner.run(ctx, "get_template_body_md", lambda s: s.document_text.template_text(template, max_chars=max_chars))
+
+    @mcp.tool(annotations=READ_ONLY)
     async def list_documents_by_counterparty(
         counterparty: Annotated[str, Field(description="Название организации или аббревиатура, например «МЦ»")],
         ctx: Context,

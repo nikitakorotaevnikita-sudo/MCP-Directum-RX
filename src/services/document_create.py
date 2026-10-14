@@ -10,6 +10,7 @@ mcpOGV может работать под служебной учёткой (Adm
 """
 
 import base64
+import binascii
 import hashlib
 import re
 from collections.abc import Callable
@@ -29,6 +30,33 @@ MAX_PERFORMERS = 20
 CANDIDATES = 6
 NOTE_TEMPLATE = "Подготовлено ИИ-ассистентом (mcpOGV) по запросу: {name}, {day}."
 REPORT_DEFAULT_WORKDAYS = 2
+MAX_BATCH_ACTION_ITEMS = 20
+MAX_FILE_BYTES = 20 * 1024 * 1024
+# Тип документа для create_document → (набор OData, название по-русски, вид по умолчанию, какие поля уместны).
+DOCUMENT_TYPES: dict[str, dict[str, Any]] = {
+    "outgoing_letter": {"set": "IOutgoingLetters", "label": "исходящее письмо", "kind": "Исходящее письмо",
+                        "fields": {"correspondent", "in_response_to"}},
+    "incoming_letter": {"set": "IIncomingLetters", "label": "входящее письмо", "kind": "Входящее письмо",
+                        "fields": {"correspondent", "addressee"}},
+    "memo": {"set": "IMemos", "label": "служебная записка", "kind": "Служебная записка", "fields": {"addressee"}},
+    "order": {"set": "IOrders", "label": "приказ", "kind": None, "fields": set()},
+    "directive": {"set": "ICompanyDirectives", "label": "распоряжение", "kind": None, "fields": set()},
+    "simple_document": {"set": "ISimpleDocuments", "label": "простой документ", "kind": None, "fields": set()},
+    "addendum": {"set": "IAddendums", "label": "приложение", "kind": None, "fields": {"leading_document"}},
+    "legal_act": {"set": "ILegalActsLegalDocumentBases", "label": "правовой акт или проект",
+                  "kind": "Проект правового акта", "fields": {"is_normative"}},
+}
+# Свойства, которые нельзя задавать через extra_properties: системные, регистрационные, состояния, связи.
+PROTECTED_PROPERTIES = {
+    "Id", "Name", "Created", "Modified", "RegistrationNumber", "RegistrationDate", "RegistrationState", "Index",
+    "LifeCycleState", "InternalApprovalState", "ExternalApprovalState", "ExecutionState", "ControlExecutionState",
+    "ExchangeState", "VerificationState", "LocationState", "HasRelations", "HasVersions", "HasPublicBody",
+    "VersionsLocked", "LastVersionChanged", "LastVersionApproved", "LastVersionSignatureType", "EncryptionType",
+    "PlacedToCaseFileDate", "StoredIn", "Subject", "Note",
+}
+FILE_SIGNATURES = {"pdf": b"%PDF", "docx": b"PK\x03\x04", "xlsx": b"PK\x03\x04", "odt": b"PK\x03\x04",
+                   "png": b"\x89PNG", "jpg": b"\xff\xd8\xff", "jpeg": b"\xff\xd8\xff", "rtf": b"{\\rtf"}
+_METADATA_CACHE: dict[str, dict[str, Any]] = {}
 IMPORTANCE = {"normal": "Normal", "high": "High", "low": "Low"}
 
 
@@ -134,9 +162,11 @@ class DocumentCreateService:
         return {"id": int(rows[0]["Id"]), "name": rows[0].get("Name"), "url": self._doc_url(int(rows[0]["Id"]))}
 
     def _application_id(self, extension: str) -> int:
+        if not re.fullmatch(r"[a-z0-9]{1,10}", extension or ""):
+            raise CreateError(f"Недопустимое расширение файла «{extension}».")
         rows = self.client.query("IAssociatedApplications", filter_=f"Extension eq '{extension}'", select="Id", top=1)
         if not rows:
-            raise DirectumError(f"В RX нет приложения для .{extension}", status_code=None)
+            raise CreateError(f"В RX нет приложения для файлов .{extension} — такой файл загрузить нельзя.")
         return int(rows[0]["Id"])
 
     def _note(self, person: dict[str, Any], extra: str | None) -> str:
@@ -362,6 +392,235 @@ class DocumentCreateService:
         task_id = self._action_id(self.client.post("Docflow/CreateSimpleTask", payload))
         return self._finish_task(task_id, "ISimpleTasks", {"Author": _ref(plan["author"])}, "«Автор»")
 
+    # --- документ любого типа ---
+
+    def plan_document(
+        self,
+        document_type: str,
+        subject: str,
+        prepared_by_id: int,
+        document_kind: str | None = None,
+        correspondent: str | None = None,
+        signatory_id: int | None = None,
+        addressee_id: int | None = None,
+        in_response_to_id: int | None = None,
+        leading_document_id: int | None = None,
+        is_normative: bool | None = None,
+        extra_properties: dict[str, Any] | None = None,
+        body_text: str | None = None,
+        body_markdown: bool = False,
+        template: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        spec = DOCUMENT_TYPES.get(document_type)
+        if spec is None:
+            raise CreateError("Тип документа: " + ", ".join(f"{k} — {v['label']}" for k, v in DOCUMENT_TYPES.items()) + ".")
+        kind_name = (document_kind or spec["kind"] or "").strip()
+        if not kind_name:
+            raise CreateError(f"Для типа «{spec['label']}» укажите вид документа (document_kind) — как он назван в RX.")
+        given = {name for name, value in (("correspondent", correspondent), ("addressee", addressee_id),
+                 ("in_response_to", in_response_to_id), ("leading_document", leading_document_id),
+                 ("is_normative", is_normative)) if value is not None}
+        wrong = given - spec["fields"]
+        if wrong:
+            raise CreateError(f"Для типа «{spec['label']}» не подходят поля: {', '.join(sorted(wrong))}.")
+        if document_type == "addendum" and leading_document_id is None:
+            raise CreateError("Приложению нужен ведущий документ (leading_document_id).")
+        if document_type == "outgoing_letter" and not correspondent:
+            raise CreateError("Исходящему письму нужен корреспондент (correspondent).")
+        if body_text and template:
+            raise CreateError("Укажите либо текст (body_text), либо шаблон (template), не оба.")
+        prepared = self.employee_card(prepared_by_id)
+        self._require_org(prepared)
+        return {
+            "operation": "document",
+            "document_type": document_type,
+            "entity_set": spec["set"],
+            "type_label": spec["label"],
+            "subject": _clean(subject, MAX_SUBJECT, "тема (содержание) документа"),
+            "document_kind": self.document_kind(kind_name),
+            "prepared_by": {"id": prepared["id"], "name": prepared["name"]},
+            "department": prepared["department"],
+            "business_unit": prepared["business_unit"],
+            "correspondent": self.counterparty(correspondent) if correspondent else None,
+            "signatory": self._person(signatory_id),
+            "addressee": self._person(addressee_id),
+            "in_response_to": self.document(in_response_to_id) if in_response_to_id else None,
+            "leading_document": self.document(leading_document_id) if leading_document_id else None,
+            "is_normative": is_normative,
+            "extra_properties": self._extra_properties(spec["set"], extra_properties),
+            "template": self.template(template) if template else None,
+            "note": self._note(prepared, note),
+            "body": body_fingerprint(body_text),
+            "body_markdown": bool(body_markdown) if body_text else False,
+        }
+
+    def create_document(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "Subject": plan["subject"],
+            "DocumentKind": _ref(plan["document_kind"]),
+            "PreparedBy": _ref(plan["prepared_by"]),
+            "Department": _ref(plan["department"]),
+            "BusinessUnit": _ref(plan["business_unit"]),
+            "Note": plan["note"],
+        }
+        refs = {"correspondent": "Correspondent", "signatory": "OurSignatory", "addressee": "Addressee",
+                "in_response_to": "InResponseTo", "leading_document": "LeadingDocument"}
+        for key, field in refs.items():
+            if plan.get(key):
+                payload[field] = _ref(plan[key])
+        if plan.get("is_normative") is not None:
+            payload["IsNormative"] = plan["is_normative"]
+        payload.update(plan.get("extra_properties") or {})
+        return self._create_document(plan["entity_set"], payload, plan, body_text)
+
+    def template(self, query: str) -> dict[str, Any]:
+        text = (query or "").strip()
+        if not text:
+            raise CreateError("Укажите шаблон: название или id.")
+        filter_ = f"Id eq {int(text)}" if text.isdigit() else f"Status eq 'Active' and contains(Name,'{_literal(text)}')"
+        rows = self.client.query("IDocumentTemplates", filter_=filter_, select="Id,Name", orderby="Name asc", top=CANDIDATES + 1)
+        if not rows:
+            raise CreateError(f"Шаблон «{text}» не найден. Список шаблонов — get_template_body_md.")
+        exact = [r for r in rows if (r.get("Name") or "").casefold() == text.casefold()]
+        if len(exact) == 1 or len(rows) == 1:
+            row = exact[0] if exact else rows[0]
+            return {"id": int(row["Id"]), "name": row.get("Name")}
+        listing = "; ".join(f"{r['Id']} — {r.get('Name')}" for r in rows[:CANDIDATES])
+        raise CreateError(f"Найдено несколько шаблонов: {listing}. Уточните (можно передать id).")
+
+    def _extra_properties(self, entity_set: str, extra: dict[str, Any] | None) -> dict[str, Any]:
+        if not extra:
+            return {}
+        allowed = self._scalar_properties(entity_set)
+        result = {}
+        for key, value in extra.items():
+            if key in PROTECTED_PROPERTIES:
+                raise CreateError(f"Свойство {key} задавать нельзя (системное или задаётся отдельным параметром).")
+            if allowed is not None and key not in allowed:
+                raise CreateError(f"У документа нет простого свойства {key}. Ссылки на другие объекты передаются "
+                                  "отдельными параметрами (correspondent, signatory, …).")
+            if not isinstance(value, (str, int, float, bool)) or (isinstance(value, str) and len(value) > 1000):
+                raise CreateError(f"Свойство {key}: допустимы строка (до 1000 символов), число или да/нет.")
+            result[key] = value
+        return result
+
+    def _scalar_properties(self, entity_set: str) -> set[str] | None:
+        index = self._metadata_index()
+        return index["props"].get(entity_set) if index else None
+
+    def _metadata_index(self) -> dict[str, Any] | None:
+        """Наборы OData → простые свойства типа (с наследованием) и тип DTO → набор. Кешируется на процесс."""
+        key = getattr(self.client, "base_url", "default")
+        if key in _METADATA_CACHE:
+            return _METADATA_CACHE[key]
+        if not hasattr(self.client, "get_metadata_xml"):
+            return None
+        xml = self.client.get_metadata_xml()
+        types = {}
+        for m in re.finditer(r'<EntityType Name="([^"]+)"( BaseType="([^"]+)")?[^>]*>(.*?)</EntityType>', xml, re.S):
+            types[m.group(1)] = (m.group(3).split(".")[-1] if m.group(3) else None,
+                                 set(re.findall(r'<Property Name="([^"]+)" Type="Edm\.', m.group(4))))
+        props, by_type = {}, {}
+        for set_name, type_full in re.findall(r'<EntitySet Name="([^"]+)" EntityType="([^"]+)"', xml):
+            type_name = type_full.split(".")[-1]
+            by_type.setdefault(type_name, set_name)
+            collected, current, guard = set(), type_name, 0
+            while current and current in types and guard < 20:
+                base, own = types[current]
+                collected |= own
+                current, guard = base, guard + 1
+            props[set_name] = collected
+        _METADATA_CACHE[key] = {"props": props, "by_type": by_type}
+        return _METADATA_CACHE[key]
+
+    # --- тело документа (новая версия) ---
+
+    def document_entity_set(self, document_id: int) -> tuple[str, str]:
+        """Конкретный набор OData документа по его @odata.type (для создания версии) и название."""
+        try:
+            row = self.client.get_one(f"IElectronicDocuments({int(document_id)})?$select=Id,Name")
+        except DirectumError as exc:
+            if exc.status_code in (400, 404):
+                raise CreateError(f"Документ с id {document_id} не найден или нет доступа.") from None
+            raise
+        type_name = str(row.get("@odata.type") or "").split(".")[-1]
+        index = self._metadata_index() or {"by_type": {}}
+        return index["by_type"].get(type_name, "IOfficialDocuments"), row.get("Name") or ""
+
+    def plan_body(
+        self,
+        document_id: int,
+        body_text: str | None = None,
+        markdown: bool = False,
+        content_base64: str | None = None,
+        extension: str | None = None,
+    ) -> dict[str, Any]:
+        entity_set, name = self.document_entity_set(document_id)
+        plan: dict[str, Any] = {"operation": "body", "document": {"id": int(document_id), "name": name,
+                                "url": self._doc_url(int(document_id))}, "entity_set": entity_set}
+        if content_base64 is not None:
+            data = decode_base64(content_base64)
+            ext = (extension or "").lower().lstrip(".")
+            if not ext:
+                raise CreateError("Укажите расширение файла (extension), например pdf или docx.")
+            signature = FILE_SIGNATURES.get(ext)
+            if signature and not data.startswith(signature):
+                raise CreateError(f"Содержимое не похоже на файл .{ext}. Проверьте расширение.")
+            plan.update({"source": "file", "extension": ext, "bytes": len(data),
+                         "sha256": hashlib.sha256(data).hexdigest()[:16]})
+        else:
+            if not (body_text or "").strip():
+                raise CreateError("Нет текста для тела документа.")
+            build_docx(body_text, markdown=markdown)  # проверка заранее: пусто, слишком длинно
+            plan.update({"source": "markdown" if markdown else "text", "extension": DOCX_APPLICATION,
+                         "body": body_fingerprint(body_text)})
+        return plan
+
+    def create_body(self, plan: dict[str, Any], body_text: str | None = None, content_base64: str | None = None) -> dict[str, Any]:
+        data = decode_base64(content_base64) if plan["source"] == "file" else build_docx(body_text or "", markdown=plan["source"] == "markdown")
+        version_id = self._upload_version(plan["entity_set"], plan["document"]["id"], plan["extension"], data)
+        return {"document_id": plan["document"]["id"], "version_id": version_id, "url": plan["document"]["url"], "warnings": []}
+
+    # --- пакет поручений ---
+
+    def plan_action_items(self, document_id: int, assigned_by_id: int, items: list[dict[str, Any]]) -> dict[str, Any]:
+        if not items:
+            raise CreateError("Нет ни одного поручения в пакете.")
+        if len(items) > MAX_BATCH_ACTION_ITEMS:
+            raise CreateError(f"Не больше {MAX_BATCH_ACTION_ITEMS} поручений за раз.")
+        planned = []
+        for index, item in enumerate(items, start=1):
+            try:
+                one = self.plan_action_item(
+                    document_id, item["assignee_id"], assigned_by_id, item["deadline"], item.get("text") or "",
+                    co_assignee_id=item.get("co_assignee_id"), under_control=bool(item.get("under_control")),
+                    supervisor_id=item.get("supervisor_id"))
+            except CreateError as exc:
+                raise CreateError(f"Поручение {index}: {exc}") from None
+            planned.append({k: one[k] for k in ("assignee", "co_assignee", "deadline", "text", "under_control", "supervisor")})
+        return {"operation": "action_items", "document": one["document"], "assigned_by": one["assigned_by"], "items": planned}
+
+    def create_action_items(self, plan: dict[str, Any]) -> dict[str, Any]:
+        results = []
+        for index, item in enumerate(plan["items"], start=1):
+            one = {"operation": "action_item", "document": plan["document"], "assigned_by": plan["assigned_by"], **item}
+            try:
+                outcome = self.create_action_item(one)
+            except DirectumError as exc:
+                outcome = {"task_id": None, "started": False, "warnings": [], "error": _reason(exc)}
+            results.append({"index": index, "assignee": item["assignee"]["name"], **outcome})
+        created = [r for r in results if r.get("task_id")]
+        return {
+            "created": len(created),
+            "started": sum(1 for r in results if r.get("started")),
+            "failed": len(results) - len(created),
+            "task_ids": [r["task_id"] for r in created],
+            "items": results,
+            "warnings": [f"Поручение {r['index']} ({r['assignee']}): {message}"
+                         for r in results for message in ([f"не создано — {r['error']}"] if r.get("error") else r["warnings"])],
+        }
+
     # --- запрос отчёта по поручению ---
 
     def plan_report_request(
@@ -447,18 +706,30 @@ class DocumentCreateService:
         result: dict[str, Any] = {"document_id": document_id, "name": row.get("Name"), "url": self._doc_url(document_id)}
         if plan.get("body"):
             try:
-                result["version_id"] = self._upload_docx(entity_set, document_id, body_text or "")
+                docx = build_docx(body_text or "", markdown=bool(plan.get("body_markdown")))
+                result["version_id"] = self._upload_version(entity_set, document_id, DOCX_APPLICATION, docx)
             except (DirectumError, ValueError) as exc:
                 warnings.append(f"Документ создан, но текст не загружен: {_reason(exc)}. Добавьте версию в RX вручную.")
+        elif plan.get("template"):
+            try:
+                self.client.post("Docflow/CreateVersionFromTemplate",
+                                  {"documentId": document_id, "templateId": plan["template"]["id"]})
+                result["from_template"] = plan["template"]["name"]
+            except DirectumError as exc:
+                warnings.append(f"Документ создан, но версия по шаблону «{plan['template']['name']}» не создана: "
+                                f"{_reason(exc)}. Создайте её в RX («Создать из шаблона»).")
         warnings.extend(self._grant(document_id, plan["prepared_by"]))
         result["warnings"] = warnings
         return result
 
-    def _upload_docx(self, entity_set: str, document_id: int, body_text: str) -> int:
-        version = self.client.post(f"{entity_set}({document_id})/Versions", {"AssociatedApplication": {"Id": self._application_id(DOCX_APPLICATION)}})
+    def _upload_version(self, entity_set: str, document_id: int, extension: str, data: bytes) -> int:
+        if len(data) > MAX_FILE_BYTES:
+            raise CreateError(f"Файл больше {MAX_FILE_BYTES // (1024 * 1024)} МБ.")
+        version = self.client.post(f"{entity_set}({document_id})/Versions",
+                                   {"AssociatedApplication": {"Id": self._application_id(extension)}})
         version_id = int(version["Id"])
-        data = base64.b64encode(build_docx(body_text)).decode("ascii")
-        self.client.patch(f"{entity_set}({document_id})/Versions({version_id})/Body", {"Value": data})
+        self.client.patch(f"{entity_set}({document_id})/Versions({version_id})/Body",
+                          {"Value": base64.b64encode(data).decode("ascii")})
         return version_id
 
     def _grant(self, document_id: int, person: dict[str, Any]) -> list[str]:
@@ -530,6 +801,20 @@ class DocumentCreateService:
 
     def _doc_url(self, document_id: int) -> str | None:
         return self.client.build_document_card_url(document_id) if hasattr(self.client, "build_document_card_url") else None
+
+
+def decode_base64(content: str | None) -> bytes:
+    text = re.sub(r"\s+", "", content or "")
+    if text.startswith("data:") and "," in text:
+        text = text.split(",", 1)[1]  # data:application/pdf;base64,…
+    if not text:
+        raise CreateError("Пустое содержимое файла (content_base64).")
+    if len(text) > MAX_FILE_BYTES * 4 // 3 + 8:
+        raise CreateError(f"Файл больше {MAX_FILE_BYTES // (1024 * 1024)} МБ.")
+    try:
+        return base64.b64decode(text, validate=True)
+    except (ValueError, binascii.Error):
+        raise CreateError("content_base64 — не base64.") from None
 
 
 def _id(value: Any) -> int | None:

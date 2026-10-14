@@ -123,3 +123,81 @@ def test_request_report_tool():
                                       "author": {"id": 63, "name": "Концева"}, "assignee": 77, "deadline": "2026-10-20", "text": None}
     done = payload(call_tool(server, "request_action_item_report", {**args, "confirm_token": preview["confirm_token"]}))
     assert done["task_id"] == 9100 and create.created[-1]["operation"] == "report_request"
+
+
+class FakeCreate2(FakeCreate):
+    def plan_document(self, document_type, subject, prepared_by_id, **kw):
+        return {"operation": "document", "type": document_type, "subject": subject, "prepared_by": {"id": prepared_by_id, "name": "Б"},
+                "template": kw.get("template"), "body_markdown": kw.get("body_markdown")}
+
+    def create_document(self, plan, body_text):
+        self.created.append((plan, body_text))
+        return {"document_id": 17000, "warnings": []}
+
+    def plan_action_items(self, document_id, assigned_by_id, items):
+        return {"operation": "action_items", "document": document_id, "assigned_by": {"id": assigned_by_id, "name": "К"},
+                "items": [{**i, "deadline": i["deadline"].isoformat()} for i in items]}
+
+    def create_action_items(self, plan):
+        self.created.append(plan)
+        return {"created": len(plan["items"]), "started": len(plan["items"]), "failed": 0, "task_ids": [1, 2], "items": [], "warnings": []}
+
+    def plan_body(self, document_id, **kw):
+        return {"operation": "body", "document": {"id": document_id}, "source": "file" if kw.get("content_base64") else "text"}
+
+    def _person(self, person_id, receives_work=True):
+        return {"id": person_id, "name": "Б"}
+
+
+def make2():
+    server, _ = make()
+    create = FakeCreate2()
+    people = {"Босов": 53, "Концева": 63, "Иванов": 77}
+    services = SimpleNamespace(
+        document_create=create, service_account=False, credentials_fingerprint="fp", usage_id="u1",
+        action_items=SimpleNamespace(search_employee=lambda q: [EmployeeSummary(id=people[q], name=q)] if q in people else [],
+                                     get_employee=lambda i: EmployeeSummary(id=i, name="X")),
+        current_user=SimpleNamespace(get_current_user=lambda: SimpleNamespace(id=1)),
+    )
+    return build_server(FakeProvider(services), write_audit=WriteAudit(None)), create
+
+
+def test_new_generic_tools_registered():
+    server, _ = make2()
+    names = {t.name for t in list_tools(server)}
+    assert {"create_document", "create_document_body", "create_document_body_base64", "create_action_items"} <= names
+    assert {"get_doc_body_base64", "get_entity_hyperlink", "get_template_body_md"} <= names
+
+
+def test_create_document_tool_passes_params():
+    server, create = make2()
+    args = {"document_type": "memo", "subject": "О совещании", "on_behalf_of": "Босов", "template": "347", "body_markdown": True}
+    preview = payload(call_tool(server, "create_document", args))
+    assert preview["will_create"]["type"] == "memo" and preview["will_create"]["template"] == "347"
+    done = payload(call_tool(server, "create_document", {**args, "confirm_token": preview["confirm_token"]}))
+    assert done["document_id"] == 17000
+
+
+def test_create_action_items_tool_resolves_people_and_dates():
+    server, create = make2()
+    args = {"document_id": 500, "on_behalf_of": "Концева", "items": [
+        {"assignee": "Иванов", "deadline": "2026-10-30", "text": "Доклад", "co_assignee": "Босов"},
+        {"assignee": "Босов", "deadline": "2026-10-25", "text": "Справка", "under_control": True, "supervisor": "Концева"}]}
+    preview = payload(call_tool(server, "create_action_items", args))
+    items = preview["will_create"]["items"]
+    assert [(i["assignee_id"], i["co_assignee_id"], i["supervisor_id"]) for i in items] == [(77, 53, None), (53, None, 63)]
+    assert items[0]["deadline"] == "2026-10-30" and items[1]["under_control"] is True
+    done = payload(call_tool(server, "create_action_items", {**args, "confirm_token": preview["confirm_token"]}))
+    assert done["created"] == 2
+    bad = {**args, "items": [{"assignee": "Иванов", "text": "без срока"}]}
+    assert "укажите срок" in error_text(call_tool(server, "create_action_items", bad))
+    assert "items.0" in error_text(call_tool(server, "create_action_items", {**args, "items": ["строка"]}))  # схема MCP
+
+
+def test_body_tools():
+    server, _ = make2()
+    preview = payload(call_tool(server, "create_document_body", {"document_id": 16800, "text": "Новый", "on_behalf_of": "Босов"}))
+    assert preview["will_create"]["source"] == "text" and preview["will_create"]["requested_by"]["id"] == 53
+    preview = payload(call_tool(server, "create_document_body_base64", {"document_id": 16800, "content_base64": "JVBERg==",
+                                                                       "extension": "pdf", "on_behalf_of": "Босов"}))
+    assert preview["will_create"]["source"] == "file"
