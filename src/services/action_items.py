@@ -78,6 +78,10 @@ class ActionItemService:
 
         rows = self._query_employees(cleaned, top)
         if not rows:
+            # Закрытые (уволенные, переведённые) — только по полному ФИО: они остаются авторами и контролёрами
+            # старых поручений, а поиск по отдельному слову подтянул бы посторонних («Александров» → «…Александровна»).
+            rows = self._query_employees(cleaned, top, active_only=False)
+        if not rows:
             for token in self._fallback_name_tokens(cleaned):
                 rows = self._query_employees(token, top)
                 if rows:
@@ -103,11 +107,12 @@ class ActionItemService:
         row = rows[0]
         return EmployeeSummary(id=int(row["Id"]), name=row["Name"], status=row.get("Status"))
 
-    def _query_employees(self, query: str, top: int) -> list[dict[str, Any]]:
+    def _query_employees(self, query: str, top: int, active_only: bool = True) -> list[dict[str, Any]]:
         escaped_query = query.replace("'", "''")
+        status = " and Status eq 'Active'" if active_only else ""
         return self.client.query(
             "IEmployees",
-            filter_=f"contains(Name,'{escaped_query}') and Status eq 'Active'",
+            filter_=f"contains(Name,'{escaped_query}'){status}",
             select="Id,Name,Status",
             top=top,
         )

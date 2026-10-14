@@ -89,6 +89,7 @@ class DocumentCreateService:
         return {
             "id": int(row["Id"]),
             "name": row.get("Name") or "",
+            "active": row.get("Status") in (None, "Active"),
             "department": {"id": department["Id"], "name": department.get("Name")} if department.get("Id") else None,
             "business_unit": {"id": unit["Id"], "name": unit.get("Name")} if unit.get("Id") else None,
         }
@@ -255,7 +256,7 @@ class DocumentCreateService:
             "operation": "action_item",
             "document": self.document(document_id),
             "assignee": self._person(assignee_id),
-            "assigned_by": self._person(assigned_by_id),
+            "assigned_by": self._person(assigned_by_id, receives_work=False),
             "co_assignee": self._person(co_assignee_id),
             "deadline": deadline.isoformat(),
             "text": _clean(text, MAX_TASK_TEXT, "текст поручения"),
@@ -284,7 +285,7 @@ class DocumentCreateService:
             "operation": "review",
             "document": self.document(document_id),
             "addressee": self._person(addressee_id),
-            "author": self._person(author_id),
+            "author": self._person(author_id, receives_work=False),
             "text": " ".join((text or "").split())[:MAX_TASK_TEXT] or None,
         }
 
@@ -301,7 +302,7 @@ class DocumentCreateService:
         return {
             "operation": "approval",
             "document": self.document(document_id),
-            "author": self._person(author_id),
+            "author": self._person(author_id, receives_work=False),
             "signatory": self._person(signatory_id),
             "approvers": [self._person(i) for i in dict.fromkeys(approver_ids)],
             "text": " ".join((text or "").split())[:MAX_TASK_TEXT] or None,
@@ -340,7 +341,7 @@ class DocumentCreateService:
             "operation": "task",
             "subject": _clean(subject, MAX_SUBJECT, "тема задачи"),
             "performers": [self._person(i) for i in dict.fromkeys(performer_ids)],
-            "author": self._person(author_id),
+            "author": self._person(author_id, receives_work=False),
             "deadline": deadline.isoformat() if deadline else None,
             "text": " ".join((text or "").split())[:MAX_TASK_TEXT] or None,
             "documents": [self.document(i) for i in dict.fromkeys(document_ids or [])],
@@ -381,8 +382,8 @@ class DocumentCreateService:
         if requested_by_id not in allowed:
             names = ", ".join(n for n in (_name_of(task.get(k)) for k in ("AssignedBy", "Supervisor")) if n)
             raise CreateError(f"Запросить отчёт может только тот, кто выдал поручение, или его контролёр ({names}).")
-        assignee = self._person(assignee_id) if assignee_id is not None else (
-            {"id": _id(task.get("Assignee")), "name": _name_of(task.get("Assignee"))} if _id(task.get("Assignee")) else None)
+        default_assignee = _id(task.get("Assignee"))
+        assignee = self._person(assignee_id if assignee_id is not None else default_assignee)             if (assignee_id is not None or default_assignee) else None
         if assignee is None:
             raise CreateError("У поручения нет ответственного исполнителя (составное поручение) — укажите, у кого "
                               "запросить отчёт (assignee).")
@@ -398,7 +399,7 @@ class DocumentCreateService:
                             "url": self.client.build_client_card_url(f"IActionItemExecutionTasks({int(task['Id'])})")
                             if hasattr(self.client, "build_client_card_url") else None},
             "assignee": assignee,
-            "author": self._person(requested_by_id),
+            "author": self._person(requested_by_id, receives_work=False),
             "deadline": day.isoformat(),
             "deadline_is_default": deadline is None,
             "text": " ".join((text or "").split())[:MAX_TASK_TEXT] or "Прошу представить отчёт о ходе исполнения поручения.",
@@ -491,14 +492,25 @@ class DocumentCreateService:
 
     # --- мелочи ---
 
-    def _person(self, employee_id: int | None) -> dict[str, Any] | None:
+    def _person(self, employee_id: int | None, receives_work: bool = True) -> dict[str, Any] | None:
+        """receives_work=True — исполнитель, соисполнитель, контролёр, согласующий, подписант: только активные.
+        False — от чьего имени («Выдал», «Автор»): закрытый допустим (автор старого поручения), с пометкой."""
         if employee_id is None:
             return None
         card = self.employee_card(employee_id)
-        return {"id": card["id"], "name": card["name"]}
+        if card["active"]:
+            return {"id": card["id"], "name": card["name"]}
+        if receives_work:
+            raise CreateError(f"Сотрудник {card['name']} закрыт в RX (уволен или переведён) — назначить ему работу "
+                              "нельзя. Укажите другого сотрудника.")
+        return {"id": card["id"], "name": card["name"], "closed": True,
+                "note": "сотрудник закрыт в RX — проверьте, что действовать от его имени уместно"}
 
     @staticmethod
     def _require_org(person: dict[str, Any]) -> None:
+        if not person.get("active", True):
+            raise CreateError(f"Сотрудник {person['name']} закрыт в RX — он не может быть «Подготовил». "
+                              "Укажите действующего сотрудника.")
         if not person["department"] or not person["business_unit"]:
             raise CreateError(f"У сотрудника {person['name']} в RX не указано подразделение или организация — "
                               "документ не сохранится. Укажите другого «Подготовил».")

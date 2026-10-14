@@ -12,6 +12,8 @@ EMPLOYEES = {
     53: {"Id": 53, "Name": "Босов А. С.", "Department": {"Id": 49, "Name": "Секретариат", "BusinessUnit": {"Id": 52, "Name": "Администрация"}}},
     63: {"Id": 63, "Name": "Концева Н. И.", "Department": {"Id": 49, "Name": "Секретариат", "BusinessUnit": {"Id": 52, "Name": "Администрация"}}},
     66: {"Id": 66, "Name": "Орлова Е. В.", "Department": None},
+    70: {"Id": 70, "Name": "Александров Александр", "Status": "Closed",
+         "Department": {"Id": 49, "Name": "Секретариат", "BusinessUnit": {"Id": 52, "Name": "Администрация"}}},
 }
 
 
@@ -21,6 +23,12 @@ ACTION_ITEMS = {
             "Supervisor": {"Id": 66, "Name": "Орлова Е. В."}, "Author": {"Id": 63, "Name": "Концева Н. И."}},
     80873: {"Id": 80873, "Subject": "Поручение: Составное", "Status": "InProcess", "Assignee": None,
             "AssignedBy": {"Id": 63, "Name": "Концева Н. И."}, "Supervisor": None, "Author": None},
+    955: {"Id": 955, "Subject": ">> Поручение: В работу", "Status": "InProcess",
+          "Assignee": {"Id": 63, "Name": "Концева Н. И."}, "AssignedBy": {"Id": 70, "Name": "Александров Александр"},
+          "Supervisor": {"Id": 70, "Name": "Александров Александр"}, "Author": {"Id": 70, "Name": "Александров Александр"}},
+    956: {"Id": 956, "Subject": "Поручение: у закрытого", "Status": "InProcess",
+          "Assignee": {"Id": 70, "Name": "Александров Александр"}, "AssignedBy": {"Id": 63, "Name": "Концева Н. И."},
+          "Supervisor": None, "Author": None},
     80874: {"Id": 80874, "Subject": "Поручение: Готово", "Status": "Completed", "Assignee": {"Id": 53, "Name": "Б"},
             "AssignedBy": {"Id": 63, "Name": "К"}},
 }
@@ -296,3 +304,30 @@ def test_report_request_text_failure_is_warning():
     s = svc(client)
     result = s.create_report_request(s.plan_report_request(80872, 63))
     assert result["started"] is True and "Текст запроса не добавлен" in result["warnings"][0]
+
+
+def test_closed_employee_cannot_receive_work():
+    with pytest.raises(CreateError, match="закрыт в RX"):
+        svc().plan_action_item(500, 70, 63, date(2026, 10, 30), "Текст")
+    with pytest.raises(CreateError, match="закрыт в RX"):
+        svc().plan_task("Тема", [53, 70], 63, None)
+    with pytest.raises(CreateError, match="«Подготовил»"):
+        svc().plan_outgoing_letter("Тема", "Аппарат", 70)
+    with pytest.raises(CreateError, match="закрыт в RX"):
+        svc().plan_outgoing_letter("Тема", "Аппарат", 53, signatory_id=70)
+
+
+def test_closed_employee_allowed_as_author_with_note():
+    plan = svc().plan_action_item(500, 53, 70, date(2026, 10, 30), "Текст")
+    assert plan["assigned_by"]["closed"] is True and "закрыт в RX" in plan["assigned_by"]["note"]
+    assert svc().plan_review(500, 53, 70)["author"]["closed"] is True
+
+
+def test_report_request_from_closed_issuer_case_955():
+    # Поручение 955: выдал и контролирует закрытый сотрудник, исполнитель — действующий.
+    plan = svc().plan_report_request(955, 70)
+    assert plan["author"]["id"] == 70 and plan["author"]["closed"] is True
+    assert plan["assignee"] == {"id": 63, "name": "Концева Н. И."}
+    with pytest.raises(CreateError, match="закрыт в RX"):
+        svc().plan_report_request(956, 63)  # исполнитель по умолчанию закрыт
+    assert svc().plan_report_request(956, 63, assignee_id=53)["assignee"]["id"] == 53

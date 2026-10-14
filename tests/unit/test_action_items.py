@@ -356,9 +356,27 @@ def test_search_employee_falls_back_to_name_tokens_when_full_query_has_no_matche
 
     assert [call[1]["filter_"] for call in client.query_calls] == [
         "contains(Name,'Натальи Ардо') and Status eq 'Active'",
+        "contains(Name,'Натальи Ардо')",
         "contains(Name,'Ардо') and Status eq 'Active'",
     ]
     assert [employee.name for employee in result] == ["Ардо Наталья Алексеевна"]
+
+
+def test_search_employee_finds_closed_employee_by_full_name_before_token_fallback():
+    class ClosedClient(FakeClient):
+        def query(self, entity_set, **kwargs):
+            self.query_calls.append((entity_set, kwargs))
+            if kwargs["filter_"] == "contains(Name,'Александров Александр')":
+                return [{"Id": 66, "Name": "Александров Александр", "Status": "Closed"}]
+            if kwargs["filter_"] == "contains(Name,'Александров') and Status eq 'Active'":
+                return [{"Id": 79, "Name": "Петрова Виктория Александровна", "Status": "Active"}]
+            return []
+
+    client = ClosedClient()
+    result = ActionItemService(client).search_employee("Александров Александр")
+
+    assert [(e.id, e.status) for e in result] == [(66, "Closed")]
+    assert len(client.query_calls) == 2
 
 
 def test_search_employee_returns_empty_without_query_for_whitespace():

@@ -37,7 +37,10 @@ def resolve_employee(action_items: Any, query: str) -> EmployeeSummary:
     exact = [match for match in matches if match.name.casefold() == text.casefold()]
     if len(exact) == 1:
         return exact[0]
-    listing = "; ".join(f"{match.id} — {match.name}" for match in matches[:MAX_CANDIDATES])
+    listing = "; ".join(
+        f"{match.id} — {match.name}" + (" (закрыт в RX)" if match.status and match.status != "Active" else "")
+        for match in matches[:MAX_CANDIDATES]
+    )
     raise ToolError(f"Найдено несколько сотрудников: {listing}. Уточните, кого именно (можно передать id).")
 
 
