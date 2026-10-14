@@ -40,7 +40,7 @@
   сотрудник, только цифры); get_executive_summary (дашборд руководителя).
 - Контроль исполнения (контрольных карт нет — поручение с признаком «На контроле»): list_controlled_action_items
   (реестр: state, due, supervisor="me"), get_control_dossier (дерево исполнения, продления, приёмка).
-- Документы: find_documents (поиск по признакам, несколько вариантов с match_reasons; relaxed — какие условия
+- Документы: find_documents_by_content (по фрагменту текста — один вызов, без перебора формулировок); find_documents (поиск по признакам, несколько вариантов с match_reasons; relaxed — какие условия
   ослаблены), search_documents, get_document, get_document_text (текст), list_documents_by_counterparty,
   list_letters, ask_documents (вопрос по содержанию; при status in_progress — get_ask_documents_result).
 - Обращения граждан: get_citizen_request_status (status_text — готовая фраза), list_citizen_requests_due (горящие),

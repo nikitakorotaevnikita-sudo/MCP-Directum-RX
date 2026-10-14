@@ -7,6 +7,7 @@ from src.services.action_items import ActionItemService
 from src.services.admin_access import AdminAccessService
 from src.services.citizen_request_analytics import CitizenRequestAnalyticsService
 from src.services.citizen_answers import CitizenAnswersService
+from src.services.content_search import ContentSearchService
 from src.services.citizen_requests import CitizenRequestService
 from src.services.department_discipline import DepartmentDisciplineService
 from src.services.assignments import AssignmentsService
@@ -50,6 +51,7 @@ class DirectumServices:
     # Запрос идёт под служебной учёткой, а не под пользователем чата: «я / me» — это она.
     document_create: DocumentCreateService | None = None
     citizen_answers: CitizenAnswersService | None = None
+    content_search: ContentSearchService | None = None
     service_account: bool = False
     # Отпечаток кредов текущего запроса (привязка токена подтверждения записи) и обезличенный id для аудита.
     credentials_fingerprint: str = ""
@@ -72,6 +74,7 @@ def build_directum_services(
     action_items = ActionItemService(client)
     discipline = DisciplineAnalyticsService(client, action_items)
     document_text = DocumentTextService(client)
+    qa_search = QASearchService(client)
     return DirectumServices(
         client=client,
         current_user=current_user,
@@ -82,7 +85,7 @@ def build_directum_services(
         admin_access=AdminAccessService(client, current_user),
         document_search=DocumentSearchService(client, action_items, tz=tz),
         document_text=document_text,
-        qa_search=QASearchService(client),
+        qa_search=qa_search,
         rx_methods=RxMethodsService(client, tz=tz),
         citizen_requests=CitizenRequestService(client, tz=tz),
         citizen_request_analytics=CitizenRequestAnalyticsService(client, tz=tz),
@@ -93,4 +96,5 @@ def build_directum_services(
         resolution_history=ResolutionHistoryService(client, tz=tz),
         document_create=DocumentCreateService(client, tz=tz, grant_rights_guid=grant_rights_guid),
         citizen_answers=CitizenAnswersService(client, document_text, tz=tz),
+        content_search=ContentSearchService(client, document_text, qa_search, tz=tz),
     )

@@ -48,7 +48,8 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
     ) -> dict:
         """Найти документ по тому, что помнит пользователь (слова, примерный период, контрагент, вид, сотрудник, номер).
         Возвращает несколько вариантов по убыванию score: у каждого match_reasons (почему подошёл) и url карточки.
-        relaxed — какие условия пришлось ослабить, если точных совпадений нет: скажи об этом пользователю."""
+        relaxed — какие условия пришлось ослабить, если точных совпадений нет: скажи об этом пользователю.
+        Ищет по реквизитам (название, тема, номер, контрагент), НЕ по тексту: по содержанию — find_documents_by_content."""
         start, end = parse_period(date_from, date_to)
         criteria = DocumentCriteria(
             text=text,
@@ -101,6 +102,37 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         return await runner.run(
             ctx, "get_document_text", lambda s: to_jsonable(s.document_text.get_text(document_id, max_chars=max_chars))
         )
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def find_documents_by_content(
+        text: Annotated[str, Field(description="Фрагмент или пересказ содержания документа (одно-два предложения и больше)")],
+        ctx: Context,
+        kind: Annotated[
+            Literal["any", "incoming_letter", "outgoing_letter", "order", "memo", "contract", "citizen_request"],
+            Field(description="Вид документа, если известен; any — любой"),
+        ] = "any",
+        date_from: Annotated[str | None, Field(description="Создан с, YYYY-MM-DD (по умолчанию — 180 дней назад)")] = None,
+        date_to: Annotated[str | None, Field(description="Создан по, YYYY-MM-DD")] = None,
+        limit: Annotated[int, Field(description="Сколько документов вернуть (1–10)", ge=1, le=10)] = 5,
+        scan_limit: Annotated[int, Field(description="Сколько документов прочитать и сравнить (10–60)", ge=10, le=60)] = 40,
+    ) -> dict:
+        """Найти документ по примерному СОДЕРЖАНИЮ (тексту), а не по реквизитам: одним вызовом собирает кандидатов
+        (смысловой поиск RX по областям документов, редкие слова и фамилия из образца в названии и теме, свежие
+        документы за период), читает их тексты и сравнивает с образцом. items — по убыванию похожести: score,
+        confidence, matched_terms, snippet (фрагмент документа), url. Не вызывай повторно с перефразированным текстом —
+        если не найдено, сузь период или вид и повтори один раз, либо спроси пользователя. По реквизитам (номер,
+        контрагент, вид, автор) — find_documents."""
+        start, end = parse_period(date_from, date_to)
+        entity_set, _, label = DOCUMENT_KINDS[kind]
+
+        def action(s):
+            try:
+                return s.content_search.search(text, date_from=start, date_to=end, entity_set=entity_set,
+                                               kind_label=None if kind == "any" else label, limit=limit, scan_limit=scan_limit)
+            except ValueError as exc:
+                raise ToolError(str(exc)) from None
+
+        return await runner.run(ctx, "find_documents_by_content", action)
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_doc_body_base64(
