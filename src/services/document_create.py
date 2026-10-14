@@ -43,7 +43,8 @@ DOCUMENT_TYPES: dict[str, dict[str, Any]] = {
     "directive": {"set": "ICompanyDirectives", "label": "распоряжение", "kind": None, "fields": set()},
     "simple_document": {"set": "ISimpleDocuments", "label": "простой документ", "kind": None, "fields": set()},
     "addendum": {"set": "IAddendums", "label": "приложение", "kind": None, "fields": {"leading_document"}},
-    "legal_act": {"set": "ILegalActsLegalDocumentBases", "label": "правовой акт или проект",
+    # Создавать — только в конкретном наборе: ILegalActsLegalDocumentBases абстрактный (RX отвечает 404 без текста).
+    "legal_act": {"set": "ILegalActsLegalActs", "label": "правовой акт или проект",
                   "kind": "Проект правового акта", "fields": {"is_normative"}},
 }
 # Свойства, которые нельзя задавать через extra_properties: системные, регистрационные, состояния, связи.
@@ -260,7 +261,7 @@ class DocumentCreateService:
         }
         if plan.get("signatory"):
             payload["OurSignatory"] = _ref(plan["signatory"])
-        return self._create_document("ILegalActsLegalDocumentBases", payload, plan, body_text)
+        return self._create_document("ILegalActsLegalActs", payload, plan, body_text)
 
     # --- поручение ---
 
@@ -701,7 +702,7 @@ class DocumentCreateService:
         try:
             row = self.client.post(entity_set, payload)
         except DirectumError as exc:
-            raise DirectumError(f"RX не сохранил документ: {_reason(exc)}", status_code=exc.status_code) from None
+            raise DirectumError(_save_error(entity_set, exc), status_code=exc.status_code) from None
         document_id = int(row["Id"])
         result: dict[str, Any] = {"document_id": document_id, "name": row.get("Name"), "url": self._doc_url(document_id)}
         if plan.get("body"):
@@ -833,6 +834,20 @@ def _plus_workdays(day: date, count: int) -> date:
         if day.weekday() < 5:
             count -= 1
     return day
+
+
+def _save_error(entity_set: str, exc: DirectumError) -> str:
+    """Понятная причина отказа RX сохранить документ — с тем, что делать дальше."""
+    reason = _reason(exc)
+    if exc.status_code == 404:
+        return (f"RX не принимает создание документов в наборе {entity_set} (тип недоступен для создания через сервис "
+                "интеграции). Создайте документ в RX вручную — текст подготовлен.")
+    if entity_set == "ILegalActsLegalActs" and "Категория" in reason:
+        return ("RX не сохранил проект: обязательное поле «Категория» правового акта не опубликовано в сервисе "
+                "интеграции RX, поэтому заполнить его через ассистента нельзя. Создайте проект в RX вручную (вид "
+                "«Проект правового акта», категория, текст ниже) — или попросите администратора RX опубликовать поле "
+                "«Категория» в сервисе интеграции. Повторять попытку бессмысленно.")
+    return f"RX не сохранил документ: {reason}. Повторять с теми же данными бессмысленно — заполните недостающее."
 
 
 def _reason(exc: Exception) -> str:

@@ -72,7 +72,7 @@ class FakeClient:
             raise self.fail[path]
         if path == "IStatusReportRequestTasks":
             return {"Id": 9100}
-        if path in ("IOutgoingLetters", "ILegalActsLegalDocumentBases"):
+        if path in ("IOutgoingLetters", "ILegalActsLegalActs"):
             return {"Id": 16800, "Name": "Исх. письмо"}
         if path.endswith("/Versions"):
             return {"Id": 77}
@@ -148,7 +148,7 @@ def test_letter_save_error_shows_rx_reason():
     s = svc(FakeClient(fail={"IOutgoingLetters": err}))
     with pytest.raises(DirectumError) as exc:
         s.create_outgoing_letter(s.plan_outgoing_letter("Тема", "Аппарат", 53), None)
-    assert exc.value.safe_message == 'RX не сохранил документ: Не заполнено обязательное свойство "Подготовил".'
+    assert exc.value.safe_message.startswith('RX не сохранил документ: Не заполнено обязательное свойство "Подготовил".')
 
 
 def test_counterparty_resolution():
@@ -183,7 +183,7 @@ def test_legal_act():
     plan = s.plan_legal_act("project", "О порядке", 53, True, signatory_id=63)
     assert plan["document_kind"]["id"] == 114 and plan["is_normative"] is True
     s.create_legal_act(plan)
-    assert client.posts[0][0] == "ILegalActsLegalDocumentBases"
+    assert client.posts[0][0] == "ILegalActsLegalActs"
     assert client.posts[0][1]["IsNormative"] is True and client.posts[0][1]["OurSignatory"] == {"Id": 63}
     assert svc().plan_legal_act("act", "О", 53, False)["document_kind"]["id"] == 115
     with pytest.raises(CreateError):
@@ -331,3 +331,18 @@ def test_report_request_from_closed_issuer_case_955():
     with pytest.raises(CreateError, match="закрыт в RX"):
         svc().plan_report_request(956, 63)  # исполнитель по умолчанию закрыт
     assert svc().plan_report_request(956, 63, assignee_id=53)["assignee"]["id"] == 53
+
+
+def test_save_errors_are_actionable():
+    err404 = DirectumError("POST X failed with 404. Payload had 3 fields. Response detail: ", status_code=404)
+    s = svc(FakeClient(fail={"ILegalActsLegalActs": err404}))
+    with pytest.raises(DirectumError, match="не принимает создание"):
+        s.create_legal_act(s.plan_legal_act("project", "О", 53, False))
+    category = DirectumError('failed with 400. Response detail: "Не заполнено обязательное свойство \\"Категория\\"."', status_code=400)
+    s = svc(FakeClient(fail={"ILegalActsLegalActs": category}))
+    with pytest.raises(DirectumError, match="не опубликовано в сервисе интеграции"):
+        s.create_legal_act(s.plan_legal_act("project", "О", 53, False))
+    other = DirectumError('failed with 400. Response detail: Не заполнено обязательное свойство "Адресат".', status_code=400)
+    s = svc(FakeClient(fail={"IOutgoingLetters": other}))
+    with pytest.raises(DirectumError, match="«?Адресат.*Повторять с теми же данными бессмысленно"):
+        s.create_outgoing_letter(s.plan_outgoing_letter("Тема", "Аппарат", 53), None)

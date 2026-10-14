@@ -71,7 +71,7 @@ def test_preview_then_confirm(tmp_path):
     server, create = make(tmp_path)
     args = {"subject": "О совещании", "correspondent": "Аппарат", "on_behalf_of": "Босов", "body_text": "Текст"}
     preview = payload(call_tool(server, "create_outgoing_letter", args))
-    assert preview["mode"] == "preview" and preview["confirm_token"] and "Ничего не создано" in preview["next_step"]
+    assert preview["mode"] == "preview" and preview["confirm_token"] and "создать МОЖНО" in preview["next_step"]
     assert preview["will_create"]["prepared_by"] == {"id": 53, "name": "Босов"} and create.created == []
     done = payload(call_tool(server, "create_outgoing_letter", {**args, "confirm_token": preview["confirm_token"]}))
     assert done["mode"] == "created" and done["document_id"] == 16800
