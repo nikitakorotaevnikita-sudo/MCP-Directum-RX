@@ -150,6 +150,9 @@ def assess(item, today: date, dossier=None, load=0) -> dict:
                 add(1, "Срок уже переносился.")
             if s.get("extensions_pending"):
                 add(1, "Есть запрос на продление, который ещё не рассмотрен.")
+            late_reports = [r for r in dossier.get("report_requests") or [] if r.get("days_overdue")]
+            if late_reports:
+                add(1, f"Запрошенный отчёт не представлен (просрочен на {max(r['days_overdue'] for r in late_reports)} дн.).")
             if s.get("nodes_overdue"):
                 add(2, f"Просрочены подпоручения: {s['nodes_overdue']}.")
             last = _last_activity(dossier)

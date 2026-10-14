@@ -47,6 +47,7 @@ mcpOGV на стенде работает под Administrator (`service_account
 | `create_action_item` | Поручение по документу: исполнитель, соисполнитель, срок, текст, контроль и контролёр, выдал = `on_behalf_of`; запуск | `RecordManagement/CreateActionItemExecution` → PATCH `AssignedBy` → `Docflow/StartTask` |
 | `send_document_for_review` | Рассмотрение документа руководителем (в том числе с проектом резолюции из навыка `kd-resolution` в тексте) | `RecordManagement/CreateDocumentReviewTask` → PATCH `Author` → `StartTask` |
 | `send_document_for_approval` | Согласование документа: подписант, дополнительные согласующие, текст | `Docflow/CreateApprovalTask` → PATCH `Author` → `StartTask` |
+| `request_action_item_report` | «Запросить отчёт» по поручению: ответственному — задание дать статус; запрашивать может только выдавший поручение, его контролёр или автор задачи (проверяется в mcpOGV — под служебной учёткой RX не проверит); срок по умолчанию +2 рабочих дня | POST `IStatusReportRequestTasks` (`ParentTask` = поручение, `Assignee`, `MaxDeadline`) → текст POST `…/Texts` → PATCH `Author` → `StartTask`; ответы — в `get_control_dossier.report_requests` |
 | `create_task` | Простая задача (задание) исполнителям, с документами во вложении | `Docflow/CreateSimpleTask` → PATCH `Author` → `StartTask` |
 
 Справочники разрешаются по названию: сотрудники — `resolve_employee` (неоднозначность — ошибка со списком),

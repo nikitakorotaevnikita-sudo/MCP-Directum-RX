@@ -26,7 +26,7 @@
    (list_my_assignments, list_action_items) не используй — бери list_employee_action_items по ФИО. Права RX выдачу не
    ограничивают — показывай только нужное для задачи.
 9. Создание (create_outgoing_letter, create_legal_act, create_action_item, send_document_for_review,
-   send_document_for_approval, create_task — если доступны): сначала вызов без confirm_token (предпросмотр), покажи
+   send_document_for_approval, create_task, request_action_item_report — если доступны): сначала вызов без confirm_token (предпросмотр), покажи
    его и спроси «Создать?»; только после «да» — тот же вызов с confirm_token. on_behalf_of — ФИО реального человека.
 
 ИНСТРУМЕНТЫ

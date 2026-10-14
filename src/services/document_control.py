@@ -217,6 +217,7 @@ class DocumentControlService:
         node_ids = {node["id"] for node in nodes}
         extensions = self._extensions(int(main_id), assignments, node_ids)
         acceptance = self._acceptance(sorted(node_ids))
+        report_requests = self._report_requests(int(main_id), node_ids)
         documents = self._documents(root)
         in_work = [n for n in nodes if n["status"] == "InProcess"]
         overdue = [n for n in in_work if n.get("days_overdue")]
@@ -232,6 +233,7 @@ class DocumentControlService:
             "extensions_pending": sum(1 for e in extensions if e["state"] == "на рассмотрении"),
             "deadline_shift_days": sum(e["shift_days"] or 0 for e in accepted_ext),
             "acceptance_pending": sum(1 for a in acceptance if a["status"] == "InProcess"),
+            "report_requests_open": sum(1 for r in report_requests if r["status"] == "InProcess"),
             "tree_truncated": len(tree_rows) >= TREE_LIMIT,
         }
         root_node = next(n for n in nodes if n["id"] == root_id)
@@ -256,6 +258,7 @@ class DocumentControlService:
             "tree": nodes,
             "deadline_history": extensions,
             "acceptance": acceptance,
+            "report_requests": report_requests,
             "correspondence": self._correspondence(root),
             "documents": documents,
         }
@@ -427,6 +430,45 @@ class DocumentControlService:
                         "deadline": self._iso_day(row.get("Deadline")),
                     }
                 )
+        return found
+
+    def _report_requests(self, main_id: int, node_ids: set[int]) -> list[dict[str, Any]]:
+        """Запросы отчёта по поручениям дерева («Запросить отчёт»): кто, у кого, срок, ответ."""
+        try:
+            rows = self.client.query(
+                "IStatusReportRequestTasks",
+                filter_=f"MainTaskId eq {main_id} and Status ne 'Draft'",
+                select="Id,Status,Created,Started,MaxDeadline,Report,ReportNote",
+                expand="Assignee($select=Name),Author($select=Name),ParentTask($select=Id)",
+                orderby="Created asc",
+                top=100,
+            )
+        except DirectumError as exc:
+            if exc.status_code in (400, 404):
+                return []
+            raise
+        found = []
+        today = self._today()
+        for row in rows:
+            action_item = _nav_id(row.get("ParentTask"))
+            if action_item is not None and action_item not in node_ids:
+                continue
+            deadline = self._day(row.get("MaxDeadline"))
+            answered = _trim(row.get("Report") or row.get("ReportNote"), REPORT_LIMIT)
+            waiting = row.get("Status") == "InProcess"
+            found.append(
+                {
+                    "id": int(row["Id"]),
+                    "action_item_id": action_item,
+                    "requested": self._iso_day(row.get("Started") or row.get("Created")),
+                    "requested_by": _name(row.get("Author")),
+                    "assignee": _name(row.get("Assignee")),
+                    "deadline": deadline.isoformat() if deadline else None,
+                    "status": row.get("Status"),
+                    "report": answered,
+                    "days_overdue": (today - deadline).days if waiting and deadline and deadline < today else None,
+                }
+            )
         return found
 
     def _correspondence(self, root: dict[str, Any]) -> list[dict[str, Any]]:

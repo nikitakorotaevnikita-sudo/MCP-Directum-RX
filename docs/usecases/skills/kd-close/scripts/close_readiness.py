@@ -72,6 +72,9 @@ def check(dossier) -> dict:
         blockers.append(f"Не рассмотрен запрос на продление до {fmt(parse_day(h.get('new_deadline')))} "
                         f"(поручение № {h.get('action_item_id')}).")
     accepted_ext = [h for h in dossier.get("deadline_history") or [] if h.get("state") == "одобрено"]
+    open_reports = [r for r in dossier.get("report_requests") or [] if r.get("status") == "InProcess"]
+    if open_reports:
+        warnings.append(f"Есть незакрытые запросы отчёта: {len(open_reports)} — получите ответ или прекратите запрос в RX.")
 
     acceptance = [a for a in dossier.get("acceptance") or [] if a.get("action_item_id") == item.get("id")]
     pending_acc = [a for a in acceptance if a.get("status") == "InProcess"]

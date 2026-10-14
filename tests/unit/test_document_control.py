@@ -83,6 +83,17 @@ class FakeClient:
                 raise self.acceptance_error
             return [{"Id": 50, "Task": {"Id": 102}, "Status": "Completed", "Result": "Agree", "Performer": {"Name": "Контролёр К. К."},
                      "Created": "2026-09-24T10:00:00+04:00", "Completed": "2026-09-25T10:00:00+04:00", "Deadline": None}]
+        if entity_set == "IStatusReportRequestTasks":
+            return [
+                {"Id": 700, "Status": "InProcess", "Created": "2026-09-24T10:00:00+04:00", "Started": "2026-09-24T10:05:00+04:00",
+                 "MaxDeadline": "2026-09-26T00:00:00+04:00", "Report": None, "ReportNote": None,
+                 "Assignee": {"Name": "Сидоров С. С."}, "Author": {"Name": "Контролёр К. К."}, "ParentTask": {"Id": 101}},
+                {"Id": 701, "Status": "Completed", "Created": "2026-09-10T10:00:00+04:00", "Started": None,
+                 "MaxDeadline": "2026-09-12T00:00:00+04:00", "Report": "Работа идёт, сдадим в срок.", "ReportNote": None,
+                 "Assignee": {"Name": "Иванов И. И."}, "Author": {"Name": "Руководитель Р. Р."}, "ParentTask": {"Id": 100}},
+                {"Id": 702, "Status": "InProcess", "Created": "2026-09-10T10:00:00+04:00", "MaxDeadline": None,
+                 "Assignee": {"Name": "X"}, "Author": {"Name": "Y"}, "ParentTask": {"Id": 77}},
+            ]
         if entity_set == "IOfficialDocuments":
             return [{"Id": 500, "Name": "Вх. письмо"}, {"Id": 501, "Name": "Приложение"}]
         raise AssertionError(entity_set)
@@ -228,3 +239,16 @@ def test_dossier_tolerates_missing_acceptance_set():
     assert d["acceptance"] == []
     with pytest.raises(DirectumError):
         service(FakeClient(acceptance_error=DirectumError("сбой", status_code=500))).dossier(100)
+
+
+def test_dossier_report_requests():
+    d = service().dossier(100)
+    requests = d["report_requests"]
+    assert [r["id"] for r in requests] == [700, 701]
+    open_, answered = requests
+    assert open_ == {"id": 700, "action_item_id": 101, "requested": "2026-09-24", "requested_by": "Контролёр К. К.",
+                     "assignee": "Сидоров С. С.", "deadline": "2026-09-26", "status": "InProcess", "report": None,
+                     "days_overdue": 3}
+    assert answered["report"] == "Работа идёт, сдадим в срок." and answered["days_overdue"] is None
+    assert d["summary"]["report_requests_open"] == 1
+    assert [r["id"] for r in service().dossier(101)["report_requests"]] == [700]

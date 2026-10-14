@@ -158,3 +158,9 @@ def test_cli(tmp_path):
     assert code == 2 and "не JSON" in err
     code, _, err = run_cli()
     assert code == 2 and "Ошибка аргументов" in err
+
+
+def test_late_report_request_signal():
+    d = dict(dossier(), report_requests=[{"status": "InProcess", "days_overdue": 3}, {"status": "Completed", "days_overdue": None}])
+    r = one(item(), d)
+    assert "Запрошенный отчёт не представлен (просрочен на 3 дн.)." in r["reasons"] and r["score"] == 1

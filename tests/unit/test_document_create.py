@@ -15,6 +15,17 @@ EMPLOYEES = {
 }
 
 
+ACTION_ITEMS = {
+    80872: {"Id": 80872, "Subject": ">> Поручение: Подготовить доклад", "Status": "InProcess",
+            "Assignee": {"Id": 53, "Name": "Босов А. С."}, "AssignedBy": {"Id": 63, "Name": "Концева Н. И."},
+            "Supervisor": {"Id": 66, "Name": "Орлова Е. В."}, "Author": {"Id": 63, "Name": "Концева Н. И."}},
+    80873: {"Id": 80873, "Subject": "Поручение: Составное", "Status": "InProcess", "Assignee": None,
+            "AssignedBy": {"Id": 63, "Name": "Концева Н. И."}, "Supervisor": None, "Author": None},
+    80874: {"Id": 80874, "Subject": "Поручение: Готово", "Status": "Completed", "Assignee": {"Id": 53, "Name": "Б"},
+            "AssignedBy": {"Id": 63, "Name": "К"}},
+}
+
+
 class FakeClient:
     def __init__(self, counterparties=None, fail=None):
         self.counterparties = counterparties if counterparties is not None else [{"Id": 1464, "Name": "Аппарат Правительства"}]
@@ -22,6 +33,11 @@ class FakeClient:
         self.posts, self.patches = [], []
 
     def get_one(self, path):
+        if path.startswith("IActionItemExecutionTasks("):
+            task_id = int(path.split("(")[1].split(")")[0])
+            if task_id not in ACTION_ITEMS:
+                raise DirectumError("Запись не существует", status_code=400)
+            return ACTION_ITEMS[task_id]
         emp_id = int(path.split("(")[1].split(")")[0])
         if emp_id not in EMPLOYEES:
             raise DirectumError("Запись не существует", status_code=400)
@@ -46,6 +62,8 @@ class FakeClient:
         self.posts.append((path, payload))
         if path in self.fail:
             raise self.fail[path]
+        if path == "IStatusReportRequestTasks":
+            return {"Id": 9100}
         if path in ("IOutgoingLetters", "ILegalActsLegalDocumentBases"):
             return {"Id": 16800, "Name": "Исх. письмо"}
         if path.endswith("/Versions"):
@@ -231,3 +249,50 @@ def test_review_approval_task():
         args.update(bad)
         with pytest.raises(CreateError):
             svc().plan_task(**args)
+
+
+def test_report_request_defaults_and_flow():
+    client = FakeClient()
+    s = svc(client)
+    # 14.10.2026 — среда; +2 рабочих дня = пятница 16.10.
+    plan = s.plan_report_request(80872, 66)
+    assert plan["assignee"] == {"id": 53, "name": "Босов А. С."} and plan["author"]["id"] == 66
+    assert plan["deadline"] == "2026-10-16" and plan["deadline_is_default"] is True
+    assert plan["action_item"]["subject"] == "Подготовить доклад"
+    assert plan["text"] == "Прошу представить отчёт о ходе исполнения поручения."
+    result = s.create_report_request(plan)
+    assert client.posts[0] == ("IStatusReportRequestTasks", {
+        "Subject": "Запрос отчета: Подготовить доклад", "ParentTask": {"Id": 80872}, "Assignee": {"Id": 53},
+        "MaxDeadline": "2026-10-16T00:00:00+04:00"})
+    assert client.posts[1] == ("IStatusReportRequestTasks(9100)/Texts", {"Body": plan["text"]})
+    assert client.patches == [("IStatusReportRequestTasks(9100)", {"Author": {"Id": 66}})]
+    assert client.posts[2] == ("Docflow/StartTask", {"taskId": 9100})
+    assert result["started"] is True and result["warnings"] == []
+
+
+def test_report_request_friday_deadline_skips_weekend():
+    s = DocumentCreateService(FakeClient(), tz=TZ, now=lambda: datetime(2026, 10, 16, 12, 0, tzinfo=TZ))
+    assert s.plan_report_request(80872, 63)["deadline"] == "2026-10-20"
+
+
+def test_report_request_rules():
+    with pytest.raises(CreateError, match="выдал поручение"):
+        svc().plan_report_request(80872, 53)  # исполнитель сам у себя — нельзя
+    with pytest.raises(CreateError, match="укажите"):
+        svc().plan_report_request(80873, 63)
+    assert svc().plan_report_request(80873, 63, assignee_id=53)["assignee"]["id"] == 53
+    with pytest.raises(CreateError, match="в работе"):
+        svc().plan_report_request(80874, 63)
+    with pytest.raises(CreateError, match="не найдено"):
+        svc().plan_report_request(1, 63)
+    with pytest.raises(CreateError, match="уже прошёл"):
+        svc().plan_report_request(80872, 63, deadline=date(2026, 10, 1))
+    plan = svc().plan_report_request(80872, 63, deadline=date(2026, 10, 20), text="  Доложить   о сроках ")
+    assert plan["text"] == "Доложить о сроках" and plan["deadline_is_default"] is False
+
+
+def test_report_request_text_failure_is_warning():
+    client = FakeClient(fail={"IStatusReportRequestTasks(9100)/Texts": DirectumError("x failed with 400: нельзя", status_code=400)})
+    s = svc(client)
+    result = s.create_report_request(s.plan_report_request(80872, 63))
+    assert result["started"] is True and "Текст запроса не добавлен" in result["warnings"][0]

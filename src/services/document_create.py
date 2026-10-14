@@ -13,7 +13,7 @@ import base64
 import hashlib
 import re
 from collections.abc import Callable
-from datetime import date, datetime, timezone, tzinfo
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
 from src.services.directum_client import DirectumError
@@ -28,6 +28,7 @@ MAX_APPROVERS = 10
 MAX_PERFORMERS = 20
 CANDIDATES = 6
 NOTE_TEMPLATE = "Подготовлено ИИ-ассистентом (mcpOGV) по запросу: {name}, {day}."
+REPORT_DEFAULT_WORKDAYS = 2
 IMPORTANCE = {"normal": "Normal", "high": "High", "low": "Low"}
 
 
@@ -360,6 +361,79 @@ class DocumentCreateService:
         task_id = self._action_id(self.client.post("Docflow/CreateSimpleTask", payload))
         return self._finish_task(task_id, "ISimpleTasks", {"Author": _ref(plan["author"])}, "«Автор»")
 
+    # --- запрос отчёта по поручению ---
+
+    def plan_report_request(
+        self,
+        action_item_id: int,
+        requested_by_id: int,
+        deadline: date | None = None,
+        text: str | None = None,
+        assignee_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Запрос отчёта по поручению (кнопка «Запросить отчёт»): подзадача поручения, ответственному — задание дать
+        отчёт. Запрашивать может тот, кто выдал поручение, его контролёр или автор задачи: под служебной учёткой
+        RX этого не проверит, поэтому проверяем здесь."""
+        task = self._action_item_row(action_item_id)
+        if task.get("Status") != "InProcess":
+            raise CreateError("Отчёт можно запросить только по поручению в работе.")
+        allowed = {_id(task.get(k)) for k in ("AssignedBy", "Supervisor", "Author")} - {None}
+        if requested_by_id not in allowed:
+            names = ", ".join(n for n in (_name_of(task.get(k)) for k in ("AssignedBy", "Supervisor")) if n)
+            raise CreateError(f"Запросить отчёт может только тот, кто выдал поручение, или его контролёр ({names}).")
+        assignee = self._person(assignee_id) if assignee_id is not None else (
+            {"id": _id(task.get("Assignee")), "name": _name_of(task.get("Assignee"))} if _id(task.get("Assignee")) else None)
+        if assignee is None:
+            raise CreateError("У поручения нет ответственного исполнителя (составное поручение) — укажите, у кого "
+                              "запросить отчёт (assignee).")
+        today = self._now().astimezone(self.tz).date()
+        day = deadline or _plus_workdays(today, REPORT_DEFAULT_WORKDAYS)
+        if day < today:
+            raise CreateError(f"Срок {day.strftime('%d.%m.%Y')} уже прошёл.")
+        subject = (task.get("Subject") or "").strip()
+        subject = re.sub(r"^\s*(?:>>\s*)?Поручение:\s*", "", subject)
+        return {
+            "operation": "report_request",
+            "action_item": {"id": int(task["Id"]), "subject": subject[:MAX_SUBJECT],
+                            "url": self.client.build_client_card_url(f"IActionItemExecutionTasks({int(task['Id'])})")
+                            if hasattr(self.client, "build_client_card_url") else None},
+            "assignee": assignee,
+            "author": self._person(requested_by_id),
+            "deadline": day.isoformat(),
+            "deadline_is_default": deadline is None,
+            "text": " ".join((text or "").split())[:MAX_TASK_TEXT] or "Прошу представить отчёт о ходе исполнения поручения.",
+        }
+
+    def create_report_request(self, plan: dict[str, Any]) -> dict[str, Any]:
+        payload = {
+            "Subject": f"Запрос отчета: {plan['action_item']['subject']}"[:MAX_SUBJECT],
+            "ParentTask": {"Id": plan["action_item"]["id"]},
+            "Assignee": _ref(plan["assignee"]),
+            "MaxDeadline": self._deadline_literal(plan["deadline"]),
+        }
+        row = self.client.post("IStatusReportRequestTasks", payload)
+        task_id = int(row["Id"])
+        warnings: list[str] = []
+        try:
+            self.client.post(f"IStatusReportRequestTasks({task_id})/Texts", {"Body": plan["text"]})
+        except DirectumError as exc:
+            warnings.append(f"Текст запроса не добавлен: {_reason(exc)}. Тема задачи и срок заданы.")
+        result = self._finish_task(task_id, "IStatusReportRequestTasks", {"Author": _ref(plan["author"])}, "«Автор»")
+        result["warnings"] = warnings + result["warnings"]
+        return result
+
+    def _action_item_row(self, action_item_id: int) -> dict[str, Any]:
+        try:
+            return self.client.get_one(
+                f"IActionItemExecutionTasks({int(action_item_id)})?$select=Id,Subject,Status"
+                "&$expand=Assignee($select=Id,Name),AssignedBy($select=Id,Name),Supervisor($select=Id,Name),Author($select=Id,Name)"
+            )
+        except DirectumError as exc:
+            if exc.status_code in (400, 404):
+                raise CreateError(f"Поручение (задача) с id {action_item_id} не найдено. Передайте id задачи "
+                                  "из реестра или досье, а не id задания.") from None
+            raise
+
     # --- общие шаги ---
 
     def _create_document(self, entity_set: str, payload: dict[str, Any], plan: dict[str, Any], body_text: str | None) -> dict[str, Any]:
@@ -444,6 +518,24 @@ class DocumentCreateService:
 
     def _doc_url(self, document_id: int) -> str | None:
         return self.client.build_document_card_url(document_id) if hasattr(self.client, "build_document_card_url") else None
+
+
+def _id(value: Any) -> int | None:
+    ident = value.get("Id") if isinstance(value, dict) else None
+    return int(ident) if isinstance(ident, int) else None
+
+
+def _name_of(value: Any) -> str | None:
+    name = value.get("Name") if isinstance(value, dict) else None
+    return name if isinstance(name, str) and name.strip() else None
+
+
+def _plus_workdays(day: date, count: int) -> date:
+    while count > 0:
+        day += timedelta(days=1)
+        if day.weekday() < 5:
+            count -= 1
+    return day
 
 
 def _reason(exc: Exception) -> str:

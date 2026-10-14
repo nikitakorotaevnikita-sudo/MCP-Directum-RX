@@ -7,7 +7,7 @@ from src.services.document_create import CreateError
 from tests.unit.mcp_fakes import FakeProvider, call_tool, error_text, list_tools, payload
 
 WRITE_TOOLS = {"create_outgoing_letter", "create_legal_act", "create_action_item", "send_document_for_review",
-               "send_document_for_approval", "create_task"}
+               "send_document_for_approval", "create_task", "request_action_item_report"}
 
 
 class FakeCreate:
@@ -27,6 +27,14 @@ class FakeCreate:
     def plan_action_item(self, document_id, assignee_id, assigned_by_id, deadline, text, **kw):
         return {"operation": "action_item", "document": document_id, "assignee": assignee_id,
                 "assigned_by": {"id": assigned_by_id, "name": "Концева"}, "deadline": deadline.isoformat(), "text": text}
+
+    def plan_report_request(self, action_item_id, requested_by_id, deadline=None, text=None, assignee_id=None):
+        return {"operation": "report_request", "action_item": {"id": action_item_id}, "author": {"id": requested_by_id, "name": "Концева"},
+                "assignee": assignee_id, "deadline": deadline.isoformat() if deadline else None, "text": text}
+
+    def create_report_request(self, plan):
+        self.created.append(plan)
+        return {"task_id": 9100, "started": True, "warnings": []}
 
     def create_action_item(self, plan):
         self.created.append(plan)
@@ -105,3 +113,13 @@ def test_action_item_tool():
     done = payload(call_tool(server, "create_action_item", {**args, "confirm_token": preview["confirm_token"]}))
     assert done["task_id"] == 9001 and done["started"] is True
     assert "Укажите срок" in error_text(call_tool(server, "create_action_item", {**args, "deadline": " "}))
+
+
+def test_request_report_tool():
+    server, create = make()
+    args = {"action_item_id": 80872, "on_behalf_of": "Концева", "deadline": "2026-10-20", "assignee": "Иванов"}
+    preview = payload(call_tool(server, "request_action_item_report", args))
+    assert preview["will_create"] == {"operation": "report_request", "action_item": {"id": 80872},
+                                      "author": {"id": 63, "name": "Концева"}, "assignee": 77, "deadline": "2026-10-20", "text": None}
+    done = payload(call_tool(server, "request_action_item_report", {**args, "confirm_token": preview["confirm_token"]}))
+    assert done["task_id"] == 9100 and create.created[-1]["operation"] == "report_request"

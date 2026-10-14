@@ -203,3 +203,25 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
                 _required_person(s, on_behalf_of, "от чьего имени (on_behalf_of)"), day, text, document_ids, importance),
             lambda s, plan: s.document_create.create_task(plan),
         )
+
+    @mcp.tool(annotations=WRITE)
+    async def request_action_item_report(
+        action_item_id: Annotated[int, Field(description="Id поручения (задачи) из реестра контроля или досье", gt=0)],
+        on_behalf_of: Annotated[str, Field(description="Кто запрашивает (выдавший поручение или контролёр): ФИО или id")],
+        ctx: Context,
+        deadline: Annotated[str | None, Field(description="Срок отчёта, YYYY-MM-DD; пусто — через 2 рабочих дня")] = None,
+        text: Annotated[str | None, Field(description="Что именно доложить; пусто — «Прошу представить отчёт о ходе исполнения»")] = None,
+        assignee: Annotated[str | None, Field(description="У кого запросить; пусто — ответственный исполнитель поручения")] = None,
+        confirm_token: Token = None,
+    ) -> dict:
+        """Запросить отчёт по поручению (кнопка «Запросить отчёт» в RX): ответственному исполнителю приходит задание
+        дать статус. Запрашивать может только выдавший поручение или его контролёр (on_behalf_of). Ответ виден в
+        get_control_dossier (report_requests). Двухшаговый с confirm_token."""
+        day = parse_iso_date(deadline, "deadline")
+        return await two_step(
+            ctx, "request_action_item_report", confirm_token,
+            lambda s: s.document_create.plan_report_request(
+                action_item_id, _required_person(s, on_behalf_of, "кто запрашивает отчёт (on_behalf_of)"),
+                deadline=day, text=text, assignee_id=_person_id(s, assignee)),
+            lambda s, plan: s.document_create.create_report_request(plan),
+        )

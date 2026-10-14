@@ -113,3 +113,10 @@ def test_cli(tmp_path):
     assert code == 2 and "досье" in err
     code, _, err = run_cli()
     assert code == 2 and "Ошибка аргументов" in err
+
+
+def test_open_report_request_is_warning():
+    d = dossier()
+    d["report_requests"] = [{"status": "InProcess"}, {"status": "Completed"}]
+    r = mod.check(d)
+    assert r["ready"] and any("незакрытые запросы отчёта: 1" in w for w in r["warnings"])
