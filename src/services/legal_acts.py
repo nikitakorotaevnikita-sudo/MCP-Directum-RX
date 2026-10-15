@@ -10,16 +10,19 @@ from src.models.schemas import (
     LegalActsOnApproval,
     LegalActSearchResult,
     LegalActSummary,
+    RelatedDocument,
 )
 from src.services.directum_client import DirectumError
+from src.services.content_search import stems
 from src.services.document_search import text_condition, text_stems
 
 ENTITY_SET = "ILegalActsLegalDocumentBases"
 TASKS_SET = "ILegalActsApprovalTasks"
 SELECT = (
     "Id,Name,Subject,RegistrationNumber,RegistrationDate,IsNormative,IsPublication,DateOfPublication,"
-    "PlaceOfPublication,RegNumberLegalAct,LifeCycleState,InternalApprovalState,HasVersions"
+    "PlaceOfPublication,RegNumberLegalAct,LifeCycleState,InternalApprovalState,HasVersions,ProjectId,HasRelations,Created"
 )
+DOCS_SET = "IOfficialDocuments"
 DETAIL_EXPAND = "DocumentKind($select=Name),PreparedBy($select=Name),Department($select=Name),OurSignatory($select=Name)"
 TASK_EXPAND = (
     "Curator($select=Name),InternalApprovers($expand=Approver($select=Name)),"
@@ -57,6 +60,16 @@ TASK_STATUSES = {
 }
 # Номер принятого акта в проекте хранится строкой: «От 24.06.2026 № 015/26».
 ADOPTED_NUMBER = re.compile(r"№\s*([^\s,;]+)")
+ADOPTED_DATE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})")
+# Связи документа (панель «Связи» в RX) сервис интеграции не публикует: читаются только приложения
+# (ведущий документ) и связь проект ↔ акт (ProjectId). Остальное — кандидаты по названию и периоду.
+RELATED_BEFORE_DAYS = 60
+RELATED_AFTER_DAYS = 180
+RELATED_QUERY_STEMS = 6
+RELATED_MIN_SHARED = 3
+RELATED_LIMIT = 10
+GENERIC_STEMS = {"проект", "правов", "постан", "распор", "решени", "положе", "порядк", "област", "муници",
+                 "внесен", "измене", "регион", "докуме", "записк", "объявл"}
 MAX_TASKS = 50
 CHUNK = 20
 
@@ -86,6 +99,21 @@ def _chunks(items: list[int]):
 def adopted_number(text: str | None) -> str | None:
     match = ADOPTED_NUMBER.search(text or "")
     return match.group(1) if match else None
+
+
+def adopted_date(text: str | None) -> date | None:
+    match = ADOPTED_DATE.search(text or "")
+    if not match:
+        return None
+    try:
+        return date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+    except ValueError:
+        return None
+
+
+def title_stems(text: str | None) -> list[str]:
+    """Различительные основы названия акта — без служебных слов вроде «проект», «постановление»."""
+    return [item for item in dict.fromkeys(stems(text or "")) if item not in GENERIC_STEMS]
 
 
 class LegalActsService:
@@ -155,30 +183,22 @@ class LegalActsService:
             has_text=bool(row.get("HasVersions")),
         )
         if act.is_project:
-            number = adopted_number(act.adopted_act_number)
-            if number:
-                found = self.client.query(
-                    ENTITY_SET,
-                    filter_=f"RegistrationNumber eq '{_literal(number)}' and {KIND_FILTERS['act']}",
-                    select=SELECT,
-                    expand="DocumentKind($select=Name)",
-                    top=1,
-                )
-                detail.adopted_act = self._summary(found[0]) if found else None
-        elif act.registration_number:
-            candidates = self.client.query(
-                ENTITY_SET,
-                filter_=f"contains(RegNumberLegalAct,'{_literal(act.registration_number)}') and {KIND_FILTERS['project']}",
-                select=SELECT,
-                expand="DocumentKind($select=Name)",
-                top=10,
+            detail.adopted_act = self._adopted_act(act)
+        else:
+            detail.projects = self._projects(act, row.get("ProjectId"))
+        detail.has_relations = bool(row.get("HasRelations"))
+        detail.addenda = self._addenda(act.id)
+        if detail.has_relations:
+            known = {act.id, *(item.id for item in detail.addenda), *(item.id for item in detail.projects)}
+            if detail.adopted_act:
+                known.add(detail.adopted_act.id)
+            detail.possibly_related = self._possibly_related(row, known)
+            detail.relations_note = (
+                "В карточке RX у документа есть связи (панель «Связи»: заключения и отчёты, правовой акт, прочие), "
+                "но сервис интеграции RX их не отдаёт. Подтверждены только приложения (addenda) и связь проект ↔ "
+                "принятый акт. possibly_related — документы с похожим названием за тот же период: связь НЕ "
+                "подтверждена, называй их «вероятно связанные». Полный список связей — в карточке: " + (act.url or "")
             )
-            # contains найдёт и «1015/26» для «015/26» — сверяем номер точно.
-            detail.projects = [
-                self._summary(item)
-                for item in candidates
-                if adopted_number(item.get("RegNumberLegalAct")) == act.registration_number
-            ]
         tasks = self.client.query(
             TASKS_SET,
             filter_=f"AttachmentDetails/any(a: a/AttachmentId eq {int(act_id)})",
@@ -215,6 +235,104 @@ class LegalActsService:
         return LegalActsOnApproval(items=approvals[:limit], total=len(approvals), truncated=len(tasks) >= MAX_TASKS)
 
     # --- внутреннее ----------------------------------------------------
+
+    def _adopted_act(self, project: LegalActSummary) -> LegalActSummary | None:
+        """Принятый акт проекта: у акта ProjectId = Id проекта. Номер из «От 14.10.2026 № 001/26» — запасной путь;
+        номера повторяются по годам, поэтому сверяется и дата."""
+        rows = self.client.query(
+            ENTITY_SET, filter_=f"ProjectId eq {project.id} and {KIND_FILTERS['act']}", select=SELECT,
+            expand="DocumentKind($select=Name)", orderby="Id desc", top=1,
+        )
+        if rows:
+            return self._summary(rows[0])
+        number = adopted_number(project.adopted_act_number)
+        if not number:
+            return None
+        rows = self.client.query(
+            ENTITY_SET, filter_=f"RegistrationNumber eq '{_literal(number)}' and {KIND_FILTERS['act']}", select=SELECT,
+            expand="DocumentKind($select=Name)", orderby="Id desc", top=10,
+        )
+        candidates = [self._summary(item) for item in rows]
+        day = adopted_date(project.adopted_act_number)
+        if day:
+            candidates = [item for item in candidates if item.registration_date == day]
+        return candidates[0] if len(candidates) == 1 else None
+
+    def _projects(self, act: LegalActSummary, project_id: Any) -> list[LegalActSummary]:
+        if project_id:
+            found = self._documents([int(project_id)])
+            if found:
+                return list(found.values())
+        if not act.registration_number:
+            return []
+        candidates = self.client.query(
+            ENTITY_SET,
+            filter_=f"contains(RegNumberLegalAct,'{_literal(act.registration_number)}') and {KIND_FILTERS['project']}",
+            select=SELECT,
+            expand="DocumentKind($select=Name)",
+            top=10,
+        )
+        # contains найдёт и «1015/26» для «015/26» — сверяем номер точно, а дату — если она указана.
+        return [
+            self._summary(item)
+            for item in candidates
+            if adopted_number(item.get("RegNumberLegalAct")) == act.registration_number
+            and adopted_date(item.get("RegNumberLegalAct")) in (None, act.registration_date)
+        ]
+
+    def _addenda(self, document_id: int) -> list[RelatedDocument]:
+        try:
+            rows = self.client.query(
+                DOCS_SET, filter_=f"LeadingDocument/Id eq {int(document_id)}", select="Id,Name,Created",
+                expand="DocumentKind($select=Name)", orderby="Id asc", top=50,
+            )
+        except DirectumError:
+            return []
+        return [self._related(row, "приложение (ведущий документ — этот акт)") for row in rows]
+
+    def _possibly_related(self, row: dict[str, Any], known: set[int]) -> list[RelatedDocument]:
+        title = title_stems(row.get("Subject") or row.get("Name"))
+        if not title:
+            return []
+        created = _parse(row.get("Created"))
+        conditions = [f"Id ne {int(row['Id'])}", "HasRelations eq true"]
+        if created:
+            conditions += [f"Created ge {(created - timedelta(days=RELATED_BEFORE_DAYS)).isoformat()}",
+                           f"Created lt {(created + timedelta(days=RELATED_AFTER_DAYS)).isoformat()}"]
+        words = " or ".join(f"contains(Name,'{_literal(item)}')" for item in title[:RELATED_QUERY_STEMS])
+        try:
+            rows = self.client.query(
+                DOCS_SET, filter_=" and ".join(conditions + [f"({words})"]), select="Id,Name,Created",
+                expand="DocumentKind($select=Name)", orderby="Created desc", top=50,
+            )
+        except DirectumError:
+            return []
+        need = min(RELATED_MIN_SHARED, len(title))
+        scored = []
+        for item in rows:
+            if int(item["Id"]) in known:
+                continue
+            name_stems = set(stems(item.get("Name") or ""))
+            shared = [stem for stem in title if stem in name_stems]
+            if len(shared) >= need:
+                scored.append((len(shared), item, shared))
+        scored.sort(key=lambda entry: (-entry[0], int(entry[1]["Id"])))
+        return [
+            self._related(item, "похожее название и период (связь не подтверждена): " + ", ".join(shared))
+            for _, item, shared in scored[:RELATED_LIMIT]
+        ]
+
+    def _related(self, row: dict[str, Any], reason: str) -> RelatedDocument:
+        created = _parse(row.get("Created"))
+        document_id = int(row["Id"])
+        return RelatedDocument(
+            id=document_id,
+            name=row.get("Name") or "",
+            kind=_name(row.get("DocumentKind")),
+            created=created.astimezone(self.tz).date() if created else None,
+            url=self.client.build_document_card_url(document_id) if hasattr(self.client, "build_document_card_url") else None,
+            reason=reason,
+        )
 
     def _documents(self, ids: list[int]) -> dict[int, LegalActSummary]:
         unique = list(dict.fromkeys(int(item) for item in ids if item is not None))

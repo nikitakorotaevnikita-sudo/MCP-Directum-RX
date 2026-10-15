@@ -54,8 +54,11 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         ctx: Context,
     ) -> dict:
         """Карточка правового акта: реквизиты, нормативный ли, публикация, кто подготовил и подписант; связь
-        проект ↔ принятый акт; ход согласования — задачи, куратор, согласующие и у кого сейчас (current_steps:
-        действие, исполнитель, сколько дней ждёт, просрочено ли). Текст акта — get_document_text(act_id)."""
+        проект ↔ принятый акт (adopted_act / projects, по ProjectId); ход согласования — задачи, куратор,
+        согласующие и у кого сейчас (current_steps: действие, исполнитель, сколько дней ждёт, просрочено ли).
+        Связанные документы: addenda — приложения (подтверждены); possibly_related — похожие по названию и периоду,
+        связь НЕ подтверждена. Панель «Связи» RX сервис интеграции не отдаёт: при has_relations=true НЕ говори
+        «других связей нет» — перескажи relations_note и дай ссылку на карточку. Текст — get_document_text(act_id)."""
         return await runner.run(ctx, "get_legal_act", lambda s: to_jsonable(s.legal_acts.get(act_id)))
 
     @mcp.tool(annotations=READ_ONLY)

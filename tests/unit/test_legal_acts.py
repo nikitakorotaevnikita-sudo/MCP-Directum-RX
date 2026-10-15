@@ -55,8 +55,9 @@ ASSIGNMENTS = [
 
 
 class FakeClient:
-    def __init__(self, docs=None, tasks=None, assignments=None, count=7):
+    def __init__(self, docs=None, tasks=None, assignments=None, count=7, others=None):
         self.docs = {row["Id"]: row for row in (docs if docs is not None else [act_row()])}
+        self.others = others or []
         self.tasks = tasks if tasks is not None else [task_row()]
         self.assignments = ASSIGNMENTS if assignments is None else assignments
         self.total = count
@@ -67,6 +68,9 @@ class FakeClient:
         self.calls.append((entity_set, kwargs))
         filter_ = kwargs["filter_"]
         if entity_set == "ILegalActsLegalDocumentBases":
+            if filter_.startswith("ProjectId eq"):
+                project_id = int(filter_.split("ProjectId eq ")[1].split(" ")[0])
+                return [row for row in self.docs.values() if row.get("ProjectId") == project_id and "Проект" not in row["DocumentKind"]["Name"]]
             if "Id eq" in filter_ and "or" not in filter_ and "RegistrationNumber" not in filter_:
                 doc_id = int(filter_.split("Id eq ")[1].split(" ")[0].rstrip(")"))
                 return [self.docs[doc_id]] if doc_id in self.docs else []
@@ -79,6 +83,11 @@ class FakeClient:
             if "contains(RegNumberLegalAct" in filter_:
                 return [row for row in self.docs.values() if row.get("RegNumberLegalAct")]
             return list(self.docs.values())
+        if entity_set == "IOfficialDocuments":
+            if filter_.startswith("LeadingDocument/Id eq"):
+                leading = int(filter_.split("eq ")[1])
+                return [row for row in self.others if row.get("Leading") == leading]
+            return [row for row in self.others if not row.get("Leading")]
         if entity_set == "ILegalActsApprovalTasks":
             return self.tasks
         if entity_set == "IAssignments":
@@ -190,7 +199,8 @@ def test_get_uses_attachment_filter_for_tasks():
 
 def test_get_project_links_adopted_act_by_number():
     project = act_row(RegNumberLegalAct="От 24.06.2026 № 015/26")
-    adopted = act_row(doc_id=15751, kind="Правовой акт", RegistrationNumber="015/26", InternalApprovalState="Signed")
+    adopted = act_row(doc_id=15751, kind="Правовой акт", RegistrationNumber="015/26", InternalApprovalState="Signed",
+                      RegistrationDate="2026-06-24T00:00:00+04:00")
 
     detail = service(FakeClient(docs=[project, adopted], tasks=[])).get(15213)
 
@@ -198,8 +208,66 @@ def test_get_project_links_adopted_act_by_number():
     assert detail.adopted_act.approval_state_label == "Подписан"
 
 
+def test_get_project_prefers_project_id_over_number():
+    # Живой случай 16789: номер 001/26 повторяется по годам — акт «Тест» от 19.01.2026 не должен подставиться.
+    project = act_row(doc_id=16789, RegNumberLegalAct="От 14.10.2026 № 001/26")
+    old = act_row(doc_id=12172, kind="Правовой акт", RegistrationNumber="001/26", ProjectId=11954,
+                  RegistrationDate="2026-01-19T00:00:00+04:00")
+    adopted = act_row(doc_id=16808, kind="Правовой акт", RegistrationNumber="001/26", ProjectId=16789,
+                      RegistrationDate="2026-10-14T00:00:00+04:00")
+
+    assert service(FakeClient(docs=[project, old, adopted], tasks=[])).get(16789).adopted_act.id == 16808
+    # Без ProjectId номер сверяется вместе с датой: чужой акт с тем же номером не берётся.
+    assert service(FakeClient(docs=[project, old], tasks=[])).get(16789).adopted_act is None
+
+
+def test_get_act_links_project_by_project_id():
+    act = act_row(doc_id=16808, kind="Правовой акт", RegistrationNumber="001/26", ProjectId=16789)
+    project = act_row(doc_id=16789, RegNumberLegalAct="От 14.10.2026 № 001/26")
+
+    detail = service(FakeClient(docs=[act, project], tasks=[])).get(16808)
+
+    assert [item.id for item in detail.projects] == [16789]
+
+
+def test_get_relations_addenda_and_possibly_related():
+    project = act_row(doc_id=16789, Subject="О региональном стандарте максимально допустимой доли расходов граждан",
+                      HasRelations=True, Created="2026-10-14T13:48:22+04:00")
+    others = [
+        {"Id": 16900, "Name": "Приложение 1 к проекту", "Created": "2026-10-14T15:00:00+04:00", "Leading": 16789,
+         "DocumentKind": {"Name": "Приложение к документу"}},
+        {"Id": 16809, "Name": "Заключение ОРВ «ОРВ о стандарте доли расходов граждан»", "Created": "2026-10-14T14:20:06+04:00",
+         "DocumentKind": {"Name": "Заключение ОРВ"}},
+        {"Id": 16805, "Name": "Пояснительная записка к проекту о региональном стандарте максимально допустимой доли",
+         "Created": "2026-10-14T13:52:13+04:00", "DocumentKind": {"Name": "Пояснительная записка"}},
+        {"Id": 16817, "Name": "Пояснительная записка к новому постановлению", "Created": "2026-10-14T14:53:11+04:00",
+         "DocumentKind": {"Name": "Пояснительная записка"}},
+    ]
+    client = FakeClient(docs=[project], tasks=[], others=others)
+
+    detail = service(client).get(16789)
+
+    assert detail.has_relations is True
+    assert [(d.id, d.kind) for d in detail.addenda] == [(16900, "Приложение к документу")]
+    assert [d.id for d in detail.possibly_related] == [16805, 16809]
+    assert "не подтверждена" in detail.possibly_related[0].reason and detail.possibly_related[0].url == "https://rx/doc/16805"
+    assert "не отдаёт" in detail.relations_note and "https://rx/doc/16789" in detail.relations_note
+    related_call = next(kw for es, kw in client.calls if es == "IOfficialDocuments" and "HasRelations" in kw["filter_"])
+    assert "Id ne 16789" in related_call["filter_"] and "contains(Name,'станда')" in related_call["filter_"]
+    assert "Created ge 2026-08-15T13:48:22+04:00" in related_call["filter_"]
+
+
+def test_get_without_relations_skips_guessing():
+    client = FakeClient(docs=[act_row(HasRelations=False)], tasks=[])
+
+    detail = service(client).get(15213)
+
+    assert detail.possibly_related == [] and detail.relations_note == ""
+    assert not any("HasRelations" in kw["filter_"] for es, kw in client.calls if es == "IOfficialDocuments")
+
+
 def test_get_act_links_back_to_projects():
-    act = act_row(doc_id=15751, kind="Правовой акт", RegistrationNumber="015/26")
+    act = act_row(doc_id=15751, kind="Правовой акт", RegistrationNumber="015/26", RegistrationDate="2026-06-24T00:00:00+04:00")
     project = act_row(doc_id=15749, RegNumberLegalAct="От 24.06.2026 № 015/26")
     other = act_row(doc_id=15700, RegNumberLegalAct="От 01.01.2026 № 1015/26")
 

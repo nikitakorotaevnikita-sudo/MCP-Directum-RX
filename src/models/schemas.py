@@ -310,6 +310,16 @@ class LegalActApproval(BaseModel):
     document: LegalActSummary | None = None
 
 
+class RelatedDocument(BaseModel):
+    id: int
+    name: str
+    kind: str | None = None
+    created: date | None = None
+    url: str | None = None
+    # Почему документ показан: «приложение» (ведущий документ) или совпадение названия и периода.
+    reason: str = ""
+
+
 class LegalActDetail(BaseModel):
     act: LegalActSummary
     prepared_by: str | None = None
@@ -318,6 +328,11 @@ class LegalActDetail(BaseModel):
     has_text: bool = False
     adopted_act: LegalActSummary | None = None
     projects: list[LegalActSummary] = Field(default_factory=list)
+    # В карточке RX есть связи (панель «Связи»); сервис интеграции сами связи не отдаёт.
+    has_relations: bool = False
+    addenda: list[RelatedDocument] = Field(default_factory=list)
+    possibly_related: list[RelatedDocument] = Field(default_factory=list)
+    relations_note: str = ""
     approvals: list[LegalActApproval] = Field(default_factory=list)
 
 

@@ -58,6 +58,8 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
     проверки качества — list_citizen_request_answers (по 5, страницами через next_skip).
 11. Нормативные правовые акты и проекты (модуль «Правовые акты» RX): find_legal_acts, get_legal_act,
     list_legal_acts_on_approval (где застряло согласование). Федеральных законов в RX нет — не выдавай их за данные RX.
+    Связи документа (панель «Связи» RX) через API не читаются: get_legal_act даёт приложения (addenda) и
+    вероятно связанные (possibly_related, не подтверждены); при has_relations=true не утверждай, что связей нет.
 12. Контроль исполнения: контрольных карт нет — объект контроля само поручение с признаком «На контроле».
     Реестр — list_controlled_action_items, всё по одному поручению (дерево, продления, приёмка) — get_control_dossier.
     Проект резолюции по входящему — get_resolution_history автора + текст документа (get_document_text).
