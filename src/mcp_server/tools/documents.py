@@ -135,6 +135,43 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         return await runner.run(ctx, "find_documents_by_content", action)
 
     @mcp.tool(annotations=READ_ONLY)
+    async def get_document_relations(
+        document_id: Annotated[int, Field(description="Id документа", gt=0)],
+        ctx: Context,
+        relation: Annotated[
+            str | None,
+            Field(description="Тип связи или группа, как в панели «Связи»: «Заключения и отчеты», «Приложения», "
+                              "«Ответное письмо», «Прочие», «Переписка» или системное имя (Addendum, Response, Basis…); "
+                              "несколько — через запятую; пусто — все"),
+        ] = None,
+        direction: Annotated[
+            Literal["both", "from", "to"],
+            Field(description="both — все; from — документ источник связи; to — документ цель связи"),
+        ] = "both",
+        depth: Annotated[int, Field(description="1 — только прямые связи; 2 — ещё связи связанных документов", ge=1, le=2)] = 1,
+    ) -> dict:
+        """Связи документа — как панель «Связи» в карточке RX: приложения, ответы и «в ответ на», основания,
+        заключения и отчёты, отменяющие и изменяющие акты, переписка, прочие. groups — по группам панели
+        (group, relation, direction) с документами: id, name, kind, рег. номер, has_text, url. Это подтверждённые
+        связи RX, а не догадки. depth=2 — ещё один уровень (second_level) для «покажи всё по этому вопросу».
+        Список типов связей — list_relation_types."""
+        def action(s):
+            try:
+                return s.document_relations.get(document_id, relation=relation, direction=direction, depth=depth)
+            except ValueError as exc:
+                raise ToolError(str(exc)) from None
+
+        return await runner.run(ctx, "get_document_relations", action)
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def list_relation_types(ctx: Context) -> dict:
+        """Типы связей документов RX: системное имя (name), название (title) и заголовки групп панели «Связи»
+        для обеих сторон (source_group, target_group). Нужно, чтобы выбрать relation в get_document_relations."""
+        return await runner.run(
+            ctx, "list_relation_types", lambda s: {"items": s.document_relations.relation_types()}
+        )
+
+    @mcp.tool(annotations=READ_ONLY)
     async def get_doc_body_base64(
         document_id: Annotated[int, Field(description="Id документа", gt=0)],
         ctx: Context,

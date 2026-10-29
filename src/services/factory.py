@@ -16,6 +16,7 @@ from src.services.directum_client import DirectumClient
 from src.services.discipline_analytics import DisciplineAnalyticsService
 from src.services.document_control import DocumentControlService
 from src.services.document_create import DocumentCreateService
+from src.services.document_relations import DocumentRelationsService
 from src.services.document_search import DocumentSearchService
 from src.services.document_text import DocumentTextService
 from src.services.legal_acts import LegalActsService
@@ -52,6 +53,7 @@ class DirectumServices:
     document_create: DocumentCreateService | None = None
     citizen_answers: CitizenAnswersService | None = None
     content_search: ContentSearchService | None = None
+    document_relations: DocumentRelationsService | None = None
     service_account: bool = False
     # Отпечаток кредов текущего запроса (привязка токена подтверждения записи) и обезличенный id для аудита.
     credentials_fingerprint: str = ""
@@ -75,6 +77,7 @@ def build_directum_services(
     discipline = DisciplineAnalyticsService(client, action_items)
     document_text = DocumentTextService(client)
     qa_search = QASearchService(client)
+    relations = DocumentRelationsService(client, tz=tz)
     return DirectumServices(
         client=client,
         current_user=current_user,
@@ -91,10 +94,11 @@ def build_directum_services(
         citizen_request_analytics=CitizenRequestAnalyticsService(client, tz=tz),
         subordination=SubordinationService(client, current_user),
         department_discipline=DepartmentDisciplineService(discipline),
-        legal_acts=LegalActsService(client, tz=tz),
+        legal_acts=LegalActsService(client, tz=tz, relations=relations),
         document_control=DocumentControlService(client, tz=tz),
         resolution_history=ResolutionHistoryService(client, tz=tz),
         document_create=DocumentCreateService(client, tz=tz, grant_rights_guid=grant_rights_guid),
         citizen_answers=CitizenAnswersService(client, document_text, tz=tz),
         content_search=ContentSearchService(client, document_text, qa_search, tz=tz),
+        document_relations=relations,
     )

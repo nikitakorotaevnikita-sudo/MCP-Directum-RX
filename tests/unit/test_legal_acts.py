@@ -322,3 +322,66 @@ def test_on_approval_empty():
     result = service(FakeClient(tasks=[])).on_approval()
 
     assert result.items == [] and result.total == 0
+
+
+class FakeRelations:
+    def __init__(self, rows=None, fail=False):
+        self.rows = rows or []
+        self.fail = fail
+
+    def get_rows(self, document_id):
+        if self.fail:
+            raise DirectumError("нет функций", 404)
+        return self.rows
+
+    def item(self, row):
+        return {"id": row["RelatedId"], "name": row["RelatedName"], "kind": row.get("RelatedKind"),
+                "registration_number": row.get("RegistrationNumber"), "registration_date": None,
+                "created": "2026-10-14", "has_text": True, "url": f"https://rx/doc/{row['RelatedId']}"}
+
+
+def rel_row(related, name, group, direction="From"):
+    return {"RelatedId": related, "RelatedName": f"Документ {related}", "RelationName": name, "GroupTitle": group,
+            "Direction": direction, "RelatedKind": "Простой документ"}
+
+
+def test_get_uses_confirmed_relations():
+    project = act_row(doc_id=16789, RegNumberLegalAct="От 14.10.2026 № 001/26", HasRelations=True)
+    adopted = act_row(doc_id=16808, kind="Правовой акт", RegistrationNumber="001/26", ProjectId=16789,
+                      RegistrationDate="2026-10-14T00:00:00+04:00")
+    relations = FakeRelations([
+        rel_row(16805, "Simple relation", "Прочие"),
+        rel_row(16809, "ConclusionsAndReports", "Заключения и отчеты"),
+        rel_row(16900, "Addendum", "Приложения"),
+        rel_row(16808, "LegalAct", "Нормативный правовой акт", "To"),
+    ])
+    client = FakeClient(docs=[project, adopted], tasks=[])
+
+    detail = LegalActsService(client, tz=STAND_TZ, now=lambda: NOW, relations=relations).get(16789)
+
+    assert detail.adopted_act.id == 16808
+    assert [(d.id, d.group, d.relation) for d in detail.related] == [
+        (16805, "Прочие", "Simple relation"), (16809, "Заключения и отчеты", "ConclusionsAndReports")]
+    assert [d.id for d in detail.addenda] == [16900]
+    assert detail.possibly_related == [] and detail.relations_note == ""
+    assert not any(es == "IOfficialDocuments" for es, _ in client.calls)  # без подбора по названию
+
+
+def test_get_adopted_act_from_relation_without_project_id():
+    project = act_row(doc_id=16789, HasRelations=True)
+    adopted = act_row(doc_id=16808, kind="Правовой акт", RegistrationNumber="001/26")
+    relations = FakeRelations([rel_row(16808, "LegalAct", "Нормативный правовой акт", "To")])
+
+    detail = LegalActsService(FakeClient(docs=[project, adopted], tasks=[]), tz=STAND_TZ, now=lambda: NOW,
+                              relations=relations).get(16789)
+
+    assert detail.adopted_act.id == 16808 and detail.related == []
+
+
+def test_get_falls_back_when_relations_unavailable():
+    project = act_row(doc_id=16789, Subject="О региональном стандарте максимально допустимой доли расходов граждан",
+                      HasRelations=True, Created="2026-10-14T13:48:22+04:00")
+    detail = LegalActsService(FakeClient(docs=[project], tasks=[]), tz=STAND_TZ, now=lambda: NOW,
+                              relations=FakeRelations(fail=True)).get(16789)
+
+    assert detail.related == [] and "не отдаёт" in detail.relations_note

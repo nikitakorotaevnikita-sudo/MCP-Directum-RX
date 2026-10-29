@@ -42,7 +42,8 @@
   (реестр: state, due, supervisor="me"), get_control_dossier (дерево исполнения, продления, приёмка).
 - Документы: find_documents_by_content (по фрагменту текста — один вызов, без перебора формулировок); find_documents (поиск по признакам, несколько вариантов с match_reasons; relaxed — какие условия
   ослаблены), search_documents, get_document, get_document_text (текст), list_documents_by_counterparty,
-  list_letters, ask_documents (вопрос по содержанию; при status in_progress — get_ask_documents_result).
+  list_letters, ask_documents (вопрос по содержанию; при status in_progress — get_ask_documents_result);
+  get_document_relations — связи документа, как панель «Связи» (ответы, основания, приложения, заключения).
 - Обращения граждан: get_citizen_request_status (status_text — готовая фраза), list_citizen_requests_due (горящие),
   get_citizen_requests_analytics (по классификатору), search_citizen_request_classifier (коды). Классификатор:
   раздел → тематика → тема → вопрос; в RX поле Topic — тематика, Theme — тема. requests — обращения, questions —

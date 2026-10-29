@@ -119,8 +119,10 @@ def title_stems(text: str | None) -> list[str]:
 class LegalActsService:
     """Нормативные правовые акты модуля LegalActs: поиск, карточка со связями и ход согласования."""
 
-    def __init__(self, client: Any, tz: tzinfo | None = None, now: Callable[[], datetime] | None = None):
+    def __init__(self, client: Any, tz: tzinfo | None = None, now: Callable[[], datetime] | None = None,
+                 relations: Any | None = None):
         self.client = client
+        self.relations = relations
         self.tz = tz or datetime.now().astimezone().tzinfo
         self._now = now or (lambda: datetime.now(timezone.utc))
 
@@ -187,8 +189,10 @@ class LegalActsService:
         else:
             detail.projects = self._projects(act, row.get("ProjectId"))
         detail.has_relations = bool(row.get("HasRelations"))
-        detail.addenda = self._addenda(act.id)
-        if detail.has_relations:
+        confirmed = detail.has_relations and self._fill_relations(detail)
+        if not confirmed:
+            detail.addenda = self._addenda(act.id)
+        if detail.has_relations and not confirmed:
             known = {act.id, *(item.id for item in detail.addenda), *(item.id for item in detail.projects)}
             if detail.adopted_act:
                 known.add(detail.adopted_act.id)
@@ -279,6 +283,39 @@ class LegalActsService:
             if adopted_number(item.get("RegNumberLegalAct")) == act.registration_number
             and adopted_date(item.get("RegNumberLegalAct")) in (None, act.registration_date)
         ]
+
+    def _fill_relations(self, detail: LegalActDetail) -> bool:
+        """Связи из панели «Связи» RX (DocumentProcessing/GetDocumentRelations). False — функций на стенде нет."""
+        if self.relations is None:
+            return False
+        try:
+            rows = self.relations.get_rows(detail.act.id)
+        except DirectumError:
+            return False
+        # Связь «Проект НПА ↔ Нормативный правовой акт» — запасной путь, если ProjectId не заполнен.
+        linked = [int(row["RelatedId"]) for row in rows if row.get("RelationName") == "LegalAct"]
+        if linked and detail.act.is_project and detail.adopted_act is None:
+            found = self._documents(linked[:1])
+            detail.adopted_act = next(iter(found.values()), None)
+        elif linked and not detail.act.is_project and not detail.projects:
+            detail.projects = list(self._documents(linked).values())
+        known = {item.id for item in detail.projects}
+        if detail.adopted_act:
+            known.add(detail.adopted_act.id)
+        for row in rows:
+            item = self.relations.item(row)
+            related = RelatedDocument(
+                id=item["id"], name=item["name"], kind=item["kind"],
+                created=date.fromisoformat(item["created"]) if item["created"] else None,
+                url=item["url"], reason=row.get("GroupTitle") or "", group=row.get("GroupTitle"),
+                relation=row.get("RelationName"), registration_number=item["registration_number"],
+                has_text=item["has_text"],
+            )
+            if row.get("RelationName") == "Addendum":
+                detail.addenda.append(related)
+            elif related.id not in known or row.get("RelationName") != "LegalAct":
+                detail.related.append(related)
+        return True
 
     def _addenda(self, document_id: int) -> list[RelatedDocument]:
         try:

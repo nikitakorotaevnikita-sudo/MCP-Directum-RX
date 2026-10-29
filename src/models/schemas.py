@@ -316,8 +316,12 @@ class RelatedDocument(BaseModel):
     kind: str | None = None
     created: date | None = None
     url: str | None = None
-    # Почему документ показан: «приложение» (ведущий документ) или совпадение названия и периода.
+    # Почему документ показан: группа панели «Связи» или (запасной путь) совпадение названия и периода.
     reason: str = ""
+    group: str | None = None
+    relation: str | None = None
+    registration_number: str | None = None
+    has_text: bool | None = None
 
 
 class LegalActDetail(BaseModel):
@@ -331,6 +335,8 @@ class LegalActDetail(BaseModel):
     # В карточке RX есть связи (панель «Связи»); сервис интеграции сами связи не отдаёт.
     has_relations: bool = False
     addenda: list[RelatedDocument] = Field(default_factory=list)
+    # Подтверждённые связи RX (кроме приложений), с заголовком группы панели «Связи».
+    related: list[RelatedDocument] = Field(default_factory=list)
     possibly_related: list[RelatedDocument] = Field(default_factory=list)
     relations_note: str = ""
     approvals: list[LegalActApproval] = Field(default_factory=list)
