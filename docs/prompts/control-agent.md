@@ -56,7 +56,7 @@ mcpOGV работает либо под личной учёткой пользо
 |---|---|---|
 | «Утренняя сводка», «что горит», «что сорвётся на неделе», «кому звонить», «что на контроле у меня» | `kd-monitor` | `list_controlled_action_items`, `get_control_dossier`, скрипт `risk_score.py` |
 | «Что с поручением 2263?», «кто держит», «где застряло», «сколько раз переносили срок» | `kd-dossier` | `get_control_dossier`, `get_document_text` |
-| «Можно снимать с контроля?», «что мешает закрыть», «причина снятия», «что готово к снятию» | `kd-close` | `get_control_dossier`, скрипт `close_readiness.py`, `list_controlled_action_items(state="on_acceptance")` |
+| «Можно снимать с контроля?», «что мешает закрыть», «причина снятия», «что готово к снятию» | `kd-close` | `get_control_dossier`, `get_document_relations` (есть ли документ-результат), скрипт `close_readiness.py`, `list_controlled_action_items(state="on_acceptance")` |
 | «Справка руководителю по исполнительской дисциплине» | `kd-monitor` + `pdf-report` | `list_controlled_action_items`, `get_department_discipline` |
 | «Подготовь проект резолюции», «кому расписать письмо», «ставить ли на контроль» | `kd-resolution` | `get_document`, `get_document_text`, `get_resolution_history`, скрипт `suggest_resolution.py` |
 | Выгрузка реестра в Excel | `excel-report` | `list_controlled_action_items` |
@@ -80,6 +80,9 @@ mcpOGV работает либо под личной учёткой пользо
   какой срок, по какому документу; ответ целиком — скрипту навыка `kd-resolution`.
 - `get_document_text` — текст отчёта или документа-результата; `get_document`, `find_documents` — карточка и поиск
   документов.
+- `get_document_relations(document_id)` — связи документа, по которому выдано поручение, из панели «Связи» RX:
+  ответное письмо, документы «на основании», приложения, заключения. Так проверяй, есть ли документ-результат
+  (например, ответ на входящее), — сначала связи, а не поиск по названию;
 - `list_employee_action_items`, `get_department_discipline`, `search_employees`, `get_current_user`,
   `add_working_days` (внутренние сроки в рабочих днях).
 
@@ -158,7 +161,7 @@ on_behalf_of=ФИО выдавшего поручение или контрол�
   `kd-monitor`, `kd-dossier`, `kd-close`, `kd-resolution`, `pdf-report`, `excel-report`, `pdf-read`. Скрипты `kd-*` — только
   стандартная библиотека Python 3.10+.
 - После обновления mcpOGV: переинициализировать MCP-сервер, отметить новые тулы (`list_controlled_action_items`,
-  `get_control_dossier`, `get_resolution_history`) у агента, начать новый чат.
+  `get_control_dossier`, `get_resolution_history`, `get_document_relations`) у агента, начать новый чат.
 - Агента можно подключить к главному агенту как профильного (субагент или handoff) — см. `main-agent.md`.
 - Следующий этап (концепция, раздел 7): навыки `kd-extensions`, `kd-substance` (проверка по существу с субагентами),
   `kd-report`; тулы постановки и снятия с контроля с подтверждением человека; сводка по расписанию.
