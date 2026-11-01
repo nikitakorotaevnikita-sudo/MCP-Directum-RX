@@ -26,6 +26,10 @@ Token = Annotated[
     Field(description="Пусто — только предпросмотр. Токен из предпросмотра — создать (после явного «да» пользователя)"),
 ]
 Body = Annotated[str | None, Field(description="Текст документа; абзацы — через пустую строку. Станет телом .docx")]
+ProcessTask = Annotated[int | None, Field(
+    description="Id задачи RX, в рамках которой создаётся документ (например, процесс «Создать документ»): документ "
+                "прикладывается к ней, а права выдаются «Подготовил» и автору задачи. Передавайте id задачи, не задания",
+    gt=0)]
 
 NEXT_STEP = ("Это предпросмотр: пока ничего не создано, но создать МОЖНО. Покажите пользователю, что будет создано "
              "(что, от чьего имени, кому, срок) и спросите «Создать?». После явного «да» вызовите этот же тул с теми же "
@@ -78,6 +82,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         in_response_to_document_id: Annotated[int | None, Field(description="Id входящего, на которое это ответ", gt=0)] = None,
         body_text: Body = None,
         note: Annotated[str | None, Field(description="Примечание")] = None,
+        task_id: ProcessTask = None,
         confirm_token: Token = None,
     ) -> dict:
         """Создать исходящее письмо (черновик, без регистрации и отправки): «Подготовил» = on_behalf_of, подразделение
@@ -88,7 +93,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
             lambda s: s.document_create.plan_outgoing_letter(
                 subject, correspondent, _required_person(s, on_behalf_of, "от чьего имени (on_behalf_of)"),
                 signatory_id=_person_id(s, signatory), in_response_to_id=in_response_to_document_id,
-                body_text=body_text, note=note),
+                body_text=body_text, note=note, process_task_id=task_id),
             lambda s, plan: s.document_create.create_outgoing_letter(plan, body_text),
         )
 
@@ -102,6 +107,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         signatory: Annotated[str | None, Field(description="Подписант: ФИО или id")] = None,
         body_text: Body = None,
         note: Annotated[str | None, Field(description="Примечание")] = None,
+        task_id: ProcessTask = None,
         confirm_token: Token = None,
     ) -> dict:
         """Создать проект правового акта или правовой акт (модуль «Правовые акты»): «Подготовил» = on_behalf_of,
@@ -110,7 +116,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
             ctx, "create_legal_act", confirm_token,
             lambda s: s.document_create.plan_legal_act(
                 kind, subject, _required_person(s, on_behalf_of, "от чьего имени (on_behalf_of)"), is_normative,
-                signatory_id=_person_id(s, signatory), body_text=body_text, note=note),
+                signatory_id=_person_id(s, signatory), body_text=body_text, note=note, process_task_id=task_id),
             lambda s, plan: s.document_create.create_legal_act(plan, body_text),
         )
 
@@ -252,11 +258,14 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         body_markdown: Annotated[bool, Field(description="body_text — markdown (# заголовки, - списки, **жирный**)")] = False,
         template: Annotated[str | None, Field(description="Шаблон RX (название или id) — тело по шаблону вместо body_text")] = None,
         note: Annotated[str | None, Field(description="Примечание")] = None,
+        task_id: ProcessTask = None,
         confirm_token: Token = None,
     ) -> dict:
         """Создать документ любого из поддержанных типов (черновик, без регистрации): «Подготовил» = on_behalf_of,
         подразделение и организация — из его карточки, вид, тема, реквизиты; тело — из текста (.docx) или по шаблону
-        RX. Двухшаговый: предпросмотр → подтверждение пользователя → создание с confirm_token."""
+        RX. Запрос пришёл из задачи RX (процесс «Создать документ») — передайте её id в task_id: документ приложится
+        к задаче и автор задачи получит к нему доступ. Двухшаговый: предпросмотр → подтверждение пользователя →
+        создание с confirm_token."""
         return await two_step(
             ctx, "create_document", confirm_token,
             lambda s: s.document_create.plan_document(
@@ -264,7 +273,8 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
                 document_kind=document_kind, correspondent=correspondent, signatory_id=_person_id(s, signatory),
                 addressee_id=_person_id(s, addressee), in_response_to_id=in_response_to_document_id,
                 leading_document_id=leading_document_id, is_normative=is_normative, extra_properties=extra_properties,
-                body_text=body_text, body_markdown=body_markdown, template=template, note=note),
+                body_text=body_text, body_markdown=body_markdown, template=template, note=note,
+                process_task_id=task_id),
             lambda s, plan: s.document_create.create_document(plan, body_text),
         )
 
