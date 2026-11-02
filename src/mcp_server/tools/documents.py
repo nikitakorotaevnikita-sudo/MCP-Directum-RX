@@ -1,3 +1,4 @@
+import base64
 from typing import Annotated, Literal
 
 from mcp.server.mcpserver import Context, MCPServer
@@ -7,6 +8,7 @@ from pydantic import Field
 from src.mcp_server.envelope import MAX_LIMIT, clamp_limit, list_envelope, to_jsonable
 from src.mcp_server.runner import READ_ONLY, ToolRunner
 from src.mcp_server.tools.params import parse_period
+from src.mcp_server.transfers import TransferStore
 from src.services.document_search import DOCUMENT_KINDS, DocumentCriteria, counterparty_supported
 
 Limit = Annotated[int, Field(description="Сколько записей вернуть (1–100)", ge=1, le=100)]
@@ -21,7 +23,7 @@ DocumentKind = Annotated[
 CandidatesLimit = Annotated[int, Field(description="Сколько вариантов вернуть (1–20)", ge=1, le=20)]
 
 
-def register(mcp: MCPServer, runner: ToolRunner) -> None:
+def register(mcp: MCPServer, runner: ToolRunner, transfers: TransferStore) -> None:
     @mcp.tool(annotations=READ_ONLY)
     async def search_documents(
         query: Annotated[str, Field(description="Название, номер или тема документа")],
@@ -179,8 +181,46 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
     ) -> dict:
         """Файл последней версии документа целиком в base64 (content_base64, extension, bytes) — чтобы передать
         его в другой тул (например, create_document_body_base64) или в навык. Прочитать или пересказать
-        документ — get_document_text, не этот тул: base64 занимает много места в контексте."""
-        return await runner.run(ctx, "get_doc_body_base64", lambda s: s.document_text.get_body(document_id, max_bytes=max_bytes))
+        документ — get_document_text, не этот тул: base64 занимает много места в контексте.
+        Файл больше max_bytes (до 20 МБ) приходит не целиком, а как download_id: части — download_chunk."""
+
+        def action(s):
+            info, data = s.document_text.read_body(document_id)
+            if data is None:
+                return info
+            if len(data) <= max_bytes:
+                return {**info, "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
+            result = transfers.put_download(s.credentials_fingerprint, data, info)
+            return {**result, "next_step": (
+                f"Файл больше {max_bytes // 1024} КБ: вызовите download_chunk(download_id, index) для index = 0…"
+                f"{result['total_chunks'] - 1} и склейте chunk_base64 по порядку — получится base64 всего файла "
+                "(проверка — sha256). Потом abort_transfer(download_id), чтобы освободить память.")}
+
+        return await runner.run(ctx, "get_doc_body_base64", action)
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def download_chunk(
+        download_id: Annotated[str, Field(description="download_id из get_doc_body_base64")],
+        index: Annotated[int, Field(description="Номер части, с 0", ge=0)],
+        ctx: Context,
+    ) -> dict:
+        """Часть файла крупного документа (chunk_base64, last). Части склеиваются строкой по порядку index.
+        Повтор того же index безопасен. Выгрузка живёт 30 минут без обращений."""
+        return await runner.run(
+            ctx, "download_chunk", lambda s: transfers.download_chunk(s.credentials_fingerprint, download_id, index)
+        )
+
+    @mcp.tool(annotations=READ_ONLY)
+    async def abort_transfer(
+        transfer_id: Annotated[str, Field(description="download_id или upload_id")],
+        ctx: Context,
+    ) -> dict:
+        """Завершить выгрузку или загрузку частями и освободить память сервера (вызывать, когда файл получен
+        или передача больше не нужна)."""
+        return await runner.run(
+            ctx, "abort_transfer",
+            lambda s: {"transfer_id": transfer_id, "aborted": transfers.abort(s.credentials_fingerprint, transfer_id)},
+        )
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_entity_hyperlink(

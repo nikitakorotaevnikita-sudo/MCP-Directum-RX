@@ -229,3 +229,17 @@ def test_action_items_batch_validation_and_partial_failure():
     assert result["created"] == 1 and result["failed"] == 1
     assert result["items"][1]["error"] == "RX не создал поручение: Срок раньше даты."
     assert "Поручение 2 (Орлова Е. В.): не создано — RX не создал поручение: Срок раньше даты." in result["warnings"]
+
+
+def test_body_from_assembled_bytes():
+    client = Client()
+    s = svc(client)
+    data = b"%PDF-1.4 " + b"x" * 100
+    plan = s.plan_body(16800, content=data, extension="pdf")
+    assert plan["source"] == "file" and plan["bytes"] == len(data)
+    s.create_body(plan, content=data)
+    assert base64.b64decode(client.patches[-1][1]["Value"]) == data
+    with pytest.raises(CreateError, match="не похоже"):
+        s.plan_body(16800, content=b"hello", extension="pdf")
+    with pytest.raises(CreateError, match="Пустой"):
+        s.plan_body(16800, content=b"", extension="txt")

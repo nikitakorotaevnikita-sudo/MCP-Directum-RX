@@ -608,12 +608,18 @@ class DocumentCreateService:
         markdown: bool = False,
         content_base64: str | None = None,
         extension: str | None = None,
+        content: bytes | None = None,
     ) -> dict[str, Any]:
+        """Файл — content_base64 или уже собранные байты content (загрузка частями)."""
         entity_set, name = self.document_entity_set(document_id)
         plan: dict[str, Any] = {"operation": "body", "document": {"id": int(document_id), "name": name,
                                 "url": self._doc_url(int(document_id))}, "entity_set": entity_set}
-        if content_base64 is not None:
-            data = decode_base64(content_base64)
+        if content is not None or content_base64 is not None:
+            data = content if content is not None else decode_base64(content_base64)
+            if not data:
+                raise CreateError("Пустой файл.")
+            if len(data) > MAX_FILE_BYTES:
+                raise CreateError(f"Файл больше {MAX_FILE_BYTES // (1024 * 1024)} МБ.")
             ext = (extension or "").lower().lstrip(".")
             if not ext:
                 raise CreateError("Укажите расширение файла (extension), например pdf или docx.")
@@ -630,8 +636,12 @@ class DocumentCreateService:
                          "body": body_fingerprint(body_text)})
         return plan
 
-    def create_body(self, plan: dict[str, Any], body_text: str | None = None, content_base64: str | None = None) -> dict[str, Any]:
-        data = decode_base64(content_base64) if plan["source"] == "file" else build_docx(body_text or "", markdown=plan["source"] == "markdown")
+    def create_body(self, plan: dict[str, Any], body_text: str | None = None, content_base64: str | None = None,
+                    content: bytes | None = None) -> dict[str, Any]:
+        if plan["source"] == "file":
+            data = content if content is not None else decode_base64(content_base64)
+        else:
+            data = build_docx(body_text or "", markdown=plan["source"] == "markdown")
         version_id = self._upload_version(plan["entity_set"], plan["document"]["id"], plan["extension"], data)
         return {"document_id": plan["document"]["id"], "version_id": version_id, "url": plan["document"]["url"], "warnings": []}
 

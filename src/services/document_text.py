@@ -170,6 +170,17 @@ class DocumentTextService:
 
     def get_body(self, document_id: int, max_bytes: int = DEFAULT_BODY_BASE64_BYTES) -> dict[str, Any]:
         """Файл последней версии целиком (base64) — чтобы передать его дальше, например в create_document_body_base64."""
+        result, data = self.read_body(document_id)
+        if data is None:
+            return result
+        if len(data) > max_bytes:
+            raise DirectumError(
+                f"Файл {len(data) // 1024} КБ больше лимита {max_bytes // 1024} КБ. Увеличьте max_bytes (до "
+                f"{MAX_BODY_BASE64_BYTES // 1024} КБ) или прочитайте текст через get_document_text.", 413)
+        return {**result, "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
+
+    def read_body(self, document_id: int) -> tuple[dict[str, Any], bytes | None]:
+        """Сведения о последней версии и её файл (до 20 МБ). Нет файла — (сведения с message, None)."""
         rows = self.client.query(
             "IOfficialDocuments", filter_=f"Id eq {int(document_id)}", select="Id,Name", expand=VERSIONS_EXPAND, top=1
         )
@@ -179,23 +190,19 @@ class DocumentTextService:
         result: dict[str, Any] = {"document_id": int(document_id), "name": rows[0].get("Name") or "",
                                   "url": self._url(document_id)}
         if not versions:
-            return {**result, "message": "У документа нет файла (версий)."}
+            return {**result, "message": "У документа нет файла (версий)."}, None
         latest = max(versions, key=lambda item: item.get("Number") or 0)
         extension = ((latest.get("AssociatedApplication") or {}).get("Extension") or "").lower().lstrip(".")
         try:
             data = self._body(document_id, int(latest["Id"]), "Body")
         except DirectumError as exc:
             if exc.status_code == 413:
-                raise DirectumError(f"Файл больше {max_bytes // 1024} КБ — в чат не передаётся. Текст — get_document_text.", 413) from None
+                raise DirectumError(f"Файл больше {MAX_BODY_BYTES // (1024 * 1024)} МБ — не передаётся. "
+                                    "Текст — get_document_text.", 413) from None
             raise
         if data is None:
-            return {**result, "version": latest.get("Number"), "message": "Файл версии не удалось получить из хранилища RX."}
-        if len(data) > max_bytes:
-            raise DirectumError(
-                f"Файл {len(data) // 1024} КБ больше лимита {max_bytes // 1024} КБ. Увеличьте max_bytes (до "
-                f"{MAX_BODY_BASE64_BYTES // 1024} КБ) или прочитайте текст через get_document_text.", 413)
-        return {**result, "version": latest.get("Number"), "extension": _sniff(data) or extension or None,
-                "bytes": len(data), "content_base64": base64.b64encode(data).decode("ascii")}
+            return {**result, "version": latest.get("Number"), "message": "Файл версии не удалось получить из хранилища RX."}, None
+        return {**result, "version": latest.get("Number"), "extension": _sniff(data) or extension or None}, data
 
     def entity_link(self, kind: str, entity_id: int) -> dict[str, Any]:
         """Ссылка на карточку в веб-клиенте RX: документ, задача, задание или совещание (с проверкой, что есть)."""

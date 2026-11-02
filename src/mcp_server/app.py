@@ -15,6 +15,7 @@ from src.mcp_server.context import ServicesProvider, TtlCache
 from src.mcp_server.native import NativeProxyMiddleware
 from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
+from src.mcp_server.transfers import TransferStore
 from src.mcp_server.write_guard import ConfirmTokens, WriteAudit
 from src.mcp_server.tools import (
     action_items,
@@ -94,13 +95,14 @@ def build_server(
     common.register(mcp, runner)
     action_items.register(mcp, runner)
     employee_items.register(mcp, runner)
-    documents.register(mcp, runner)
+    transfers = TransferStore()
+    documents.register(mcp, runner, transfers)
     rx_methods.register(mcp, runner)
     citizen_requests.register(mcp, runner)
     legal_acts.register(mcp, runner)
     document_control.register(mcp, runner)
     if write_audit is not None:
-        write.register(mcp, runner, ConfirmTokens(), write_audit)
+        write.register(mcp, runner, ConfirmTokens(), write_audit, transfers)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
     resources.register(mcp, guides)

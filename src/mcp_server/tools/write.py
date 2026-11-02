@@ -16,9 +16,12 @@ from pydantic import Field
 from src.mcp_server.runner import ToolRunner
 from src.mcp_server.tools.document_control import _person_id
 from src.mcp_server.tools.params import parse_iso_date
+from src.mcp_server.transfers import TransferStore
 from src.mcp_server.write_guard import ConfirmTokens, WriteAudit
 
 WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False)
+# Загрузка частями пишет только в память mcpOGV, не в RX.
+UPLOAD = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
 
 OnBehalf = Annotated[str, Field(description="От чьего имени (реальный сотрудник): ФИО или id. Под служебной учёткой «me» нельзя")]
 Token = Annotated[
@@ -45,7 +48,8 @@ def _people(services, values: list[str] | None, label: str) -> list[int]:
     return [_required_person(services, v, label) for v in (values or []) if (v or "").strip()]
 
 
-def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: WriteAudit) -> None:
+def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: WriteAudit,
+             transfers: TransferStore) -> None:
     async def two_step(ctx: Context, tool: str, confirm_token: str | None,
                        plan_fn: Callable[[Any], dict], create_fn: Callable[[Any, dict], dict]) -> dict:
         def action(s):
@@ -293,19 +297,66 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
     @mcp.tool(annotations=WRITE)
     async def create_document_body_base64(
         document_id: Annotated[int, Field(description="Id документа", gt=0)],
-        content_base64: Annotated[str, Field(description="Файл в base64 (можно data:…;base64,…), до 20 МБ")],
         extension: Annotated[str, Field(description="Расширение файла: pdf, docx, xlsx, odt, rtf, txt, png, jpg…")],
         on_behalf_of: OnBehalf,
         ctx: Context,
+        content_base64: Annotated[str | None, Field(description="Файл в base64 (можно data:…;base64,…), до 20 МБ")] = None,
+        upload_id: Annotated[str | None, Field(description="Вместо content_base64: upload_id после commit_upload")] = None,
         confirm_token: Token = None,
     ) -> dict:
         """Добавить документу новую версию из файла (base64), например файла из get_doc_body_base64 другого документа.
-        Содержимое проверяется на соответствие расширению. Двухшаговый с confirm_token."""
+        Большой файл, который не помещается в один вызов, — частями: begin_upload → upload_chunk → commit_upload,
+        затем этот тул с upload_id. Содержимое проверяется на соответствие расширению. Двухшаговый с confirm_token."""
+        if (content_base64 is None) == (upload_id is None):
+            raise ToolError("Передайте файл одним способом: content_base64 или upload_id.")
+
+        def content(s) -> dict[str, Any]:
+            if upload_id is None:
+                return {"content_base64": content_base64}
+            return {"content": transfers.take_upload(s.credentials_fingerprint, upload_id)}
+
+        def create(s, plan):
+            result = s.document_create.create_body(plan, **content(s))
+            if upload_id is not None:
+                transfers.abort(s.credentials_fingerprint, upload_id)
+            return result
+
         return await two_step(
             ctx, "create_document_body_base64", confirm_token,
-            lambda s: {**s.document_create.plan_body(document_id, content_base64=content_base64, extension=extension),
+            lambda s: {**s.document_create.plan_body(document_id, extension=extension, **content(s)),
                        "requested_by": _requested_by(s, on_behalf_of)},
-            lambda s, plan: s.document_create.create_body(plan, content_base64=content_base64),
+            create,
+        )
+
+    @mcp.tool(annotations=UPLOAD)
+    async def begin_upload(ctx: Context) -> dict:
+        """Начать загрузку файла частями — когда файл не помещается в один вызов create_document_body_base64.
+        Дальше: строку base64 файла режьте на куски не длиннее chunk_base64_chars, каждый — upload_chunk(upload_id,
+        index с 0), затем commit_upload. В RX ничего не пишется до create_document_body_base64(upload_id=…)."""
+        return await runner.run(ctx, "begin_upload", lambda s: transfers.begin_upload(s.credentials_fingerprint))
+
+    @mcp.tool(annotations=UPLOAD)
+    async def upload_chunk(
+        upload_id: Annotated[str, Field(description="upload_id из begin_upload")],
+        index: Annotated[int, Field(description="Номер части, с 0", ge=0)],
+        chunk_base64: Annotated[str, Field(description="Очередной кусок строки base64 файла")],
+        ctx: Context,
+    ) -> dict:
+        """Передать часть файла. Повтор того же index заменяет часть (безопасно при сбое)."""
+        return await runner.run(
+            ctx, "upload_chunk",
+            lambda s: transfers.upload_chunk(s.credentials_fingerprint, upload_id, index, chunk_base64),
+        )
+
+    @mcp.tool(annotations=UPLOAD)
+    async def commit_upload(
+        upload_id: Annotated[str, Field(description="upload_id из begin_upload")],
+        total_chunks: Annotated[int, Field(description="Сколько частей передано всего", ge=1)],
+        ctx: Context,
+    ) -> dict:
+        """Собрать файл из частей и проверить (bytes, sha256). Затем — create_document_body_base64(upload_id=…)."""
+        return await runner.run(
+            ctx, "commit_upload", lambda s: transfers.commit_upload(s.credentials_fingerprint, upload_id, total_chunks)
         )
 
     @mcp.tool(annotations=WRITE)
