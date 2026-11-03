@@ -34,6 +34,9 @@ REPORT_SUBJECT_PREFIX = "Запрос отчета по поручению № "
 ACTION_ITEMS = "IActionItemExecutionTasks"
 # Группа вложений «Документы» поручения (из вложений поручений, созданных в RX).
 ACTION_ITEM_DOCUMENTS_GROUP = "804f50fe-f3da-411b-bb2e-e5373936e029"
+# Группа вложений задачи процесса (DocflowApproval.SimpleProcessTask) — единственная у этого типа, проверено на стенде.
+SIMPLE_PROCESS_DOCUMENTS_GROUP = "0dbfb92e-d66b-4ada-9493-897a72d170df"
+TASK_DOCUMENT_GROUPS = {"ISimpleProcessTasks": SIMPLE_PROCESS_DOCUMENTS_GROUP, ACTION_ITEMS: ACTION_ITEM_DOCUMENTS_GROUP}
 MAX_BATCH_ACTION_ITEMS = 20
 MAX_FILE_BYTES = 20 * 1024 * 1024
 # Тип документа для create_document → (набор OData, название по-русски, вид по умолчанию, какие поля уместны).
@@ -190,6 +193,7 @@ class DocumentCreateService:
         in_response_to_id: int | None = None,
         body_text: str | None = None,
         note: str | None = None,
+        process_task_id: int | None = None,
     ) -> dict[str, Any]:
         prepared = self.employee_card(prepared_by_id)
         self._require_org(prepared)
@@ -205,6 +209,7 @@ class DocumentCreateService:
             "in_response_to": self.document(in_response_to_id) if in_response_to_id else None,
             "note": self._note(prepared, note),
             "body": body_fingerprint(body_text),
+            "process_task": self.process_task(process_task_id) if process_task_id else None,
         }
 
     def create_outgoing_letter(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
@@ -234,6 +239,7 @@ class DocumentCreateService:
         signatory_id: int | None = None,
         body_text: str | None = None,
         note: str | None = None,
+        process_task_id: int | None = None,
     ) -> dict[str, Any]:
         if kind not in LEGAL_ACT_KINDS:
             raise CreateError("Вид: project — проект правового акта, act — правовой акт.")
@@ -251,6 +257,7 @@ class DocumentCreateService:
             "signatory": self._person(signatory_id),
             "note": self._note(prepared, note),
             "body": body_fingerprint(body_text),
+            "process_task": self.process_task(process_task_id) if process_task_id else None,
         }
 
     def create_legal_act(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
@@ -341,16 +348,30 @@ class DocumentCreateService:
         """Документ — во вложения задачи (группа «Документы»). Не вышло — предупреждение, документ остаётся в
         поле «Документ-основание»."""
         try:
-            row = self.client.get_one(f"IOfficialDocuments({int(document['id'])})?$select=Id"
-                                      "&$expand=DocumentKind($select=Id;$expand=DocumentType($select=DocumentTypeGuid))")
-            type_guid = ((row.get("DocumentKind") or {}).get("DocumentType") or {}).get("DocumentTypeGuid")
-            if not type_guid:
-                raise DirectumError("не удалось определить тип документа", status_code=None)
-            self.client.post(f"{entity_set}({task_id})/AttachmentDetails",
-                             {"GroupId": group_id, "AttachmentId": int(document["id"]), "AttachmentTypeGuid": type_guid})
+            self._attach(entity_set, task_id, group_id, int(document["id"]))
         except DirectumError as exc:
             return [f"Документ не добавлен во вложения ({_reason(exc).rstrip('.')}); он указан в поле «Документ-основание»."]
         return []
+
+    def _attach(self, entity_set: str, task_id: int, group_id: str, document_id: int) -> None:
+        row = self.client.get_one(f"IOfficialDocuments({int(document_id)})?$select=Id"
+                                  "&$expand=DocumentKind($select=Id;$expand=DocumentType($select=DocumentTypeGuid))")
+        type_guid = ((row.get("DocumentKind") or {}).get("DocumentType") or {}).get("DocumentTypeGuid")
+        if not type_guid:
+            raise DirectumError("не удалось определить тип документа", status_code=None)
+        self.client.post(f"{entity_set}({task_id})/AttachmentDetails",
+                         {"GroupId": group_id, "AttachmentId": int(document_id), "AttachmentTypeGuid": type_guid})
+
+    def _attach_to_process(self, document_id: int, task: dict[str, Any]) -> tuple[bool, list[str]]:
+        """Созданный документ — во вложения задачи процесса: участники задачи видят его в карточке и получают доступ."""
+        if not task.get("group_id"):
+            return False, [f"Документ не приложен к задаче {task['id']}: не удалось определить группу вложений этого типа "
+                           "задачи. Приложите его в RX вручную."]
+        try:
+            self._attach(task["entity_set"], task["id"], task["group_id"], document_id)
+        except DirectumError as exc:
+            return False, [f"Документ не приложен к задаче {task['id']} ({_reason(exc).rstrip('.')}). Приложите его в RX вручную."]
+        return True, []
 
     def _drop_draft(self, entity_set: str, task_id: int) -> None:
         try:
@@ -461,6 +482,7 @@ class DocumentCreateService:
         body_markdown: bool = False,
         template: str | None = None,
         note: str | None = None,
+        process_task_id: int | None = None,
     ) -> dict[str, Any]:
         spec = DOCUMENT_TYPES.get(document_type)
         if spec is None:
@@ -504,6 +526,7 @@ class DocumentCreateService:
             "note": self._note(prepared, note),
             "body": body_fingerprint(body_text),
             "body_markdown": bool(body_markdown) if body_text else False,
+            "process_task": self.process_task(process_task_id) if process_task_id else None,
         }
 
     def create_document(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
@@ -600,6 +623,32 @@ class DocumentCreateService:
         type_name = str(row.get("@odata.type") or "").split(".")[-1]
         index = self._metadata_index() or {"by_type": {}}
         return index["by_type"].get(type_name, "IOfficialDocuments"), row.get("Name") or ""
+
+    def process_task(self, task_id: int) -> dict[str, Any]:
+        """Задача, в рамках которой создаётся документ: её набор OData, группа вложений и автор (ему — права)."""
+        try:
+            row = self.client.get_one(f"ITasks({int(task_id)})?$select=Id,Subject,Status"
+                                      "&$expand=Author($select=Id,Name),AttachmentDetails")
+        except DirectumError as exc:
+            if exc.status_code in (400, 404):
+                raise CreateError(f"Задача с id {task_id} не найдена или нет доступа. Передайте id задачи, а не задания.") from None
+            raise
+        type_name = str(row.get("@odata.type") or "").split(".")[-1]
+        index = self._metadata_index() or {"by_type": {}}
+        entity_set = index["by_type"].get(type_name) or (type_name.removesuffix("Dto") + "s" if type_name else "ITasks")
+        group_id = TASK_DOCUMENT_GROUPS.get(entity_set)
+        if group_id is None:
+            # Тип без известной группы: если у задачи уже есть вложения в одной группе — кладём туда же.
+            groups = {a.get("GroupId") for a in row.get("AttachmentDetails") or [] if a.get("GroupId")}
+            group_id = groups.pop() if len(groups) == 1 else None
+        author = row.get("Author") or {}
+        return {
+            "id": int(row["Id"]),
+            "subject": row.get("Subject"),
+            "author": {"id": int(author["Id"]), "name": author.get("Name") or ""} if _id(author) is not None else None,
+            "entity_set": entity_set,
+            "group_id": group_id,
+        }
 
     def plan_body(
         self,
@@ -799,7 +848,14 @@ class DocumentCreateService:
             except DirectumError as exc:
                 warnings.append(f"Документ создан, но версия по шаблону «{plan['template']['name']}» не создана: "
                                 f"{_reason(exc)}. Создайте её в RX («Создать из шаблона»).")
-        warnings.extend(self._grant(document_id, plan["prepared_by"]))
+        task = plan.get("process_task")
+        attached = False
+        if task:
+            attached, problems = self._attach_to_process(document_id, task)
+            warnings.extend(problems)
+            result["process_task"] = {"id": task["id"], "attached": attached}
+        recipients = [plan["prepared_by"]] + ([task["author"]] if task and task.get("author") else [])
+        warnings.extend(self._grant(document_id, recipients, attached_task_id=task["id"] if attached else None))
         result["warnings"] = warnings
         return result
 
@@ -813,16 +869,22 @@ class DocumentCreateService:
                           {"Value": base64.b64encode(data).decode("ascii")})
         return version_id
 
-    def _grant(self, document_id: int, person: dict[str, Any]) -> list[str]:
+    def _grant(self, document_id: int, people: list[dict[str, Any]], attached_task_id: int | None = None) -> list[str]:
+        """Явные права на документ: «Подготовил» и автор задачи процесса (без повторов)."""
         if not self.grant_rights_guid:
+            if attached_task_id:
+                return [f"Явная выдача прав не настроена (MCP_WRITE_GRANT_RIGHTS_GUID не задан): документ приложен к задаче "
+                        f"{attached_task_id}, участники задачи получают к нему доступ через вложение."]
             return ["Права на документ сотруднику не выданы (MCP_WRITE_GRANT_RIGHTS_GUID не задан): документ создан "
                     "служебной учёткой и может быть не виден сотруднику — проверьте доступ в RX."]
-        try:
-            self.client.post("Docflow/GrantAccessRightsToDocument",
-                             {"documentId": document_id, "recipientId": person["id"], "accessRightsTypeGuid": self.grant_rights_guid})
-        except DirectumError as exc:
-            return [f"Права на документ сотруднику {person['name']} не выданы: {_reason(exc)}."]
-        return []
+        warnings = []
+        for person in {p["id"]: p for p in people}.values():
+            try:
+                self.client.post("Docflow/GrantAccessRightsToDocument",
+                                 {"documentId": document_id, "recipientId": person["id"], "accessRightsTypeGuid": self.grant_rights_guid})
+            except DirectumError as exc:
+                warnings.append(f"Права на документ сотруднику {person['name']} не выданы: {_reason(exc)}.")
+        return warnings
 
     def _finish_task(self, task_id: int, entity_set: str, fields: dict[str, Any], label: str) -> dict[str, Any]:
         url = self.client.build_client_card_url(f"{entity_set}({task_id})") if hasattr(self.client, "build_client_card_url") else None

@@ -18,7 +18,12 @@ class FakeCreate:
         if subject == "плохо":
             raise CreateError("Корреспондент не найден.")
         return {"operation": "outgoing_letter", "subject": subject, "correspondent": correspondent,
-                "prepared_by": {"id": prepared_by_id, "name": "Босов"}, "signatory": kw.get("signatory_id")}
+                "prepared_by": {"id": prepared_by_id, "name": "Босов"}, "signatory": kw.get("signatory_id"),
+                "process_task": kw.get("process_task_id")}
+
+    def plan_legal_act(self, kind, subject, prepared_by_id, is_normative, **kw):
+        return {"operation": "legal_act", "kind": kind, "prepared_by": {"id": prepared_by_id, "name": "Босов"},
+                "process_task": kw.get("process_task_id")}
 
     def create_outgoing_letter(self, plan, body_text):
         self.created.append((plan, body_text))
@@ -128,7 +133,7 @@ def test_request_report_tool():
 class FakeCreate2(FakeCreate):
     def plan_document(self, document_type, subject, prepared_by_id, **kw):
         return {"operation": "document", "type": document_type, "subject": subject, "prepared_by": {"id": prepared_by_id, "name": "Б"},
-                "template": kw.get("template"), "body_markdown": kw.get("body_markdown")}
+                "template": kw.get("template"), "body_markdown": kw.get("body_markdown"), "process_task": kw.get("process_task_id")}
 
     def create_document(self, plan, body_text):
         self.created.append((plan, body_text))
@@ -176,6 +181,17 @@ def test_create_document_tool_passes_params():
     assert preview["will_create"]["type"] == "memo" and preview["will_create"]["template"] == "347"
     done = payload(call_tool(server, "create_document", {**args, "confirm_token": preview["confirm_token"]}))
     assert done["document_id"] == 17000
+
+
+def test_document_tools_pass_process_task_id():
+    server, _ = make2()
+    base = {"subject": "О", "on_behalf_of": "Босов", "task_id": 86309}
+    letter = payload(call_tool(server, "create_outgoing_letter", {**base, "correspondent": "Аппарат"}))
+    act = payload(call_tool(server, "create_legal_act", {**base, "kind": "project", "is_normative": False}))
+    doc = payload(call_tool(server, "create_document", {**base, "document_type": "memo"}))
+    assert [p["will_create"]["process_task"] for p in (letter, act, doc)] == [86309, 86309, 86309]
+    no_task = payload(call_tool(server, "create_document", {"document_type": "memo", "subject": "О", "on_behalf_of": "Босов"}))
+    assert no_task["will_create"]["process_task"] is None
 
 
 def test_create_action_items_tool_resolves_people_and_dates():
