@@ -174,6 +174,15 @@ def register(mcp: MCPServer, runner: ToolRunner, transfers: TransferStore) -> No
         )
 
     @mcp.tool(annotations=READ_ONLY)
+    async def list_document_versions(
+        document_id: Annotated[int, Field(description="Id документа", gt=0)],
+        ctx: Context,
+    ) -> dict:
+        """Версии документа, новые сверху: номер, формат, примечание, автор, дата. Плюс next_version_number и
+        признаки versions_locked (новую версию сейчас создать нельзя) и last_version_signed (последняя подписана)."""
+        return await runner.run(ctx, "list_document_versions", lambda s: s.document_text.versions(document_id))
+
+    @mcp.tool(annotations=READ_ONLY)
     async def get_doc_body_base64(
         document_id: Annotated[int, Field(description="Id документа", gt=0)],
         ctx: Context,

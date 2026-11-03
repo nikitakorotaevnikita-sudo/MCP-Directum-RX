@@ -204,6 +204,29 @@ class DocumentTextService:
             return {**result, "version": latest.get("Number"), "message": "Файл версии не удалось получить из хранилища RX."}, None
         return {**result, "version": latest.get("Number"), "extension": _sniff(data) or extension or None}, data
 
+    def versions(self, document_id: int) -> dict[str, Any]:
+        """Версии документа (новые сверху) и признаки, мешающие создать новую: блокировка, подпись последней."""
+        rows = self.client.query(
+            "IElectronicDocuments", filter_=f"Id eq {int(document_id)}",
+            select="Id,Name,VersionsLocked,LastVersionApproved,LastVersionSignatureType",
+            expand="Versions($select=Id,Number,Note,Created,IsHidden;"
+                   "$expand=Author($select=Id,Name),AssociatedApplication($select=Extension))", top=1)
+        if not rows:
+            raise DirectumError(f"Документ {document_id} не найден или у вас нет к нему доступа.", 404)
+        row = rows[0]
+        versions = sorted(row.get("Versions") or [], key=lambda item: item.get("Number") or 0, reverse=True)
+        return {
+            "document_id": int(document_id), "name": row.get("Name") or "", "url": self._url(document_id),
+            "versions_locked": bool(row.get("VersionsLocked")), "last_version_signed": bool(row.get("LastVersionApproved")),
+            "total": len(versions), "next_version_number": (versions[0].get("Number") or 0) + 1 if versions else 1,
+            "versions": [{
+                "number": v.get("Number"),
+                "extension": ((v.get("AssociatedApplication") or {}).get("Extension") or "").lower().lstrip(".") or None,
+                "note": v.get("Note"), "author": (v.get("Author") or {}).get("Name"),
+                "created": v.get("Created"), "hidden": bool(v.get("IsHidden")),
+            } for v in versions],
+        }
+
     def entity_link(self, kind: str, entity_id: int) -> dict[str, Any]:
         """Ссылка на карточку в веб-клиенте RX: документ, задача, задание или совещание (с проверкой, что есть)."""
         if kind not in LINK_KINDS:

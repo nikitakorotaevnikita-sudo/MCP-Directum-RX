@@ -148,7 +148,12 @@ class FakeCreate2(FakeCreate):
         return {"created": len(plan["items"]), "started": len(plan["items"]), "failed": 0, "task_ids": [1, 2], "items": [], "warnings": []}
 
     def plan_body(self, document_id, **kw):
-        return {"operation": "body", "document": {"id": document_id}, "source": "file" if kw.get("content_base64") else "text"}
+        plan = {"operation": "body", "document": {"id": document_id}, "source": "file" if kw.get("content_base64") else "text"}
+        return {**plan, "note": kw["note"]} if kw.get("note") else plan
+
+    def create_body(self, plan, **kw):
+        self.created.append(plan)
+        return {"document_id": plan["document"]["id"], "version_id": 77, "warnings": []}
 
     def _person(self, person_id, receives_work=True):
         return {"id": person_id, "name": "Б"}
@@ -217,3 +222,18 @@ def test_body_tools():
     preview = payload(call_tool(server, "create_document_body_base64", {"document_id": 16800, "content_base64": "JVBERg==",
                                                                        "extension": "pdf", "on_behalf_of": "Босов"}))
     assert preview["will_create"]["source"] == "file"
+
+
+def test_body_tools_pass_note_and_allow_autonomous_confirm():
+    server, create = make2()
+    args = {"document_id": 16800, "text": "Новый", "on_behalf_of": "Босов", "note": "Правки юриста"}
+    preview = payload(call_tool(server, "create_document_body", args))
+    assert preview["will_create"]["note"] == "Правки юриста"
+    assert "автономн" in preview["next_step"] and "confirm_token" in preview["next_step"]
+    done = payload(call_tool(server, "create_document_body", {**args, "confirm_token": preview["confirm_token"]}))
+    assert done["mode"] == "created" and done["version_id"] == 77 and create.created[-1]["note"] == "Правки юриста"
+    file_args = {"document_id": 16800, "content_base64": "JVBERg==", "extension": "pdf", "on_behalf_of": "Босов",
+                 "note": "Скан"}
+    assert payload(call_tool(server, "create_document_body_base64", file_args))["will_create"]["note"] == "Скан"
+    letter = payload(call_tool(server, "create_outgoing_letter", {"subject": "О", "correspondent": "А", "on_behalf_of": "Босов"}))
+    assert "автономн" not in letter["next_step"]

@@ -16,6 +16,10 @@ class FakeText:
     def read_body(self, document_id):
         return {"document_id": document_id, "name": "Письмо", "url": "u", "version": 2, "extension": "pdf"}, self.data
 
+    def versions(self, document_id):
+        return {"document_id": document_id, "total": 2, "next_version_number": 3, "versions_locked": False,
+                "last_version_signed": False, "versions": [{"number": 2}, {"number": 1}]}
+
 
 class FakeCreate:
     def __init__(self):
@@ -107,3 +111,11 @@ def test_upload_not_committed_is_rejected():
     payload(call_tool(server, "upload_chunk", {"upload_id": upload_id, "index": 0, "chunk_base64": "JVBERg=="}))
     args = {"document_id": 16800, "upload_id": upload_id, "extension": "pdf", "on_behalf_of": "Босов"}
     assert "commit_upload" in error_text(call_tool(server, "create_document_body_base64", args))
+
+
+def test_list_document_versions_is_read_only_and_available_without_write():
+    server, _, _ = make(write=False)
+    tool = {t.name: t for t in list_tools(server)}["list_document_versions"]
+    assert tool.annotations.read_only_hint is True
+    result = payload(call_tool(server, "list_document_versions", {"document_id": 16800}))
+    assert result["next_version_number"] == 3 and [v["number"] for v in result["versions"]] == [2, 1]

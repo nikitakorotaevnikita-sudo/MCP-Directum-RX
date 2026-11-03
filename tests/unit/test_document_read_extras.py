@@ -100,3 +100,50 @@ def test_template_list_and_text():
     client = Client()
     DocumentTextService(client).template_text("347")
     assert client.binary_paths == ["IDocumentTemplates(347)/Versions(5)/Body/$value"]  # последняя версия
+
+
+class VersionsClient:
+    def __init__(self, rows):
+        self.rows = rows
+        self.calls = []
+
+    def query(self, entity_set, **kw):
+        self.calls.append((entity_set, kw))
+        return self.rows
+
+    def build_client_card_url(self, path):
+        return f"https://rx/{path}"
+
+
+def test_versions_lists_newest_first_with_flags():
+    row = {"Id": 16800, "Name": "Письмо", "VersionsLocked": False, "LastVersionApproved": True,
+           "LastVersionSignatureType": 5,
+           "Versions": [
+               {"Id": 1, "Number": 1, "Note": "Первоначальная версия", "Created": "2026-10-14T12:16:32+04:00",
+                "IsHidden": None, "Author": {"Id": 12, "Name": "Administrator"},
+                "AssociatedApplication": {"Extension": "docx"}},
+               {"Id": 3, "Number": 3, "Note": None, "Created": "2026-10-15T10:00:00+04:00", "IsHidden": True,
+                "Author": None, "AssociatedApplication": {"Extension": "PDF"}},
+               {"Id": 2, "Number": 2, "Note": "Версия 2", "Created": "2026-10-14T14:57:39+04:00",
+                "Author": {"Id": 12, "Name": "Administrator"}, "AssociatedApplication": None},
+           ]}
+    client = VersionsClient([row])
+    result = DocumentTextService(client).versions(16800)
+    entity_set, kw = client.calls[0]
+    assert entity_set == "IElectronicDocuments" and kw["filter_"] == "Id eq 16800"
+    assert "VersionsLocked" in kw["select"] and "Note" in kw["expand"] and "Author" in kw["expand"]
+    assert result["document_id"] == 16800 and result["name"] == "Письмо"
+    assert result["versions_locked"] is False and result["last_version_signed"] is True
+    assert result["total"] == 3 and result["next_version_number"] == 4
+    assert [v["number"] for v in result["versions"]] == [3, 2, 1]
+    assert result["versions"][0] == {"number": 3, "extension": "pdf", "note": None, "author": None,
+                                     "created": "2026-10-15T10:00:00+04:00", "hidden": True}
+    assert result["versions"][2]["author"] == "Administrator" and result["versions"][1]["extension"] is None
+
+
+def test_versions_of_missing_document_and_document_without_files():
+    with pytest.raises(DirectumError, match="не найден"):
+        DocumentTextService(VersionsClient([])).versions(404)
+    empty = DocumentTextService(VersionsClient([{"Id": 5, "Name": "Пусто", "Versions": []}])).versions(5)
+    assert empty["total"] == 0 and empty["versions"] == [] and empty["next_version_number"] == 1
+    assert empty["versions_locked"] is False and empty["last_version_signed"] is False

@@ -29,6 +29,8 @@ Token = Annotated[
     Field(description="Пусто — только предпросмотр. Токен из предпросмотра — создать (после явного «да» пользователя)"),
 ]
 Body = Annotated[str | None, Field(description="Текст документа; абзацы — через пустую строку. Станет телом .docx")]
+VersionNote = Annotated[str | None, Field(description="Примечание к версии: что изменилось (до 250 символов). Пусто — «Версия N»",
+                                          max_length=250)]
 ProcessTask = Annotated[int | None, Field(
     description="Id задачи RX, в рамках которой создаётся документ (например, процесс «Создать документ»): документ "
                 "прикладывается к ней, а права выдаются «Подготовил» и автору задачи. Передавайте id задачи, не задания",
@@ -37,6 +39,11 @@ ProcessTask = Annotated[int | None, Field(
 NEXT_STEP = ("Это предпросмотр: пока ничего не создано, но создать МОЖНО. Покажите пользователю, что будет создано "
              "(что, от чьего имени, кому, срок) и спросите «Создать?». После явного «да» вызовите этот же тул с теми же "
              "параметрами и confirm_token — тогда документ или задача появятся в RX.")
+# Новая версия не трогает прежние: агенту с автономной инструкцией (навык doc-version) можно не спрашивать.
+VERSION_NEXT_STEP = ("Это предпросмотр: версия ещё не создана. Если инструкция агента разрешает автономное создание "
+                     "версий (навык doc-version) — сразу вызовите этот же тул с теми же параметрами и confirm_token, "
+                     "не спрашивая пользователя. Иначе покажите, что будет создано, и спросите «Создать?». "
+                     "Предупреждения из will_create.warnings передайте пользователю в итоге.")
 SERVICE_ACCOUNT_NOTE = ("mcpOGV работает под служебной учёткой: в RX «Автор» будет она, а реальный человек указан в "
                         "полях «Подготовил» / «Выдал» / «Автор задачи» и в примечании документа.")
 
@@ -55,7 +62,8 @@ def _people(services, values: list[str] | None, label: str) -> list[int]:
 def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: WriteAudit,
              transfers: TransferStore) -> None:
     async def two_step(ctx: Context, tool: str, confirm_token: str | None,
-                       plan_fn: Callable[[Any], dict], create_fn: Callable[[Any, dict], dict]) -> dict:
+                       plan_fn: Callable[[Any], dict], create_fn: Callable[[Any, dict], dict],
+                       next_step: str = NEXT_STEP) -> dict:
         def action(s):
             service = getattr(s, "document_create", None)
             if service is None:
@@ -65,7 +73,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
             preview_extra = {"service_account_note": SERVICE_ACCOUNT_NOTE} if getattr(s, "service_account", False) else {}
             if not (confirm_token or "").strip():
                 return {"mode": "preview", "will_create": plan, "confirm_token": tokens.issue(tool, plan, fingerprint),
-                        "next_step": NEXT_STEP, **preview_extra}
+                        "next_step": next_step, **preview_extra}
             problem = tokens.check(confirm_token, tool, plan, fingerprint)
             if problem:
                 raise ToolError(problem)
@@ -293,15 +301,18 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         on_behalf_of: OnBehalf,
         ctx: Context,
         markdown: Annotated[bool, Field(description="text — markdown (# заголовки, - списки, **жирный**)")] = False,
+        note: VersionNote = None,
         confirm_token: Token = None,
     ) -> dict:
         """Добавить документу новую версию (.docx) из текста или markdown. Прежние версии сохраняются; on_behalf_of
-        — по чьей просьбе (пишется в журнал). Двухшаговый с confirm_token."""
+        — по чьей просьбе (пишется в журнал). Двухшаговый с confirm_token. Оформление исходного файла (бланк,
+        таблицы) не переносится — для правки с оформлением загрузите файл через create_document_body_base64."""
         return await two_step(
             ctx, "create_document_body", confirm_token,
-            lambda s: {**s.document_create.plan_body(document_id, body_text=text, markdown=markdown),
+            lambda s: {**s.document_create.plan_body(document_id, body_text=text, markdown=markdown, note=note),
                        "requested_by": _requested_by(s, on_behalf_of)},
             lambda s, plan: s.document_create.create_body(plan, body_text=text),
+            next_step=VERSION_NEXT_STEP,
         )
 
     @mcp.tool(annotations=WRITE)
@@ -312,6 +323,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         ctx: Context,
         content_base64: Annotated[str | None, Field(description="Файл в base64 (можно data:…;base64,…), до 20 МБ")] = None,
         upload_id: Annotated[str | None, Field(description="Вместо content_base64: upload_id после commit_upload")] = None,
+        note: VersionNote = None,
         confirm_token: Token = None,
     ) -> dict:
         """Добавить документу новую версию из файла (base64), например файла из get_doc_body_base64 другого документа.
@@ -333,9 +345,10 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
 
         return await two_step(
             ctx, "create_document_body_base64", confirm_token,
-            lambda s: {**s.document_create.plan_body(document_id, extension=extension, **content(s)),
+            lambda s: {**s.document_create.plan_body(document_id, extension=extension, note=note, **content(s)),
                        "requested_by": _requested_by(s, on_behalf_of)},
             create,
+            next_step=VERSION_NEXT_STEP,
         )
 
     @mcp.tool(annotations=UPLOAD)

@@ -40,7 +40,10 @@ class Client(BaseClient):
             doc_id = int(path.split("(")[1].split(")")[0])
             if doc_id == 404:
                 raise DirectumError("Запись не существует", status_code=400)
-            return {"@odata.type": "#X.TestSolution.IOutgoingLetterDto", "Id": doc_id, "Name": "Исх. письмо"}
+            self.document_paths = getattr(self, "document_paths", []) + [path]
+            return {"@odata.type": "#X.TestSolution.IOutgoingLetterDto", "Id": doc_id, "Name": "Исх. письмо",
+                    "VersionsLocked": doc_id == 16801, "LastVersionApproved": doc_id == 16802,
+                    "Versions": [{"Number": 1}, {"Number": 4}] if doc_id != 16803 else []}
         return super().get_one(path)
 
     def query(self, entity_set, **kw):
@@ -243,3 +246,30 @@ def test_body_from_assembled_bytes():
         s.plan_body(16800, content=b"hello", extension="pdf")
     with pytest.raises(CreateError, match="Пустой"):
         s.plan_body(16800, content=b"", extension="txt")
+
+
+def test_body_plan_shows_version_number_and_blocks_locked_versions():
+    client = Client()
+    s = svc(client)
+    plan = s.plan_body(16800, body_text="Текст")
+    assert plan["new_version_number"] == 5 and plan["warnings"] == []
+    assert "VersionsLocked" in client.document_paths[-1] and "LastVersionApproved" in client.document_paths[-1]
+    assert s.plan_body(16803, body_text="Текст")["new_version_number"] == 1
+    with pytest.raises(CreateError, match="заблокирован"):
+        s.plan_body(16801, body_text="Текст")
+    signed = s.plan_body(16802, body_text="Текст")
+    assert len(signed["warnings"]) == 1 and "подписан" in signed["warnings"][0]
+    assert s.create_body(signed, body_text="Текст")["warnings"] == signed["warnings"]
+
+
+def test_body_note_is_written_to_version():
+    client = Client()
+    s = svc(client)
+    plan = s.plan_body(16800, body_text="Текст", note="  Правки по замечаниям юриста ")
+    assert plan["note"] == "Правки по замечаниям юриста"
+    s.create_body(plan, body_text="Текст")
+    assert client.posts[-1] == ("IOutgoingLetters(16800)/Versions",
+                                {"AssociatedApplication": {"Id": 2}, "Note": "Правки по замечаниям юриста"})
+    assert "note" not in s.plan_body(16800, body_text="Текст", note="  ")
+    with pytest.raises(CreateError, match="Примечание"):
+        s.plan_body(16800, body_text="Текст", note="я" * 251)

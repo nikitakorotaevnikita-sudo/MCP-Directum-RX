@@ -64,6 +64,7 @@ PROTECTED_PROPERTIES = {
 }
 FILE_SIGNATURES = {"pdf": b"%PDF", "docx": b"PK\x03\x04", "xlsx": b"PK\x03\x04", "odt": b"PK\x03\x04",
                    "png": b"\x89PNG", "jpg": b"\xff\xd8\xff", "jpeg": b"\xff\xd8\xff", "rtf": b"{\\rtf"}
+MAX_VERSION_NOTE = 250
 _METADATA_CACHE: dict[str, dict[str, Any]] = {}
 IMPORTANCE = {"normal": "Normal", "high": "High", "low": "Low"}
 
@@ -614,15 +615,20 @@ class DocumentCreateService:
 
     def document_entity_set(self, document_id: int) -> tuple[str, str]:
         """Конкретный набор OData документа по его @odata.type (для создания версии) и название."""
+        entity_set, row = self._document_row(document_id)
+        return entity_set, row.get("Name") or ""
+
+    def _document_row(self, document_id: int) -> tuple[str, dict[str, Any]]:
         try:
-            row = self.client.get_one(f"IElectronicDocuments({int(document_id)})?$select=Id,Name")
+            row = self.client.get_one(f"IElectronicDocuments({int(document_id)})?$select=Id,Name,VersionsLocked,"
+                                      "LastVersionApproved&$expand=Versions($select=Number)")
         except DirectumError as exc:
             if exc.status_code in (400, 404):
                 raise CreateError(f"Документ с id {document_id} не найден или нет доступа.") from None
             raise
         type_name = str(row.get("@odata.type") or "").split(".")[-1]
         index = self._metadata_index() or {"by_type": {}}
-        return index["by_type"].get(type_name, "IOfficialDocuments"), row.get("Name") or ""
+        return index["by_type"].get(type_name, "IOfficialDocuments"), row
 
     def process_task(self, task_id: int) -> dict[str, Any]:
         """Задача, в рамках которой создаётся документ: её набор OData, группа вложений и автор (ему — права)."""
@@ -658,11 +664,25 @@ class DocumentCreateService:
         content_base64: str | None = None,
         extension: str | None = None,
         content: bytes | None = None,
+        note: str | None = None,
     ) -> dict[str, Any]:
-        """Файл — content_base64 или уже собранные байты content (загрузка частями)."""
-        entity_set, name = self.document_entity_set(document_id)
-        plan: dict[str, Any] = {"operation": "body", "document": {"id": int(document_id), "name": name,
-                                "url": self._doc_url(int(document_id))}, "entity_set": entity_set}
+        """Файл — content_base64 или уже собранные байты content (загрузка частями). Заблокированные версии —
+        ошибка; подписанная последняя версия — предупреждение (подпись остаётся на ней, новая — без подписи)."""
+        note = (note or "").strip()
+        if len(note) > MAX_VERSION_NOTE:
+            raise CreateError(f"Примечание к версии длиннее {MAX_VERSION_NOTE} символов.")
+        entity_set, row = self._document_row(document_id)
+        if row.get("VersionsLocked"):
+            raise CreateError(f"Версии документа {document_id} заблокированы (документ открыт на редактирование или "
+                              "обрабатывается) — новую версию создать нельзя. Повторите позже.")
+        numbers = [v.get("Number") or 0 for v in row.get("Versions") or []]
+        warnings = [f"Последняя версия {max(numbers)} подписана: подпись останется на ней, новая версия будет без "
+                    "подписи — её нужно подписать или согласовать заново."] if row.get("LastVersionApproved") and numbers else []
+        plan: dict[str, Any] = {"operation": "body", "document": {"id": int(document_id), "name": row.get("Name") or "",
+                                "url": self._doc_url(int(document_id))}, "entity_set": entity_set,
+                                "new_version_number": max(numbers, default=0) + 1, "warnings": warnings}
+        if note:
+            plan["note"] = note
         if content is not None or content_base64 is not None:
             data = content if content is not None else decode_base64(content_base64)
             if not data:
@@ -691,8 +711,10 @@ class DocumentCreateService:
             data = content if content is not None else decode_base64(content_base64)
         else:
             data = build_docx(body_text or "", markdown=plan["source"] == "markdown")
-        version_id = self._upload_version(plan["entity_set"], plan["document"]["id"], plan["extension"], data)
-        return {"document_id": plan["document"]["id"], "version_id": version_id, "url": plan["document"]["url"], "warnings": []}
+        version_id = self._upload_version(plan["entity_set"], plan["document"]["id"], plan["extension"], data,
+                                          note=plan.get("note"))
+        return {"document_id": plan["document"]["id"], "version_id": version_id, "url": plan["document"]["url"],
+                "warnings": list(plan.get("warnings") or [])}
 
     # --- пакет поручений ---
 
@@ -859,11 +881,14 @@ class DocumentCreateService:
         result["warnings"] = warnings
         return result
 
-    def _upload_version(self, entity_set: str, document_id: int, extension: str, data: bytes) -> int:
+    def _upload_version(self, entity_set: str, document_id: int, extension: str, data: bytes,
+                        note: str | None = None) -> int:
         if len(data) > MAX_FILE_BYTES:
             raise CreateError(f"Файл больше {MAX_FILE_BYTES // (1024 * 1024)} МБ.")
-        version = self.client.post(f"{entity_set}({document_id})/Versions",
-                                   {"AssociatedApplication": {"Id": self._application_id(extension)}})
+        payload: dict[str, Any] = {"AssociatedApplication": {"Id": self._application_id(extension)}}
+        if note:
+            payload["Note"] = note
+        version = self.client.post(f"{entity_set}({document_id})/Versions", payload)
         version_id = int(version["Id"])
         self.client.patch(f"{entity_set}({document_id})/Versions({version_id})/Body",
                           {"Value": base64.b64encode(data).decode("ascii")})
