@@ -231,3 +231,69 @@ def test_service_account_flag():
     assert credentials_from_headers({}, debug).service_account is True
     personal = credentials_from_headers({"X-Directum-Login": "nadya", "X-Directum-Password": "1"}, debug)
     assert personal.service_account is False
+
+
+# --- профили учёток (X-MCP-Account) ---
+
+from src.mcp_server.context import load_accounts  # noqa: E402
+
+
+def accounts_file(tmp_path, content):
+    path = tmp_path / "accounts.json"
+    path.write_text(content, encoding="utf-8-sig")  # PowerShell пишет UTF-8 с BOM
+    return str(path)
+
+
+def test_load_accounts_builds_tokens(tmp_path):
+    path = accounts_file(tmp_path, '{"nadya": {"login": "nadya", "password": "p1"}, '
+                                   '"Legal-2": {"login": "Концева", "password": "p:2"}}')
+    accounts = load_accounts(path)
+    assert accounts == {"nadya": ("nadya", basic("nadya", "p1")), "legal-2": ("Концева", basic("Концева", "p:2"))}
+    assert load_accounts(None) == {} and load_accounts("") == {}
+
+
+@pytest.mark.parametrize("content, error", [
+    ("not json", "JSON"),
+    ('["nadya"]', "объект"),
+    ('{"nadya": {"login": "nadya"}}', "password"),
+    ('{"bad name!": {"login": "a", "password": "secret-pw"}}', "имя профиля"),
+])
+def test_load_accounts_rejects_bad_config_without_leaking_passwords(tmp_path, content, error):
+    with pytest.raises(ValueError, match=error) as exc:
+        load_accounts(accounts_file(tmp_path, content))
+    assert "secret-pw" not in str(exc.value)
+
+
+def test_load_accounts_missing_file(tmp_path):
+    with pytest.raises(ValueError, match="не найден"):
+        load_accounts(str(tmp_path / "nope.json"))
+
+
+def test_account_header_selects_profile():
+    accounts = {"nadya": ("nadya", basic("nadya", "p1"))}
+    credentials = credentials_from_headers({"X-MCP-Account": " Nadya "}, make_settings(), accounts)
+    assert credentials.auth_token == basic("nadya", "p1")
+    assert credentials.service_account is False and credentials.account == "nadya"
+
+
+def test_account_profile_has_priority_over_service_account_but_not_over_personal():
+    accounts = {"nadya": ("nadya", basic("nadya", "p1"))}
+    debug = make_settings(MCP_ALLOW_ENV_CREDENTIALS=True, DIRECTUM_AUTH_TOKEN=basic("Administrator", "x"))
+    assert credentials_from_headers({"X-MCP-Account": "nadya"}, debug, accounts).auth_token == basic("nadya", "p1")
+    personal = credentials_from_headers(
+        {"X-MCP-Account": "nadya", "X-Directum-Login": "ivanov", "X-Directum-Password": "pw"}, debug, accounts)
+    assert personal.auth_token == basic("ivanov", "pw") and personal.account is None
+
+
+def test_unknown_account_is_rejected_not_replaced_by_service_account():
+    debug = make_settings(MCP_ALLOW_ENV_CREDENTIALS=True, DIRECTUM_AUTH_TOKEN=basic("Administrator", "x"))
+    with pytest.raises(ToolError, match="Профиль учётки «admin» не настроен"):
+        credentials_from_headers({"X-MCP-Account": "admin"}, debug, {"nadya": ("nadya", basic("nadya", "p1"))})
+
+
+def test_provider_loads_accounts_file(tmp_path):
+    path = accounts_file(tmp_path, '{"nadya": {"login": "nadya", "password": "p1"}}')
+    provider = ServicesProvider(make_settings(MCP_ACCOUNTS_FILE=path))
+    assert set(provider.accounts) == {"nadya"}
+    with pytest.raises(ValueError, match="не найден"):
+        ServicesProvider(make_settings(MCP_ACCOUNTS_FILE=str(tmp_path / "nope.json")))

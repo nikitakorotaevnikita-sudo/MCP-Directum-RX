@@ -35,6 +35,7 @@ Directum RX (стенд governmentgenai.directum360.ru)
 | Транспорт | MCP Streamable HTTP, `http://<хост>:8010/mcp`; `/health` — проверка живости |
 | Доступ к серверу | Общий секрет LibreChat ↔ mcpOGV в заголовке `X-MCP-Key` |
 | Учётная запись RX | **Личная**: LibreChat передаёт `X-Directum-Login` / `X-Directum-Password` — ответы ровно в правах пользователя. **Служебная** (`MCP_ALLOW_ENV_CREDENTIALS=true`, сейчас Administrator на стенде): все запросы от неё, `get_current_user` возвращает `service_account=true` |
+| Профили учёток | `MCP_ACCOUNTS_FILE` — JSON `{"имя": {"login", "password"}}` вне репозитория; подключение mcpOGV в `librechat.yaml` передаёт `X-MCP-Account: имя` (см. `docs/mcp-ogv/librechat.example.yaml`). Учётку закрепляет подключение у агента, модель её не выбирает; неизвестный профиль — ошибка. Порядок: личные креды → профиль → служебная учётка |
 | Запись в RX | Выключена по умолчанию; `MCP_WRITE_ENABLED=true` регистрирует тулы создания. Все записи — в два шага (предпросмотр → `confirm_token`) и в журнал `mcp_writes.log` |
 | Часовой пояс | `MCP_UTC_OFFSET` (стенд +04:00) — границы «сегодня», «на неделе», сроки |
 | Ссылки | Каждый объект в ответах несёт `url` карточки веб-клиента RX |

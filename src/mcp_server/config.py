@@ -47,6 +47,9 @@ class McpSettings(BaseSettings):
     MCP_ALLOWED_HOSTS: str = "localhost:8010,127.0.0.1:8010,mcp-ogv:8010"
     MCP_OGV_KEY: SecretStr | None = Field(default=None, repr=False)
     MCP_ALLOW_ENV_CREDENTIALS: bool = False
+    # JSON с профилями учёток RX {"имя": {"login": …, "password": …}}; профиль выбирает заголовок X-MCP-Account
+    # (подключение mcpOGV в librechat.yaml), а не модель. Файл — вне репозитория.
+    MCP_ACCOUNTS_FILE: str | None = None
     MCP_USAGE_DB_PATH: str = "data/mcp_usage.db"
     MCP_METRICS_SALT: SecretStr | None = Field(default=None, repr=False)
     # Часовой пояс стенда RX (например +04:00); пусто — пояс машины, где запущен сервер.

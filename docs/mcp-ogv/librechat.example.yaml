@@ -17,3 +17,17 @@ mcpServers:
         description: 'Хранится в LibreChat, в mcpOGV не сохраняется и не логируется.'
     serverInstructions: true
     timeout: 60000
+
+# Вариант: учётка RX закреплена за подключением (профиль на сервере mcpOGV), а не вводится пользователем.
+# Профили — в JSON-файле MCP_ACCOUNTS_FILE рядом с run.ps1 (вне репозитория):
+#   {"nadya": {"login": "<логин RX>", "password": "<пароль RX>"}}
+# Подключение передаёт только имя профиля; к агенту подключайте нужное подключение — модель учётку не выбирает.
+# Личные креды пользователя (X-Directum-Login/Password), если заданы, важнее профиля.
+  mcpOGV-nadya:
+    type: streamable-http
+    url: http://mcp-ogv:8010/mcp
+    headers:
+      X-MCP-Account: 'nadya'
+      X-MCP-Key: '${MCP_OGV_KEY}'
+    serverInstructions: true
+    timeout: 60000

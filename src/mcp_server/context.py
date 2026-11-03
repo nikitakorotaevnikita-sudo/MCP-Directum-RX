@@ -2,11 +2,14 @@ import base64
 import binascii
 import hashlib
 import hmac
+import json
+import re
 import threading
 import time
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -18,6 +21,8 @@ from src.services.factory import DirectumServices, build_directum_services
 
 LOGIN_HEADER = "x-directum-login"
 PASSWORD_HEADER = "x-directum-password"
+ACCOUNT_HEADER = "x-mcp-account"
+ACCOUNT_NAME = re.compile(r"^[a-z0-9_-]{1,64}$")
 MISSING_CREDENTIALS_MESSAGE = "Укажите логин и пароль Directum в настройках сервера mcpOGV в LibreChat."
 CURRENT_USER_TTL_SECONDS = 600
 ENV_LOGIN_FALLBACK = "env"
@@ -31,6 +36,8 @@ class Credentials:
     usage_id: str  # обезличенный id пользователя для метрик: HMAC логина, от пароля не зависит
     # True — запрос без личных кредов, mcpOGV работает под служебной учёткой из окружения (MCP_ALLOW_ENV_CREDENTIALS).
     service_account: bool = False
+    # Имя профиля из MCP_ACCOUNTS_FILE, если креды взяты из него (заголовок X-MCP-Account).
+    account: str | None = None
 
 
 def _from_latin1(value: str) -> str:
@@ -56,13 +63,50 @@ def usage_id_for(login: str, settings: McpSettings) -> str:
     return digest[:USAGE_ID_LENGTH]
 
 
-def credentials_from_headers(headers: Mapping[str, str] | None, settings: McpSettings) -> Credentials:
+def load_accounts(path: str | None) -> dict[str, tuple[str, str]]:
+    """Профили учёток из JSON: имя → (логин, Basic-токен). Ошибки — без паролей в тексте."""
+    if not (path or "").strip():
+        return {}
+    file = Path(path)
+    if not file.is_file():
+        raise ValueError(f"MCP_ACCOUNTS_FILE не найден: {file}")
+    try:
+        data = json.loads(file.read_text(encoding="utf-8-sig"))
+    except ValueError:
+        raise ValueError(f"MCP_ACCOUNTS_FILE — не JSON: {file}") from None
+    if not isinstance(data, dict):
+        raise ValueError("MCP_ACCOUNTS_FILE: ожидается объект {\"имя\": {\"login\": …, \"password\": …}}")
+    accounts = {}
+    for raw_name, entry in data.items():
+        name = str(raw_name).strip().lower()
+        if not ACCOUNT_NAME.match(name):
+            raise ValueError(f"MCP_ACCOUNTS_FILE: имя профиля {raw_name!r} — только латиница, цифры, _ и -")
+        login = str((entry or {}).get("login") or "").strip() if isinstance(entry, dict) else ""
+        password = str((entry or {}).get("password") or "") if isinstance(entry, dict) else ""
+        if not login or not password:
+            raise ValueError(f"MCP_ACCOUNTS_FILE: у профиля {name!r} нужны login и password")
+        accounts[name] = (login, build_basic_auth_token(login, password))
+    return accounts
+
+
+def credentials_from_headers(
+    headers: Mapping[str, str] | None,
+    settings: McpSettings,
+    accounts: Mapping[str, tuple[str, str]] | None = None,
+) -> Credentials:
     lowered = {str(key).lower(): str(value) for key, value in (headers or {}).items()}
     login = _from_latin1(lowered.get(LOGIN_HEADER, "")).strip()
     password = _from_latin1(lowered.get(PASSWORD_HEADER, ""))
+    account = _from_latin1(lowered.get(ACCOUNT_HEADER, "")).strip().lower() or None
     service_account = False
     if login and password:
         token = build_basic_auth_token(login, password)
+        account = None
+    elif account is not None:
+        # Неизвестный профиль — ошибка, а не тихий переход на служебную учётку.
+        if account not in (accounts or {}):
+            raise ToolError(f"Профиль учётки «{account}» не настроен на сервере mcpOGV (MCP_ACCOUNTS_FILE).")
+        login, token = accounts[account]
     elif settings.MCP_ALLOW_ENV_CREDENTIALS and settings.env_auth_token:
         token = settings.env_auth_token
         login = _login_from_basic_token(token)
@@ -74,6 +118,7 @@ def credentials_from_headers(headers: Mapping[str, str] | None, settings: McpSet
         fingerprint=hashlib.sha256(token.encode("utf-8")).hexdigest(),
         usage_id=usage_id_for(login, settings),
         service_account=service_account,
+        account=account,
     )
 
 
@@ -112,10 +157,11 @@ class ServicesProvider:
         self.settings = settings
         self.transport = transport
         self.user_cache = user_cache or TtlCache(CURRENT_USER_TTL_SECONDS)
+        self.accounts = load_accounts(settings.MCP_ACCOUNTS_FILE)
 
     @contextmanager
     def open(self, headers: Mapping[str, str] | None) -> Iterator[tuple[Credentials, DirectumServices]]:
-        credentials = credentials_from_headers(headers, self.settings)
+        credentials = credentials_from_headers(headers, self.settings, self.accounts)
         services = build_directum_services(
             self.settings.directum_base_url,
             credentials.auth_token,
