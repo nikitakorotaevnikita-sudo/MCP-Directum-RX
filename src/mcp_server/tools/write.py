@@ -31,9 +31,11 @@ Token = Annotated[
 Body = Annotated[str | None, Field(description="Текст документа; абзацы — через пустую строку. Станет телом .docx")]
 VersionNote = Annotated[str | None, Field(description="Примечание к версии: что изменилось (до 250 символов). Пусто — «Версия N»",
                                           max_length=250)]
+OnBehalfOrTask = Annotated[str | None, Field(
+    description="От чьего имени (реальный сотрудник): ФИО или id. При task_id не нужен — «Подготовил» = автор задачи")]
 ProcessTask = Annotated[int | None, Field(
-    description="Id задачи RX, в рамках которой создаётся документ (например, процесс «Создать документ»): документ "
-                "прикладывается к ней, а права выдаются «Подготовил» и автору задачи. Передавайте id задачи, не задания",
+    description="Id задачи RX (процесса), из которой пришёл запрос: документ прикладывается к ней, «Подготовил» = автор "
+                "задачи (on_behalf_of не нужен), повтор с той же темой вернёт уже созданный документ. Id задачи, не задания",
     gt=0)]
 
 NEXT_STEP = ("Это предпросмотр: пока ничего не создано, но создать МОЖНО. Покажите пользователю, что будет создано "
@@ -52,6 +54,14 @@ def _required_person(services, value: str | None, label: str) -> int:
     person = _person_id(services, value)
     if person is None:
         raise ToolError(f"Укажите {label}: ФИО или id сотрудника.")
+    return person
+
+
+def _preparer_id(services, value: str | None, task_id: int | None) -> int | None:
+    """«Подготовил»: в рамках задачи процесса его определяет сервис по автору задачи, on_behalf_of можно не передавать."""
+    person = _person_id(services, value)
+    if person is None and not task_id:
+        raise ToolError("Укажите от чьего имени (on_behalf_of): ФИО или id сотрудника — или task_id задачи процесса.")
     return person
 
 
@@ -88,8 +98,8 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
     async def create_outgoing_letter(
         subject: Annotated[str, Field(description="Тема (содержание) письма")],
         correspondent: Annotated[str, Field(description="Адресат-организация: название или id корреспондента")],
-        on_behalf_of: OnBehalf,
         ctx: Context,
+        on_behalf_of: OnBehalfOrTask = None,
         signatory: Annotated[str | None, Field(description="Подписант: ФИО или id")] = None,
         in_response_to_document_id: Annotated[int | None, Field(description="Id входящего, на которое это ответ", gt=0)] = None,
         body_text: Body = None,
@@ -103,7 +113,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         return await two_step(
             ctx, "create_outgoing_letter", confirm_token,
             lambda s: s.document_create.plan_outgoing_letter(
-                subject, correspondent, _required_person(s, on_behalf_of, "от чьего имени (on_behalf_of)"),
+                subject, correspondent, _preparer_id(s, on_behalf_of, task_id),
                 signatory_id=_person_id(s, signatory), in_response_to_id=in_response_to_document_id,
                 body_text=body_text, note=note, process_task_id=task_id),
             lambda s, plan: s.document_create.create_outgoing_letter(plan, body_text),
@@ -113,9 +123,9 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
     async def create_legal_act(
         kind: Annotated[Literal["project", "act"], Field(description="project — проект правового акта, act — правовой акт")],
         subject: Annotated[str, Field(description="Наименование акта («О …»)")],
-        on_behalf_of: OnBehalf,
         is_normative: Annotated[bool, Field(description="Нормативный правовой акт")],
         ctx: Context,
+        on_behalf_of: OnBehalfOrTask = None,
         signatory: Annotated[str | None, Field(description="Подписант: ФИО или id")] = None,
         body_text: Body = None,
         note: Annotated[str | None, Field(description="Примечание")] = None,
@@ -127,7 +137,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         return await two_step(
             ctx, "create_legal_act", confirm_token,
             lambda s: s.document_create.plan_legal_act(
-                kind, subject, _required_person(s, on_behalf_of, "от чьего имени (on_behalf_of)"), is_normative,
+                kind, subject, _preparer_id(s, on_behalf_of, task_id), is_normative,
                 signatory_id=_person_id(s, signatory), body_text=body_text, note=note, process_task_id=task_id),
             lambda s, plan: s.document_create.create_legal_act(plan, body_text),
         )
@@ -253,8 +263,8 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
                   "приложение, правовой акт или проект"),
         ],
         subject: Annotated[str, Field(description="Тема (содержание) документа")],
-        on_behalf_of: OnBehalf,
         ctx: Context,
+        on_behalf_of: OnBehalfOrTask = None,
         document_kind: Annotated[str | None, Field(description="Вид документа, как в RX («Исходящее письмо», «Приказ»…). "
                                                    "Пусто — вид по умолчанию для типа (у приказа и др. — обязателен)")] = None,
         correspondent: Annotated[str | None, Field(description="Корреспондент (для писем): организация, название или id")] = None,
@@ -281,7 +291,7 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         return await two_step(
             ctx, "create_document", confirm_token,
             lambda s: s.document_create.plan_document(
-                document_type, subject, _required_person(s, on_behalf_of, "от чьего имени (on_behalf_of)"),
+                document_type, subject, _preparer_id(s, on_behalf_of, task_id),
                 document_kind=document_kind, correspondent=correspondent, signatory_id=_person_id(s, signatory),
                 addressee_id=_person_id(s, addressee), in_response_to_id=in_response_to_document_id,
                 leading_document_id=leading_document_id, is_normative=is_normative, extra_properties=extra_properties,

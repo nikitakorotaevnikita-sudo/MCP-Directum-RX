@@ -199,6 +199,16 @@ def test_document_tools_pass_process_task_id():
     assert no_task["will_create"]["process_task"] is None
 
 
+def test_on_behalf_optional_with_task_id():
+    server, _ = make2()
+    preview = payload(call_tool(server, "create_document", {"document_type": "memo", "subject": "О", "task_id": 86309}))
+    assert preview["will_create"]["prepared_by"]["id"] is None and preview["will_create"]["process_task"] == 86309
+    letter = payload(call_tool(server, "create_outgoing_letter", {"subject": "О", "correspondent": "А", "task_id": 86309}))
+    assert letter["mode"] == "preview"
+    err = error_text(call_tool(server, "create_document", {"document_type": "memo", "subject": "О"}))
+    assert "Укажите от чьего имени" in err
+
+
 def test_create_action_items_tool_resolves_people_and_dates():
     server, create = make2()
     args = {"document_id": 500, "on_behalf_of": "Концева", "items": [

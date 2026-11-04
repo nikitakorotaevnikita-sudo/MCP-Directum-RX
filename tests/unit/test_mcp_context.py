@@ -36,6 +36,45 @@ def test_credentials_from_headers_builds_basic_token_case_insensitively():
     assert "pw" not in repr(credentials)
 
 
+def test_authorization_basic_header_is_passed_through():
+    token = basic("nt_work\\user", "pw")
+    credentials = credentials_from_headers({"Authorization": token}, make_settings())
+
+    assert credentials.auth_token == token
+    assert credentials.service_account is False
+
+
+def test_authorization_scheme_is_case_insensitive_and_normalized():
+    encoded = base64.b64encode(b"user1:pw").decode()
+    credentials = credentials_from_headers({"authorization": f"basic   {encoded} "}, make_settings())
+
+    assert credentials.auth_token == f"Basic {encoded}"
+
+
+def test_explicit_directum_headers_win_over_authorization():
+    headers = {"X-Directum-Login": "user1", "X-Directum-Password": "pw", "Authorization": basic("other", "x")}
+
+    assert credentials_from_headers(headers, make_settings()).auth_token == basic("user1", "pw")
+
+
+def test_authorization_beats_service_account():
+    debug = make_settings(MCP_ALLOW_ENV_CREDENTIALS=True, DIRECTUM_AUTH_TOKEN=basic("Administrator", "pass"))
+    credentials = credentials_from_headers({"Authorization": basic("nadya", "1")}, debug)
+
+    assert credentials.auth_token == basic("nadya", "1") and credentials.service_account is False
+
+
+@pytest.mark.parametrize("value", ["Basic !!!", "Basic " + base64.b64encode(b"no-colon").decode(), "Basic "])
+def test_malformed_basic_authorization_is_rejected(value):
+    with pytest.raises(ToolError, match="Authorization"):
+        credentials_from_headers({"Authorization": value}, make_settings())
+
+
+def test_non_basic_authorization_is_ignored():
+    with pytest.raises(ToolError, match="Укажите логин и пароль Directum"):
+        credentials_from_headers({"Authorization": "Bearer abc"}, make_settings())
+
+
 def test_missing_credentials_raise_tool_error():
     with pytest.raises(ToolError, match="Укажите логин и пароль Directum"):
         credentials_from_headers({}, make_settings())
@@ -224,6 +263,32 @@ def test_provider_passes_stand_timezone_to_services():
 
     with provider.open({"X-Directum-Login": "u", "X-Directum-Password": "p"}) as (_, services):
         assert services.assignments.tz.utcoffset(None) == timedelta(hours=5)
+
+
+def test_provider_passes_process_task_types_to_document_create():
+    provider = ServicesProvider(
+        make_settings(MCP_WRITE_PROCESS_TASK_TYPES=" ISimpleProcessTasks , ICustomTasks ,"),
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"value": []})),
+    )
+
+    with provider.open({"X-Directum-Login": "u", "X-Directum-Password": "p"}) as (_, services):
+        assert services.document_create.process_task_types == {"ISimpleProcessTasks", "ICustomTasks"}
+
+
+def test_provider_tells_document_create_whether_service_account():
+    provider = ServicesProvider(
+        make_settings(MCP_ALLOW_ENV_CREDENTIALS=True, DIRECTUM_AUTH_TOKEN=basic("Administrator", "pass")),
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"value": []})),
+    )
+
+    with provider.open({"Authorization": basic("nadya", "1")}) as (_, services):
+        assert services.document_create.service_account is False
+    with provider.open({}) as (_, services):
+        assert services.document_create.service_account is True
+
+
+def test_process_task_types_default():
+    assert make_settings().process_task_types == {"ISimpleProcessTasks"}
 
 
 def test_service_account_flag():

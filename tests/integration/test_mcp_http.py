@@ -98,6 +98,13 @@ def test_tool_runs_with_user_credentials_from_headers(mcp_url):
     assert json.loads(result.content[0].text)["id"] == 63
 
 
+def test_tool_runs_with_authorization_basic_header(mcp_url):
+    result = _call(mcp_url, {"X-MCP-Key": KEY, "Authorization": EXPECTED_TOKEN}, "get_current_user")
+
+    assert not result.is_error, result.content[0].text
+    assert json.loads(result.content[0].text)["id"] == 63
+
+
 def test_missing_directum_credentials_reported_to_agent(mcp_url):
     result = _call(mcp_url, {"X-MCP-Key": KEY}, "get_current_user")
 

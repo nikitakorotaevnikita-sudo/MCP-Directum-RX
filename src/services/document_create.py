@@ -37,6 +37,10 @@ ACTION_ITEM_DOCUMENTS_GROUP = "804f50fe-f3da-411b-bb2e-e5373936e029"
 # Группа вложений задачи процесса (DocflowApproval.SimpleProcessTask) — единственная у этого типа, проверено на стенде.
 SIMPLE_PROCESS_DOCUMENTS_GROUP = "0dbfb92e-d66b-4ada-9493-897a72d170df"
 TASK_DOCUMENT_GROUPS = {"ISimpleProcessTasks": SIMPLE_PROCESS_DOCUMENTS_GROUP, ACTION_ITEMS: ACTION_ITEM_DOCUMENTS_GROUP}
+DEFAULT_PROCESS_TASK_TYPES = frozenset({"ISimpleProcessTasks"})
+NO_GROUP = ""  # вложение без группы (так их держит простая задача)
+MCP_NOTE_MARKER = NOTE_TEMPLATE.split(":")[0]  # «Подготовлено ИИ-ассистентом (mcpOGV) по запросу»
+DUPLICATE_ID_BATCH = 10
 MAX_BATCH_ACTION_ITEMS = 20
 MAX_FILE_BYTES = 20 * 1024 * 1024
 # Тип документа для create_document → (набор OData, название по-русски, вид по умолчанию, какие поля уместны).
@@ -103,10 +107,15 @@ class DocumentCreateService:
         tz: tzinfo | None = None,
         grant_rights_guid: str | None = None,
         now: Callable[[], datetime] | None = None,
+        process_task_types: set[str] | None = None,
     ):
         self.client = client
         self.tz = tz or datetime.now().astimezone().tzinfo
         self.grant_rights_guid = (grant_rights_guid or "").strip() or None
+        # Наборы задач, к которым агенту разрешено прикладывать создаваемые документы (задачи процессов).
+        self.process_task_types = set(process_task_types or DEFAULT_PROCESS_TASK_TYPES)
+        # Под служебной учёткой автор документа — она, а не сотрудник; провайдер выставляет по кредам запроса.
+        self.service_account = True
         self._now = now or (lambda: datetime.now(timezone.utc))
 
     # --- справочники ---
@@ -189,15 +198,14 @@ class DocumentCreateService:
         self,
         subject: str,
         correspondent: str,
-        prepared_by_id: int,
+        prepared_by_id: int | None,
         signatory_id: int | None = None,
         in_response_to_id: int | None = None,
         body_text: str | None = None,
         note: str | None = None,
         process_task_id: int | None = None,
     ) -> dict[str, Any]:
-        prepared = self.employee_card(prepared_by_id)
-        self._require_org(prepared)
+        prepared, task = self._preparer(prepared_by_id, process_task_id)
         return {
             "operation": "outgoing_letter",
             "subject": _clean(subject, MAX_SUBJECT, "тема письма"),
@@ -210,7 +218,7 @@ class DocumentCreateService:
             "in_response_to": self.document(in_response_to_id) if in_response_to_id else None,
             "note": self._note(prepared, note),
             "body": body_fingerprint(body_text),
-            "process_task": self.process_task(process_task_id) if process_task_id else None,
+            "process_task": task,
         }
 
     def create_outgoing_letter(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
@@ -235,7 +243,7 @@ class DocumentCreateService:
         self,
         kind: str,
         subject: str,
-        prepared_by_id: int,
+        prepared_by_id: int | None,
         is_normative: bool,
         signatory_id: int | None = None,
         body_text: str | None = None,
@@ -244,8 +252,7 @@ class DocumentCreateService:
     ) -> dict[str, Any]:
         if kind not in LEGAL_ACT_KINDS:
             raise CreateError("Вид: project — проект правового акта, act — правовой акт.")
-        prepared = self.employee_card(prepared_by_id)
-        self._require_org(prepared)
+        prepared, task = self._preparer(prepared_by_id, process_task_id)
         return {
             "operation": "legal_act",
             "kind": kind,
@@ -258,7 +265,7 @@ class DocumentCreateService:
             "signatory": self._person(signatory_id),
             "note": self._note(prepared, note),
             "body": body_fingerprint(body_text),
-            "process_task": self.process_task(process_task_id) if process_task_id else None,
+            "process_task": task,
         }
 
     def create_legal_act(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
@@ -361,11 +368,11 @@ class DocumentCreateService:
         if not type_guid:
             raise DirectumError("не удалось определить тип документа", status_code=None)
         self.client.post(f"{entity_set}({task_id})/AttachmentDetails",
-                         {"GroupId": group_id, "AttachmentId": int(document_id), "AttachmentTypeGuid": type_guid})
+                         {"GroupId": group_id or None, "AttachmentId": int(document_id), "AttachmentTypeGuid": type_guid})
 
     def _attach_to_process(self, document_id: int, task: dict[str, Any]) -> tuple[bool, list[str]]:
         """Созданный документ — во вложения задачи процесса: участники задачи видят его в карточке и получают доступ."""
-        if not task.get("group_id"):
+        if task.get("group_id") is None:
             return False, [f"Документ не приложен к задаче {task['id']}: не удалось определить группу вложений этого типа "
                            "задачи. Приложите его в RX вручную."]
         try:
@@ -470,7 +477,7 @@ class DocumentCreateService:
         self,
         document_type: str,
         subject: str,
-        prepared_by_id: int,
+        prepared_by_id: int | None,
         document_kind: str | None = None,
         correspondent: str | None = None,
         signatory_id: int | None = None,
@@ -503,8 +510,7 @@ class DocumentCreateService:
             raise CreateError("Исходящему письму нужен корреспондент (correspondent).")
         if body_text and template:
             raise CreateError("Укажите либо текст (body_text), либо шаблон (template), не оба.")
-        prepared = self.employee_card(prepared_by_id)
-        self._require_org(prepared)
+        prepared, task = self._preparer(prepared_by_id, process_task_id)
         return {
             "operation": "document",
             "document_type": document_type,
@@ -527,7 +533,7 @@ class DocumentCreateService:
             "note": self._note(prepared, note),
             "body": body_fingerprint(body_text),
             "body_markdown": bool(body_markdown) if body_text else False,
-            "process_task": self.process_task(process_task_id) if process_task_id else None,
+            "process_task": task,
         }
 
     def create_document(self, plan: dict[str, Any], body_text: str | None = None) -> dict[str, Any]:
@@ -630,6 +636,23 @@ class DocumentCreateService:
         index = self._metadata_index() or {"by_type": {}}
         return index["by_type"].get(type_name, "IOfficialDocuments"), row
 
+    def _preparer(self, prepared_by_id: int | None, process_task_id: int | None) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        """Кто «Подготовил». В рамках задачи процесса — её автор из RX, а не тот, кого назвала модель."""
+        task = self.process_task(process_task_id) if process_task_id else None
+        if task is not None:
+            author = task["author"]
+            if author is None:
+                raise CreateError(f"У задачи {task['id']} нет автора — не от чьего имени создавать документ.")
+            if prepared_by_id is not None and int(prepared_by_id) != author["id"]:
+                raise CreateError(f"Документ в рамках задачи {task['id']} создаётся от имени её автора ({author['name']}); "
+                                  "on_behalf_of указывает другого сотрудника.")
+            prepared_by_id = author["id"]
+        if prepared_by_id is None:
+            raise CreateError("Укажите, от чьего имени создать документ (on_behalf_of), или id задачи процесса (task_id).")
+        prepared = self.employee_card(prepared_by_id)
+        self._require_org(prepared)
+        return prepared, task
+
     def process_task(self, task_id: int) -> dict[str, Any]:
         """Задача, в рамках которой создаётся документ: её набор OData, группа вложений и автор (ему — права)."""
         try:
@@ -642,10 +665,17 @@ class DocumentCreateService:
         type_name = str(row.get("@odata.type") or "").split(".")[-1]
         index = self._metadata_index() or {"by_type": {}}
         entity_set = index["by_type"].get(type_name) or (type_name.removesuffix("Dto") + "s" if type_name else "ITasks")
+        if entity_set not in self.process_task_types:
+            raise CreateError(f"Задача {task_id} ({entity_set}) не из процесса, в рамках которого агенту разрешено "
+                              "создавать документы.")
+        if row.get("Status") != "InProcess":
+            raise CreateError(f"Задача {task_id} не в работе ({row.get('Status')}): документ к ней не приложить.")
         group_id = TASK_DOCUMENT_GROUPS.get(entity_set)
-        if group_id is None:
-            # Тип без известной группы: если у задачи уже есть вложения в одной группе — кладём туда же.
-            groups = {a.get("GroupId") for a in row.get("AttachmentDetails") or [] if a.get("GroupId")}
+        details = row.get("AttachmentDetails") or []
+        if group_id is None and details:
+            # Тип без известной группы: кладём туда же, где лежат текущие вложения. У простой задачи они без группы
+            # (GroupId null) — тогда и новый документ без группы (NO_GROUP).
+            groups = {a.get("GroupId") or NO_GROUP for a in details}
             group_id = groups.pop() if len(groups) == 1 else None
         author = row.get("Author") or {}
         return {
@@ -848,7 +878,33 @@ class DocumentCreateService:
 
     # --- общие шаги ---
 
+    def _existing_in_task(self, task: dict[str, Any], subject: str) -> dict[str, Any] | None:
+        """Документ mcpOGV с той же темой уже во вложениях задачи (повтор блока процесса или вызова агента)."""
+        wanted = (subject or "").strip().casefold()
+        try:
+            row = self.client.get_one(f"ITasks({int(task['id'])})?$select=Id&$expand=AttachmentDetails")
+            ids = [int(a["AttachmentId"]) for a in row.get("AttachmentDetails") or [] if isinstance(a.get("AttachmentId"), int)]
+            for start in range(0, len(ids), DUPLICATE_ID_BATCH):
+                batch = ids[start:start + DUPLICATE_ID_BATCH]
+                rows = self.client.query("IOfficialDocuments", filter_=" or ".join(f"Id eq {i}" for i in batch),
+                                         select="Id,Name,Subject,Note")
+                for doc in rows:
+                    if (doc.get("Subject") or "").strip().casefold() == wanted and MCP_NOTE_MARKER in (doc.get("Note") or ""):
+                        return doc
+        except DirectumError:
+            return None  # не смогли проверить — создаём, как раньше
+        return None
+
     def _create_document(self, entity_set: str, payload: dict[str, Any], plan: dict[str, Any], body_text: str | None) -> dict[str, Any]:
+        task = plan.get("process_task")
+        if task:
+            existing = self._existing_in_task(task, plan["subject"])
+            if existing:
+                document_id = int(existing["Id"])
+                return {"document_id": document_id, "name": existing.get("Name"), "url": self._doc_url(document_id),
+                        "already_existed": True, "process_task": {"id": task["id"], "attached": True},
+                        "warnings": [f"Документ «{plan['subject']}» уже создан в рамках задачи {task['id']} — "
+                                     "возвращаю существующий, новый не создаю."]}
         warnings: list[str] = []
         try:
             row = self.client.post(entity_set, payload)
@@ -870,7 +926,6 @@ class DocumentCreateService:
             except DirectumError as exc:
                 warnings.append(f"Документ создан, но версия по шаблону «{plan['template']['name']}» не создана: "
                                 f"{_reason(exc)}. Создайте её в RX («Создать из шаблона»).")
-        task = plan.get("process_task")
         attached = False
         if task:
             attached, problems = self._attach_to_process(document_id, task)
@@ -897,9 +952,13 @@ class DocumentCreateService:
     def _grant(self, document_id: int, people: list[dict[str, Any]], attached_task_id: int | None = None) -> list[str]:
         """Явные права на документ: «Подготовил» и автор задачи процесса (без повторов)."""
         if not self.grant_rights_guid:
+            if not self.service_account:
+                return []  # личная учётка: пользователь — автор документа, права у него есть
             if attached_task_id:
-                return [f"Явная выдача прав не настроена (MCP_WRITE_GRANT_RIGHTS_GUID не задан): документ приложен к задаче "
-                        f"{attached_task_id}, участники задачи получают к нему доступ через вложение."]
+                # Проверено на стенде: вложение, добавленное служебной учёткой в запущенную задачу, прав не даёт.
+                return [f"Права на документ не выданы (MCP_WRITE_GRANT_RIGHTS_GUID не задан): документ создан служебной "
+                        f"учёткой и приложен к задаче {attached_task_id}, но вложение в задачу доступа не даёт — сотрудник "
+                        "его не увидит. Выдайте права в RX (блок «Настройка прав доступа») или работайте под личной учёткой."]
             return ["Права на документ сотруднику не выданы (MCP_WRITE_GRANT_RIGHTS_GUID не задан): документ создан "
                     "служебной учёткой и может быть не виден сотруднику — проверьте доступ в RX."]
         warnings = []

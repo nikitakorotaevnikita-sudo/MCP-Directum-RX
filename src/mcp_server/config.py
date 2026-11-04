@@ -59,6 +59,8 @@ class McpSettings(BaseSettings):
     MCP_WRITE_AUDIT_PATH: str = "data/mcp_writes.log"
     # GUID типа прав, которые выдаются сотруднику on_behalf_of на созданный документ; пусто — права не выдаются.
     MCP_WRITE_GRANT_RIGHTS_GUID: str | None = None
+    # Наборы задач процессов (через запятую), к которым тулы создания прикладывают документ по task_id.
+    MCP_WRITE_PROCESS_TASK_TYPES: str = "ISimpleProcessTasks"
 
     @field_validator("MCP_UTC_OFFSET")
     @classmethod
@@ -77,6 +79,10 @@ class McpSettings(BaseSettings):
     @property
     def allowed_hosts(self) -> list[str]:
         return [host.strip() for host in self.MCP_ALLOWED_HOSTS.split(",") if host.strip()]
+
+    @property
+    def process_task_types(self) -> set[str]:
+        return {name.strip() for name in self.MCP_WRITE_PROCESS_TASK_TYPES.split(",") if name.strip()}
 
     @property
     def mcp_key(self) -> str | None:

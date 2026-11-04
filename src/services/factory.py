@@ -70,6 +70,7 @@ def build_directum_services(
     transport: httpx.BaseTransport | None = None,
     tz: tzinfo | None = None,
     grant_rights_guid: str | None = None,
+    process_task_types: set[str] | None = None,
 ) -> DirectumServices:
     client = DirectumClient(base_url, auth_token, timeout, transport=transport)
     current_user = CurrentUserService(client, auth_token)
@@ -97,7 +98,8 @@ def build_directum_services(
         legal_acts=LegalActsService(client, tz=tz, relations=relations),
         document_control=DocumentControlService(client, tz=tz),
         resolution_history=ResolutionHistoryService(client, tz=tz),
-        document_create=DocumentCreateService(client, tz=tz, grant_rights_guid=grant_rights_guid),
+        document_create=DocumentCreateService(client, tz=tz, grant_rights_guid=grant_rights_guid,
+                                              process_task_types=process_task_types),
         citizen_answers=CitizenAnswersService(client, document_text, tz=tz),
         content_search=ContentSearchService(client, document_text, qa_search, tz=tz),
         document_relations=relations,

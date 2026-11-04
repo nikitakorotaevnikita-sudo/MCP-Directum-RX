@@ -23,6 +23,9 @@ LOGIN_HEADER = "x-directum-login"
 PASSWORD_HEADER = "x-directum-password"
 ACCOUNT_HEADER = "x-mcp-account"
 ACCOUNT_NAME = re.compile(r"^[a-z0-9_-]{1,64}$")
+AUTHORIZATION_HEADER = "authorization"
+MALFORMED_AUTHORIZATION_MESSAGE = ("Заголовок Authorization: ожидается «Basic base64(логин:пароль)» "
+                                   "(доменный логин — домен\\логин).")
 MISSING_CREDENTIALS_MESSAGE = "Укажите логин и пароль Directum в настройках сервера mcpOGV в LibreChat."
 CURRENT_USER_TTL_SECONDS = 600
 ENV_LOGIN_FALLBACK = "env"
@@ -56,6 +59,24 @@ def _login_from_basic_token(token: str) -> str:
         return ENV_LOGIN_FALLBACK
     login = decoded.split(":", 1)[0] if ":" in decoded else ""
     return login or ENV_LOGIN_FALLBACK
+
+
+def _basic_authorization(value: str) -> str | None:
+    """Готовый «Authorization: Basic base64(логин:пароль)» от клиента — передаём в сервис интеграции как есть.
+
+    Другие схемы (Bearer и т. п.) не наши — игнорируем; битый Basic — понятная ошибка, а не тихий фолбэк.
+    """
+    scheme, _, encoded = value.strip().partition(" ")
+    if scheme.lower() != "basic":
+        return None
+    encoded = encoded.strip()
+    try:
+        decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        decoded = ""
+    if ":" not in decoded or not decoded.split(":", 1)[0]:
+        raise ToolError(MALFORMED_AUTHORIZATION_MESSAGE)
+    return f"Basic {encoded}"
 
 
 def usage_id_for(login: str, settings: McpSettings) -> str:
@@ -98,9 +119,15 @@ def credentials_from_headers(
     login = _from_latin1(lowered.get(LOGIN_HEADER, "")).strip()
     password = _from_latin1(lowered.get(PASSWORD_HEADER, ""))
     account = _from_latin1(lowered.get(ACCOUNT_HEADER, "")).strip().lower() or None
+    authorization = _basic_authorization(lowered.get(AUTHORIZATION_HEADER, ""))
     service_account = False
+    # Явные креды запроса важнее профиля: X-Directum-* → Authorization: Basic → X-MCP-Account → служебная учётка.
     if login and password:
         token = build_basic_auth_token(login, password)
+        account = None
+    elif authorization:
+        token = authorization
+        login = _login_from_basic_token(token)
         account = None
     elif account is not None:
         # Неизвестный профиль — ошибка, а не тихий переход на служебную учётку.
@@ -169,8 +196,10 @@ class ServicesProvider:
             transport=self.transport,
             tz=self.settings.stand_timezone,
             grant_rights_guid=self.settings.MCP_WRITE_GRANT_RIGHTS_GUID,
+            process_task_types=self.settings.process_task_types,
         )
         services.service_account = credentials.service_account
+        services.document_create.service_account = credentials.service_account
         services.credentials_fingerprint = credentials.fingerprint
         services.usage_id = credentials.usage_id
         cached_user = self.user_cache.get(credentials.fingerprint)
