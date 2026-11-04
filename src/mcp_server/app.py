@@ -17,8 +17,10 @@ from src.mcp_server.odata_meta import MetadataCache
 from src.mcp_server.runner import ToolRunner
 from src.mcp_server.transfers import TransferStore
 from src.mcp_server.write_guard import ConfirmTokens, WriteAudit
+from src.services.classifier_client import ClassifierClient
 from src.mcp_server.tools import (
     action_items,
+    classifier as classifier_tools,
     citizen_requests,
     common,
     document_control,
@@ -74,6 +76,9 @@ INSTRUCTIONS = """mcpOGV — доступ к Directum RX от имени тек�
 15. Запрос пришёл из задачи процесса RX (в нём есть id задачи) — передавай этот id в task_id тулов создания документа
     (create_document, create_outgoing_letter, create_legal_act). Тогда «Подготовил» = автор задачи, on_behalf_of не нужен:
     не подставляй ФИО из текста запроса. Документ приложится к задаче, повтор с той же темой вернёт уже созданный.
+16. Классификация обращений (если включены classifier_*): рубрики ищи classifier_search фразой языком классификатора
+    (суть, ключевые фразы, официальные формулировки), финальный код выбирай сам и проверяй classifier_get.
+    search_citizen_request_classifier — поиск подстроки в справочнике RX, для подбора рубрики по смыслу не подходит.
 """
 
 
@@ -88,8 +93,9 @@ def build_server(
     usage: ToolUsageStore | None = None,
     skills_dir: Path = SKILLS_DIR,
     write_audit: WriteAudit | None = None,
+    classifier: Any | None = None,
 ) -> MCPServer:
-    """write_audit — включить тулы записи в RX (иначе они не регистрируются)."""
+    """write_audit — включить тулы записи в RX; classifier — тулы классификатора (иначе они не регистрируются)."""
     runner = ToolRunner(provider, usage)
     native = NativeProxyMiddleware(provider, TtlCache(NATIVE_TOOLS_TTL_SECONDS), usage)
     admin_gate = AdminGateMiddleware(provider, TtlCache(ADMIN_CHECK_TTL_SECONDS))
@@ -106,6 +112,8 @@ def build_server(
     document_control.register(mcp, runner)
     if write_audit is not None:
         write.register(mcp, runner, ConfirmTokens(), write_audit, transfers)
+    if classifier is not None:
+        classifier_tools.register(mcp, runner, classifier)
     guides = resources.load_domain_guides(skills_dir)
     odata.register(mcp, runner, MetadataCache(), guides)
     resources.register(mcp, guides)
@@ -153,7 +161,9 @@ def build_asgi_app(
     provider = provider or ServicesProvider(settings)
     usage = usage or ToolUsageStore(settings.MCP_USAGE_DB_PATH)
     write_audit = WriteAudit(settings.MCP_WRITE_AUDIT_PATH) if settings.MCP_WRITE_ENABLED else None
-    mcp = build_server(provider, usage, write_audit=write_audit)
+    classifier = (ClassifierClient(settings.MCP_CLASSIFIER_URL, settings.MCP_CLASSIFIER_TIMEOUT_SECONDS)
+                  if (settings.MCP_CLASSIFIER_URL or "").strip() else None)
+    mcp = build_server(provider, usage, write_audit=write_audit, classifier=classifier)
     app = mcp.streamable_http_app(
         stateless_http=True,
         json_response=True,

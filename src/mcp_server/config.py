@@ -61,6 +61,9 @@ class McpSettings(BaseSettings):
     MCP_WRITE_GRANT_RIGHTS_GUID: str | None = None
     # Наборы задач процессов (через запятую), к которым тулы создания прикладывают документ по task_id.
     MCP_WRITE_PROCESS_TASK_TYPES: str = "ISimpleProcessTasks"
+    # Сервис классификатора обращений (Class OG), например http://172.16.104.68:8020; пусто — тулы classifier_* не регистрируются.
+    MCP_CLASSIFIER_URL: str | None = None
+    MCP_CLASSIFIER_TIMEOUT_SECONDS: float = 15.0
 
     @field_validator("MCP_UTC_OFFSET")
     @classmethod

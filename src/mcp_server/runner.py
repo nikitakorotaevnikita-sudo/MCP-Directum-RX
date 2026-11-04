@@ -39,6 +39,27 @@ class ToolRunner:
     async def run(self, ctx: Any, tool: str, action: Callable[[Any], T]) -> T:
         return await anyio.to_thread.run_sync(self._execute, _headers_of(ctx), tool, action)
 
+    async def run_plain(self, ctx: Any, tool: str, action: Callable[[], T]) -> T:
+        """Тул без учётки RX (внешний сервис): те же метрики и маппинг ошибок, сервисы Directum не открываются."""
+        return await anyio.to_thread.run_sync(self._execute_plain, tool, action)
+
+    def _execute_plain(self, tool: str, action: Callable[[], T]) -> T:
+        started = time.perf_counter()
+        ok = False
+        error_kind = None
+        try:
+            result = action()
+            ok = True
+            return result
+        except Exception as exc:
+            error, error_kind = to_tool_error(exc)
+            raise error from None
+        finally:
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            logger.info("tool=%s ok=%s error=%s duration_ms=%d", tool, ok, error_kind, duration_ms)
+            if self.usage is not None:
+                self.usage.record(tool, ok, error_kind, duration_ms, None)
+
     def _execute(self, headers: Any, tool: str, action: Callable[[Any], T]) -> T:
         started = time.perf_counter()
         usage_id = None
