@@ -36,8 +36,8 @@ Directum RX, собирает JSON-спецификацию и вызывает 
 
 Набор по описанию решения Directum RX 26.2 «Правовые акты органов власти». Данные о проектах и актах — из mcpOGV
 (`find_legal_acts`, `get_legal_act`, `list_legal_acts_on_approval`, `get_document_text`), сведения о
-законодательстве — из MCP «Гарант» (`garant_search`, `garant_document_info`, `garant_document_redactions`,
-`garant_block_changed`, `garant_find_hyperlinks`, `garant_snippets`, `garant_export_*`, `garant_sutyazhnik`, …).
+законодательстве — из MCP «Гарант» (`search_documents`, `get_document`, `get_document_block`,
+`find_fragments`, `check_document`, `get_limits`; с ноября 2026 — вместо прежних `garant_*`).
 
 | Навык | Когда | Скрипт |
 |---|---|---|
