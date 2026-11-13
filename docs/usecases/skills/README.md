@@ -1,5 +1,7 @@
 # Навыки агентов
 
+Какой агент что подключает и юзкейсы по агентам — [`docs/skills/README.md`](../../skills/README.md).
+
 Два переиспользуемых навыка для LLM-агента (например, в LibreChat с mcpOGV): агент берёт данные из тулов
 Directum RX, собирает JSON-спецификацию и вызывает скрипт. Вёрстку, типы ячеек, ссылки и защиту от ошибок
 делает скрипт.
@@ -42,7 +44,7 @@ Directum RX, собирает JSON-спецификацию и вызывает 
 | Навык | Когда | Скрипт |
 |---|---|---|
 | [`pa-route`](pa-route/SKILL.md) | на каком этапе проект, что дальше, кто следующий, почему застрял | — |
-| [`pa-legal-basis`](pa-legal-basis/SKILL.md) | действуют ли акты-основания, редакции, изменения норм, практика (ГАРАНТ) | `extract_legal_refs.py` |
+| [`pa-legal-basis`](pa-legal-basis/SKILL.md) | действуют ли акты-основания, верны ли реквизиты, совпадает ли норма с действующим текстом (ГАРАНТ) | `extract_legal_refs.py` |
 | [`pa-normcontrol`](pa-normcontrol/SKILL.md) | предварительный нормоконтроль и лингвистическая проверка | `check_structure.py` |
 | [`pa-anticorruption`](pa-anticorruption/SKILL.md) | предварительная АКЭ по Методике № 96 (текст Методики — из ГАРАНТа) | `flag_markers.py` |
 | [`pa-orv`](pa-orv/SKILL.md) | нужна ли ОРВ, материалы к обсуждениям, черновик заключения | — |
@@ -57,8 +59,8 @@ cp1251), выход — JSON или `--format md`; коды выхода 0 / 2 (
 
 Набор по описанию решения Directum RX 26.2 «Обращения граждан» и 59-ФЗ. Данные — из mcpOGV
 (`get_citizen_request_status`, `list_citizen_requests_due`, `get_citizen_requests_analytics`,
-`search_citizen_request_classifier`, `get_document_text`, `find_documents`). Скрипты принимают ответы этих тулов
-в JSON как есть.
+`search_citizen_request_classifier`, `get_document_text`, `find_documents`); нормы для ответов и полномочия органа
+(`og-letters`, `og-redirect`) — из MCP «Гарант». Скрипты принимают ответы тулов mcpOGV в JSON как есть.
 
 | Навык | Когда | Скрипт |
 |---|---|---|
