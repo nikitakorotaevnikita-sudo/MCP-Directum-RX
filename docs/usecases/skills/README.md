@@ -10,6 +10,7 @@ Directum RX, собирает JSON-спецификацию и вызывает 
 |---|---|---|---|
 | [`pdf-report`](pdf-report/SKILL.md) | «сделай отчёт в PDF», справка для руководителя, печать | `pdf-report/scripts/build_pdf.py` | reportlab ≥ 4.0 |
 | [`excel-report`](excel-report/SKILL.md) | «выгрузи в Excel», списки для фильтрации и подсчётов | `excel-report/scripts/build_xlsx.py` | openpyxl ≥ 3.1 |
+| [`pptx-creator`](pptx-creator/SKILL.md) | «сделай презентацию», слайды для руководителя — ровно 5 слайдов в едином стиле | `pptx-creator/scripts/build_pptx.py` | python-pptx ≥ 1.0 |
 | [`pdf-read`](pdf-read/SKILL.md) | прочитать PDF с текстовым слоем: текст по страницам, метаданные, поиск сканов | `pdf-read/scripts/extract_pdf_text.py` | pypdf ≥ 4.0 |
 | [`doc-version`](doc-version/SKILL.md) | новая версия документа в RX **автономно, без «Создать?»**: из текста, файла, файла частями, другого документа | — (тулы mcpOGV) | — |
 
@@ -92,7 +93,7 @@ cp1251), выход — JSON или `--format md`; коды выхода 0 / 2 (
 
 ## Упаковка для загрузки на платформу
 
-Готовые архивы лежат в `dist/`: по `ИМЯ.zip` и `ИМЯ.skill` на каждый навык (`pdf-report`, `excel-report`, `pa-*`,
+Готовые архивы лежат в `dist/`: по `ИМЯ.zip` и `ИМЯ.skill` на каждый навык (`pdf-report`, `excel-report`, `pptx-creator`, `pa-*`,
 `og-*`). `SKILL.md` — в корне архива.
 Пересобрать после правок:
 

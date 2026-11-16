@@ -11,7 +11,7 @@
 
 | Агент | Системный промпт | MCP-серверы | Навыки |
 |---|---|---|---|
-| Главный агент ОГВ | [`main-agent.md`](../prompts/main-agent.md) (компактный — [`main-agent-compact.md`](../prompts/main-agent-compact.md)) | mcpOGV | `pdf-report`, `excel-report` |
+| Главный агент ОГВ | [`main-agent.md`](../prompts/main-agent.md) (компактный — [`main-agent-compact.md`](../prompts/main-agent-compact.md)) | mcpOGV | `pdf-report`, `excel-report`, `pptx-creator`, `doc-version` |
 | Правовой отдел — НПА | [`legal-acts-agent.md`](../prompts/legal-acts-agent.md) | mcpOGV, «Гарант» | `pa-*`, `doc-version`, `pdf-report`, `excel-report` |
 | Обращения граждан — УРОГ | [`citizen-requests-agent.md`](../prompts/citizen-requests-agent.md) | mcpOGV, «Гарант» | `og-*`, `pdf-report`, `excel-report` |
 | Контроль исполнения | [`control-agent.md`](../prompts/control-agent.md) | mcpOGV | `kd-*`, `pdf-report`, `excel-report` |
@@ -27,6 +27,7 @@
 |---|---|---|
 | `pdf-report` | PDF-отчёт из JSON-спецификации (кириллица, таблицы, ссылки) | reportlab ≥ 4.0 |
 | `excel-report` | Excel-выгрузка: типизированные колонки, итоги, подсветка | openpyxl ≥ 3.1 |
+| `pptx-creator` | Презентация .pptx — ровно 5 слайдов (титул, содержание, суть, данные, выводы), 16:9, Calibri; данные только из инструментов | python-pptx ≥ 1.0 |
 | `pdf-read` | Текст PDF с текстовым слоем, поиск страниц-сканов | pypdf ≥ 4.0 |
 | `doc-version` | Новая версия документа в RX автономно, без подтверждения пользователя (нужен mcpOGV с записью) | — |
 
@@ -116,6 +117,8 @@
 | «Создай письмо / поручение / задачу» | тулы записи в два шага: предпросмотр → «да» → создание |
 | Обращения, НПА, контроль — из нескольких шагов | передаёт агенту «Обращения граждан», «Правовой отдел — НПА» или «Контроль исполнения» |
 | Отчёт в файле | `pdf-report`, `excel-report` |
+| «Сделай презентацию по…», «слайды для руководителя» | `pptx-creator`: сначала данные тулами, потом 5 слайдов |
+| «Загрузи исправленный файл как новую версию» | `doc-version`: новая версия без вопроса «Создать?» |
 
 ## Запросы из процессов RX
 
