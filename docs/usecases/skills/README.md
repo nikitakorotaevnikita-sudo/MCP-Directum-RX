@@ -12,6 +12,7 @@ Directum RX, собирает JSON-спецификацию и вызывает 
 | [`excel-report`](excel-report/SKILL.md) | «выгрузи в Excel», списки для фильтрации и подсчётов | `excel-report/scripts/build_xlsx.py` | openpyxl ≥ 3.1 |
 | [`pptx-creator`](pptx-creator/SKILL.md) | «сделай презентацию», слайды для руководителя — ровно 5 слайдов в едином стиле | `pptx-creator/scripts/build_pptx.py` | python-pptx ≥ 1.0 |
 | [`pdf-read`](pdf-read/SKILL.md) | прочитать PDF с текстовым слоем: текст по страницам, метаданные, поиск сканов | `pdf-read/scripts/extract_pdf_text.py` | pypdf ≥ 4.0 |
+| [`xlsx-read`](xlsx-read/SKILL.md) | прочитать и проанализировать один или несколько Excel/CSV: обзор, профиль колонок, отбор и свод, склейка, сверка двух версий по ключу | `xlsx-read/scripts/read_tables.py` | openpyxl ≥ 3.1 |
 | [`doc-version`](doc-version/SKILL.md) | новая версия документа в RX **автономно, без «Создать?»**: из текста, файла, файла частями, другого документа | — (тулы mcpOGV) | — |
 
 `pdf-read` работает в обратную сторону: вход — PDF, выход — текст (`text`, `json` или `md`), вызов

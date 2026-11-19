@@ -232,7 +232,7 @@ Directum RX (стенд governmentgenai.directum360.ru)
 
 Навыки — пакеты для агента LibreChat (`SKILL.md` + скрипты + шаблоны). Готовые архивы для загрузки — `docs/skills/`
 (перечень — `docs/skills/README.md`), исходники — `docs/usecases/skills/`.
-Скрипты — только стандартная библиотека Python 3.10+ (кроме `pdf-report`, `excel-report`, `pdf-read`), принимают
+Скрипты — только стандартная библиотека Python 3.10+ (кроме `pdf-report`, `excel-report`, `pdf-read`, `xlsx-read`), принимают
 ответы тулов mcpOGV в JSON как есть, коды выхода 0 / 2 (плохой вход) / 1.
 
 ### 4.1. Общие
@@ -242,6 +242,7 @@ Directum RX (стенд governmentgenai.directum360.ru)
 | `pdf-report` | PDF-отчёт из JSON-спецификации (кириллица, таблицы, ссылки) | Справка руководителю, печать | `build_pdf.py` (reportlab) |
 | `excel-report` | Excel с типизированными колонками, итогами, подсветкой | Выгрузки для фильтрации | `build_xlsx.py` (openpyxl) |
 | `pdf-read` | Текст PDF с текстовым слоем, поиск сканов, пароль | Прочитать присланный PDF | `extract_pdf_text.py` (pypdf) |
+| `xlsx-read` | Таблицы Excel/CSV: находит таблицу на «грязном» листе, профиль, отбор и свод, склейка нескольких файлов, сверка по ключу, сверка с «Итого» | «Посчитай по таблице», «сравни две выгрузки», «собери в одну» | `read_tables.py` (openpyxl) |
 | `doc-version` | Новая версия документа **без подтверждения** (автономно): текст, файл, файл частями, перенос из другого документа | Шаг процесса, «обнови текст документа» | — |
 
 ### 4.2. Правовой отдел (НПА) — решение «Правовые акты органов власти»
@@ -302,7 +303,7 @@ Directum RX (стенд governmentgenai.directum360.ru)
 |---|---|
 | Роль | Ассистент сотрудника: мои дела, документы, разовые вопросы по всем доменам; сложное — профильным агентам |
 | Тулы | Все курируемые тулы чтения; при включённой записи — все тулы создания; `odata_*` по желанию |
-| Навыки | `pdf-report`, `excel-report`, `pdf-read` |
+| Навыки | `pdf-report`, `excel-report`, `pdf-read`, `xlsx-read` |
 | Предметная часть | Служебная учётка и «я»; персональные данные; поиск по содержанию — один вызов; делегирование профильным агентам |
 
 ### 5.3. «Обращения граждан» (УРОГ) — `citizen-requests-agent.md`
@@ -320,7 +321,7 @@ Directum RX (стенд governmentgenai.directum360.ru)
 |---|---|
 | Роль | Юристы и руководитель правового отдела |
 | Тулы | `find_legal_acts`, `get_legal_act`, `list_legal_acts_on_approval`, `get_document_text`, `find_documents`, `find_documents_by_content`, `get_template_body_md`, `ask_documents`, `list_employee_action_items`, `get_action_item`, `search_employees`, `get_current_user`, `add_working_days`; все тулы MCP «Гарант»; запись — `create_legal_act` / `create_document`, `create_document_body`, `send_document_for_approval`, `create_outgoing_letter` |
-| Навыки | `pa-route`, `pa-legal-basis`, `pa-normcontrol`, `pa-anticorruption`, `pa-orv`, `pa-compare`, `pa-conclusions`, `pdf-report`, `excel-report`, `pdf-read` |
+| Навыки | `pa-route`, `pa-legal-basis`, `pa-normcontrol`, `pa-anticorruption`, `pa-orv`, `pa-compare`, `pa-conclusions`, `pdf-report`, `excel-report`, `pdf-read`, `xlsx-read` |
 | Предметная часть | Проект ≠ принятый акт; законодательство — только из ГАРАНТа; анализ ≠ экспертиза; ограничение «Категория» при создании проекта |
 
 ### 5.5. «Контроль исполнения» — `control-agent.md`
@@ -329,7 +330,7 @@ Directum RX (стенд governmentgenai.directum360.ru)
 |---|---|
 | Роль | Контролёры, помощники руководителя |
 | Тулы | `list_controlled_action_items`, `get_control_dossier`, `get_resolution_history`, `get_document`, `get_document_text`, `find_documents`, `list_employee_action_items`, `get_department_discipline`, `search_employees`, `get_current_user`, `add_working_days`; запись — `create_action_items`, `create_action_item`, `send_document_for_review`, `request_action_item_report` |
-| Навыки | `kd-monitor`, `kd-dossier`, `kd-close`, `kd-resolution`, `pdf-report`, `excel-report`, `pdf-read` |
+| Навыки | `kd-monitor`, `kd-dossier`, `kd-close`, `kd-resolution`, `pdf-report`, `excel-report`, `pdf-read`, `xlsx-read` |
 | Предметная часть | Контроль — это поручение с признаком «На контроле», не карточка; прогноз — не оценка людей; по существу — только по тексту отчёта; запрос отчёта — от выдавшего или контролёра |
 
 ### 5.6. Общие правила для всех агентов (уже в промптах)
