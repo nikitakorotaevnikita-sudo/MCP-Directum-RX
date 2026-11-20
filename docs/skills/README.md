@@ -11,10 +11,10 @@
 
 | Агент | Системный промпт | MCP-серверы | Навыки |
 |---|---|---|---|
-| Главный агент ОГВ | [`main-agent.md`](../prompts/main-agent.md) (компактный — [`main-agent-compact.md`](../prompts/main-agent-compact.md)) | mcpOGV | `pdf-report`, `excel-report`, `pptx-creator`, `doc-version` |
+| Главный агент ОГВ | [`main-agent.md`](../prompts/main-agent.md) (компактный — [`main-agent-compact.md`](../prompts/main-agent-compact.md)) | mcpOGV | `pdf-report`, `excel-report`, `pptx-creator`, `pdf-read`, `xlsx-read`, `doc-version` |
 | Правовой отдел — НПА | [`legal-acts-agent.md`](../prompts/legal-acts-agent.md) | mcpOGV, «Гарант» | `pa-*`, `doc-version`, `pdf-report`, `excel-report` |
 | Обращения граждан — УРОГ | [`citizen-requests-agent.md`](../prompts/citizen-requests-agent.md) | mcpOGV, «Гарант» | `og-*`, `pdf-report`, `excel-report` |
-| Контроль исполнения | [`control-agent.md`](../prompts/control-agent.md) | mcpOGV | `kd-*`, `pdf-report`, `excel-report` |
+| Контроль исполнения | [`control-agent.md`](../prompts/control-agent.md) | mcpOGV | `kd-*`, `pdf-report`, `excel-report`, `pdf-read` |
 | Классификатор обращений; Ответы на обращения граждан | репозиторий Class-OG-Final: `cowork/agent-instruction.md`, `cowork/answer-agent/agent-instruction.md` | mcpOGV (в т. ч. `classifier_search`, `classifier_get`), mcp-pravo | их навыки — в `docs/skills/` репозитория Class-OG-Final; отсюда берут `og-repeat`, `og-letters`, `og-answer-review` |
 
 **MCP «Гарант» (с ноября 2026):** `search_documents`, `get_document`, `get_document_block`, `find_fragments`,
@@ -120,6 +120,8 @@
 | Отчёт в файле | `pdf-report`, `excel-report` |
 | «Сделай презентацию по…», «слайды для руководителя» | `pptx-creator`: сначала данные тулами, потом 5 слайдов |
 | «Загрузи исправленный файл как новую версию» | `doc-version`: новая версия без вопроса «Создать?» |
+| «Посмотри таблицу», «сравни две выгрузки», «что изменилось» (прислан Excel/CSV) | `xlsx-read`: свод, отбор, склейка, сверка по ключу |
+| «Прочитай присланный PDF» | `pdf-read`: текст по страницам, поиск сканов |
 
 ## Запросы из процессов RX
 
