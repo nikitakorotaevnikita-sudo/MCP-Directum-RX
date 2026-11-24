@@ -1,0 +1,10 @@
+{
+  "total": 3,
+  "returned": 3,
+  "truncated": false,
+  "items": [
+    {"id": 1072, "subject": "Подготовить ответ в Минфин", "deadline": "2026-11-10", "url": "https://rx.example.ru/card/1072"},
+    {"id": 1080, "subject": "Отчёт по дорогам", "deadline": "2026-11-30", "url": "https://rx.example.ru/card/1080"},
+    {"id": 1091, "subject": "Без срока", "deadline": null, "url": "https://rx.example.ru/card/1091"}
+  ]
+}
