@@ -256,3 +256,42 @@ def test_get_document_text_max_chars_bounds():
 
     assert call_tool(server, "get_document_text", {"document_id": 42, "max_chars": 10}).is_error
     assert call_tool(server, "get_document_text", {"document_id": 42, "max_chars": 60000}).is_error
+
+
+def test_get_doc_body_md_passes_format_and_limit():
+    from src.models.schemas import DocumentText
+
+    seen = {}
+
+    def get_text(document_id, max_chars=20000, body_format="text"):
+        seen.update(document_id=document_id, max_chars=max_chars, body_format=body_format)
+        return DocumentText(document_id=document_id, name="Приказ", text="# Приказ", format="markdown")
+
+    services = SimpleNamespace(document_text=SimpleNamespace(get_text=get_text))
+
+    data = payload(call_tool(make_server(services), "get_doc_body_md", {"document_id": 42, "format": "markdown"}))
+
+    assert seen == {"document_id": 42, "max_chars": 20000, "body_format": "markdown"}
+    assert data["text"] == "# Приказ" and data["format"] == "markdown"
+
+
+def test_get_doc_body_md_default_format_is_text():
+    from src.models.schemas import DocumentText
+
+    seen = {}
+
+    def get_text(document_id, max_chars=20000, body_format="text"):
+        seen.update(body_format=body_format)
+        return DocumentText(document_id=document_id)
+
+    services = SimpleNamespace(document_text=SimpleNamespace(get_text=get_text))
+
+    payload(call_tool(make_server(services), "get_doc_body_md", {"document_id": 42}))
+
+    assert seen["body_format"] == "text"
+
+
+def test_get_doc_body_md_rejects_unknown_format():
+    services = SimpleNamespace(document_text=SimpleNamespace(get_text=lambda *a, **k: None))
+
+    assert error_text(call_tool(make_server(services), "get_doc_body_md", {"document_id": 42, "format": "html"}))

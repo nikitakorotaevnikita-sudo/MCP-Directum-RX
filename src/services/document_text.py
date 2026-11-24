@@ -53,6 +53,130 @@ def _docx_text(data: bytes) -> str:
     return "\n".join(paragraphs)
 
 
+HEADING_STYLE = re.compile(r"^(?:heading|заголовок)\s*(\d)$", re.IGNORECASE)
+# Без styles.xml стиль известен только по id; в русском Word id заголовков — «1», «2»…, имя — «heading 1».
+OFF_VALUES = {"0", "false", "off"}
+
+
+def _flag(rpr: Any, name: str) -> bool:
+    node = rpr.find(f"{WORD_NS}{name}") if rpr is not None else None
+    return node is not None and (node.get(f"{WORD_NS}val") or "").lower() not in OFF_VALUES
+
+
+def _run_text(run: Any) -> str:
+    parts = []
+    for node in run:
+        if node.tag == f"{WORD_NS}t" and node.text:
+            parts.append(node.text)
+        elif node.tag == f"{WORD_NS}tab":
+            parts.append("\t")
+        elif node.tag in (f"{WORD_NS}br", f"{WORD_NS}cr"):
+            parts.append("\n")
+    return "".join(parts)
+
+
+def _emphasize(text: str, bold: bool, italic: bool) -> str:
+    marker = "***" if bold and italic else "**" if bold else "*" if italic else ""
+    core = text.strip()
+    if not marker or not core:
+        return text
+    lead = text[: len(text) - len(text.lstrip())]
+    tail = text[len(text.rstrip()):]
+    return f"{lead}{marker}{core}{marker}{tail}"
+
+
+def _paragraph_markdown(paragraph: Any, style_names: dict[str, str] | None = None) -> str:
+    groups: list[list[Any]] = []  # [bold, italic, text] — соседние фрагменты с одним оформлением склеиваем
+    for run in paragraph.iter(f"{WORD_NS}r"):
+        text = _run_text(run)
+        if not text:
+            continue
+        rpr = run.find(f"{WORD_NS}rPr")
+        style = (_flag(rpr, "b"), _flag(rpr, "i"))
+        if groups and (groups[-1][0], groups[-1][1]) == style:
+            groups[-1][2] += text
+        else:
+            groups.append([style[0], style[1], text])
+    text = "".join(_emphasize(chunk, bold, italic) for bold, italic, chunk in groups).strip()
+    if not text:
+        return ""
+    ppr = paragraph.find(f"{WORD_NS}pPr")
+    style_node = ppr.find(f"{WORD_NS}pStyle") if ppr is not None else None
+    style_id = (style_node.get(f"{WORD_NS}val") or "") if style_node is not None else ""
+    style = (style_names or {}).get(style_id, style_id).replace(" ", "")
+    outline = ppr.find(f"{WORD_NS}outlineLvl") if ppr is not None else None
+    heading = HEADING_STYLE.match((style_names or {}).get(style_id, style_id).strip()) or HEADING_STYLE.match(style)
+    if heading or style.lower() == "title":
+        level = min(int(heading.group(1)), 6) if heading else 1
+        return f"{'#' * max(level, 1)} {text}"
+    if outline is not None and (outline.get(f"{WORD_NS}val") or "").isdigit():
+        return f"{'#' * min(int(outline.get(f'{WORD_NS}val')) + 1, 6)} {text}"
+    typed_bullet = re.match(r"^[•·▪●]\s+(.*)$", text, re.DOTALL)
+    if typed_bullet:  # маркер набран символом, а не стилем списка (так собирает и наш docx_builder)
+        return f"- {typed_bullet.group(1)}"
+    if "listnumber" in style.lower():
+        return f"1. {text}"
+    if "listbullet" in style.lower() or (ppr is not None and ppr.find(f"{WORD_NS}numPr") is not None):
+        return f"- {text}"
+    return text
+
+
+def _cell_text(cell: Any, style_names: dict[str, str]) -> str:
+    parts = [_paragraph_markdown(p, style_names).lstrip("#- ") for p in cell.iter(f"{WORD_NS}p")]
+    return " ".join(part for part in parts if part).replace("|", "\\|").replace("\n", " ")
+
+
+def _table_markdown(table: Any, style_names: dict[str, str]) -> str:
+    rows = [[_cell_text(cell, style_names) for cell in row.findall(f"{WORD_NS}tc")] for row in table.iter(f"{WORD_NS}tr")]
+    rows = [row for row in rows if any(row)]
+    if not rows:
+        return ""
+    width = max(len(row) for row in rows)
+    rows = [row + [""] * (width - len(row)) for row in rows]
+    lines = [f"| {' | '.join(rows[0])} |", f"| {' | '.join(['---'] * width)} |"]
+    lines += [f"| {' | '.join(row)} |" for row in rows[1:]]
+    return "\n".join(lines)
+
+
+def _style_names(archive: zipfile.ZipFile) -> dict[str, str]:
+    """styleId → имя стиля из word/styles.xml (если файла нет или он битый — пусто)."""
+    try:
+        root = ElementTree.fromstring(archive.read("word/styles.xml"))
+    except (KeyError, ElementTree.ParseError):
+        return {}
+    names = {}
+    for style in root.iter(f"{WORD_NS}style"):
+        name = style.find(f"{WORD_NS}name")
+        style_id = style.get(f"{WORD_NS}styleId")
+        if style_id and name is not None and name.get(f"{WORD_NS}val"):
+            names[style_id] = name.get(f"{WORD_NS}val")
+    return names
+
+
+def _docx_markdown(data: bytes) -> str:
+    """Docx → Markdown: заголовки по стилям Heading/«Заголовок», жирный и курсив, списки, таблицы."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            root = ElementTree.fromstring(archive.read("word/document.xml"))
+            style_names = _style_names(archive)
+    except (zipfile.BadZipFile, KeyError, ElementTree.ParseError) as exc:
+        raise _Unreadable from exc
+    body = root.find(f"{WORD_NS}body")
+    if body is None:
+        return ""
+    blocks = []
+    for element in body:
+        if element.tag == f"{WORD_NS}p":
+            line = _paragraph_markdown(element, style_names)
+            if line:
+                blocks.append(line)
+        elif element.tag == f"{WORD_NS}tbl":
+            table = _table_markdown(element, style_names)
+            if table:
+                blocks.append("\n" + table + "\n")
+    return "\n".join(blocks)
+
+
 def _pdf_text(data: bytes) -> str:
     from pypdf import PdfReader
     from pypdf.errors import PdfReadError
@@ -84,9 +208,9 @@ def _sniff(data: bytes) -> str | None:
     return None
 
 
-def _extract(data: bytes, extension: str) -> str:
+def _extract(data: bytes, extension: str, body_format: str = "text") -> str:
     if extension == "docx":
-        text = _docx_text(data)
+        text = _docx_markdown(data) if body_format == "markdown" else _docx_text(data)
     elif extension == "pdf":
         text = _pdf_text(data)
     else:
@@ -100,7 +224,7 @@ class DocumentTextService:
     def __init__(self, client: Any):
         self.client = client
 
-    def get_text(self, document_id: int, max_chars: int = DEFAULT_MAX_CHARS) -> DocumentText:
+    def get_text(self, document_id: int, max_chars: int = DEFAULT_MAX_CHARS, body_format: str = "text") -> DocumentText:
         rows = self.client.query(
             "IOfficialDocuments", filter_=f"Id eq {int(document_id)}", select="Id,Name", expand=VERSIONS_EXPAND, top=1
         )
@@ -156,12 +280,22 @@ class DocumentTextService:
         extension = _sniff(data) or extension
         result.extension = extension
         try:
-            text = _extract(data, extension)
+            text = _extract(data, extension, body_format)
         except _Unreadable:
             result.message = "Не удалось прочитать файл: он повреждён или в неожиданном формате."
             return result
         if not text and extension == "pdf":
             notes.append("Похоже на скан без текстового слоя: текст извлечь нельзя.")
+        if body_format == "markdown":
+            if extension in ("docx", "md"):
+                result.format = "markdown"
+            elif text:
+                notes.append(
+                    f"Разметка Markdown доступна только для docx, у файла формат «{extension}»: "
+                    "возвращён текст без форматирования."
+                    if extension != "pdf"
+                    else "PDF: разметка Markdown недоступна, возвращён текст без форматирования."
+                )
         result.chars_total = len(text)
         result.truncated = len(text) > max_chars
         result.text = text[:max_chars]

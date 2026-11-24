@@ -106,6 +106,25 @@ def register(mcp: MCPServer, runner: ToolRunner, transfers: TransferStore) -> No
         )
 
     @mcp.tool(annotations=READ_ONLY)
+    async def get_doc_body_md(
+        document_id: Annotated[int, Field(description="Id документа", gt=0)],
+        ctx: Context,
+        format: Annotated[
+            Literal["text", "markdown"],
+            Field(description="text — простой текст; markdown — с разметкой: заголовки, списки, таблицы, жирный и курсив"),
+        ] = "text",
+        max_chars: Annotated[int, Field(description="Сколько символов вернуть (1000–50000)", ge=1000, le=50000)] = 20000,
+    ) -> dict:
+        """Тело последней версии документа в формате text или markdown — когда важна структура: разделы, пункты,
+        таблицы (анализ приказа, сравнение редакций, перенос в другой документ). Markdown — для docx; pdf и прочие
+        форматы отдаются простым текстом (format в ответе показывает, что получилось). Просто пересказать — get_document_text."""
+        return await runner.run(
+            ctx,
+            "get_doc_body_md",
+            lambda s: to_jsonable(s.document_text.get_text(document_id, max_chars=max_chars, body_format=format)),
+        )
+
+    @mcp.tool(annotations=READ_ONLY)
     async def find_documents_by_content(
         text: Annotated[str, Field(description="Фрагмент или пересказ содержания документа (одно-два предложения и больше)")],
         ctx: Context,

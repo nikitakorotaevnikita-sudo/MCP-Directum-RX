@@ -99,6 +99,7 @@ mcpOGV работает либо под личной учёткой пользо
 | Файл документа в base64 (передать дальше, не для чтения; таблицу Excel из RX — сохранить в файл для навыка `xlsx-read`) | `get_doc_body_base64`; крупный файл приходит как `download_id` — части `download_chunk`, затем `abort_transfer` |
 | Шаблоны документов RX и текст шаблона | `get_template_body_md` |
 | Текст документа (пересказать, найти сроки, ответить на вопрос по тексту) | `get_document_text` |
+| Текст со структурой: разделы, пункты, таблицы (разобрать приказ, сравнить редакции, перенести текст в новый документ) | `get_doc_body_md(format="markdown")` — разметка для docx; pdf придёт простым текстом |
 | Переписка с организацией | `list_documents_by_counterparty` |
 | Входящие / исходящие письма за период | `list_letters(direction, date_from, date_to)` |
 | Вопрос по содержанию документов или справке RX («что сказано про…», «как сделать в RX…») | `ask_documents` → если `status="in_progress"`, дочитай `get_ask_documents_result(task_id)`; области — `list_qa_search_areas` |
