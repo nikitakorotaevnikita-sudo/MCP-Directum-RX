@@ -36,8 +36,18 @@ def has_marker(name: str, markers: tuple[str, ...]) -> bool:
     return any(marker in normalized for marker in markers)
 
 
+# Контакты и документы граждан (заявители, персоны): курируемые тулы их не запрашивают,
+# универсальный слой тоже не отдаёт. «address» как общий маркер не берём — задел бы Addressee.
+PERSONAL_DATA_MARKERS = (
+    "postaladdress", "legaladdress", "homeaddress", "email", "phone", "inila", "dateofbirth", "identity",
+)
+PERSONAL_DATA_NAMES = frozenset({"pin"})
+
+
 def is_sensitive_property(name: str) -> bool:
-    return has_marker(name, SENSITIVE_PROPERTY_MARKERS)
+    if (name or "").lower() in PERSONAL_DATA_NAMES:
+        return True
+    return has_marker(name, SENSITIVE_PROPERTY_MARKERS) or has_marker(name, PERSONAL_DATA_MARKERS)
 
 
 def strip_sensitive(value: Any) -> Any:

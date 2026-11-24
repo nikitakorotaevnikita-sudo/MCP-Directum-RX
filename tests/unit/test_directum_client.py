@@ -407,3 +407,13 @@ def test_get_binary_enforces_size_limit():
     with pytest.raises(DirectumError) as exc:
         client.get_binary("X/$value", max_bytes=10)
     assert exc.value.status_code == 413
+
+
+@pytest.mark.parametrize("entity_set", ["IDocumentReviewTasks", "IApprovalTasks", "ITasks"])
+def test_build_client_card_url_for_review_and_approval_tasks(entity_set):
+    client = DirectumClient("https://rx.example/Integration/odata", "Basic dXNlcjpwYXNz")
+
+    assert (
+        client.build_client_card_url(f"{entity_set}(77)")
+        == "https://rx.example/Client/#/card/83f2a537-0cf0-4429-ae76-e9a386ca53aa/77"
+    )

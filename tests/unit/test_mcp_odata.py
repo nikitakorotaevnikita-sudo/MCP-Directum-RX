@@ -12,6 +12,7 @@ from src.mcp_server.odata_meta import (
     is_denied_type,
     is_sensitive_property,
     parse_metadata,
+    strip_sensitive,
     type_leaf,
 )
 from src.mcp_server.resources import load_domain_guides
@@ -433,3 +434,23 @@ def test_auth_and_current_user_guides_are_excluded(tmp_path):
     write_skill(tmp_path, "hr", "HR-данные")
 
     assert list(load_domain_guides(tmp_path)) == ["hr"]
+
+
+@pytest.mark.parametrize("name", [
+    "PostalAddress", "LegalAddress", "Email", "Phones", "Phone", "PhoneHash", "PIN", "INILA",
+    "DateOfBirth", "IdentityNumber", "IdentitySeries", "IdentityAuthority",
+])
+def test_citizen_contacts_are_sensitive(name):
+    assert is_sensitive_property(name), name
+
+
+@pytest.mark.parametrize("name", ["Addressee", "Addressees", "Name", "TIN", "Shipping", "Pinned", "FullName"])
+def test_business_fields_stay_open(name):
+    assert not is_sensitive_property(name), name
+
+
+def test_strip_sensitive_removes_citizen_contacts_in_nested_expand():
+    row = {"Id": 1, "FullName": "Заявитель", "PostalAddress": "адрес", "Email": "e", "Phones": "p",
+           "Correspondent": {"Id": 2, "Name": "Персона", "LegalAddress": "адрес", "PIN": "1"}}
+
+    assert strip_sensitive(row) == {"Id": 1, "FullName": "Заявитель", "Correspondent": {"Id": 2, "Name": "Персона"}}

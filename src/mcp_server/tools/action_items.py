@@ -99,14 +99,20 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         date_from: IsoDate = None,
         date_to: IsoDate = None,
     ) -> dict:
-        """Исполнительская дисциплина по заданиям: в работе, просрочено, завершено, в срок, с опозданием, % в срок. По организации или сотруднику, за период."""
-        return await runner.run(
-            ctx,
-            "get_discipline_analytics",
-            lambda s: to_jsonable(
-                s.discipline.get_discipline_analytics(employee=employee, date_from=date_from, date_to=date_to)
-            ),
-        )
+        """Исполнительская дисциплина по заданиям: в работе, просрочено, завершено, в срок, с опозданием, % в срок. По организации или сотруднику, за период.
+        Доступ к сотруднику: свои показатели — любому, подчинённых — руководителю, любых — администратору."""
+        # Локальный импорт: employee_items импортирует этот модуль (Due, check_due).
+        from src.mcp_server.access import ensure_can_view_employee
+        from src.mcp_server.tools.employee_items import resolve_employee
+
+        def action(s):
+            if employee and employee.strip():
+                person = resolve_employee(s.action_items, employee)
+                ensure_can_view_employee(s, person.id)
+                return to_jsonable(s.discipline.employee_discipline(person, date_from=date_from, date_to=date_to))
+            return to_jsonable(s.discipline.get_discipline_analytics(employee=None, date_from=date_from, date_to=date_to))
+
+        return await runner.run(ctx, "get_discipline_analytics", action)
 
     @mcp.tool(annotations=READ_ONLY)
     async def get_outgoing_action_items_analytics(ctx: Context, limit_per_category: Limit = 20) -> dict:

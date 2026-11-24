@@ -16,6 +16,10 @@ DIRECTUM_CARD_GUIDS_BY_ENTITY = {
     "IActionItemExecutionAssignments": DIRECTUM_TASK_CARD_GUID,
     "IActionItemExecutionTasks": DIRECTUM_TASK_CARD_GUID,
     "ISimpleTasks": DIRECTUM_TASK_CARD_GUID,
+    # Карточка базового типа «Задача» открывает задачу любого вида — рассмотрение и согласование тоже.
+    "ITasks": DIRECTUM_TASK_CARD_GUID,
+    "IDocumentReviewTasks": DIRECTUM_TASK_CARD_GUID,
+    "IApprovalTasks": DIRECTUM_TASK_CARD_GUID,
     "IMeetings": DIRECTUM_MEETING_CARD_GUID,
 }
 

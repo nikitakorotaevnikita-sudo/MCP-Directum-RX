@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from src.mcp_server.app import build_server
-from src.models.schemas import ActionItemDetail, AssignmentSummary, DisciplineSummary
+from src.models.schemas import ActionItemDetail, AssignmentSummary, DisciplineSummary, EmployeeSummary
 from tests.unit.mcp_fakes import FakeProvider, call_tool, error_text, payload
 
 
@@ -158,14 +158,35 @@ def test_get_action_item_admin_check_failure_keeps_participant_check():
     assert seen["require_author"] is True
 
 
-def test_get_discipline_analytics_passes_filters():
+ARDO = EmployeeSummary(id=53, name="Ардо Анна Петровна", status="Active")
+SUMMARY = DisciplineSummary(in_process=66, overdue=27, completed=137, completed_on_time=110, completed_late=27, on_time_rate=80.3)
+
+
+def discipline_services(is_admin=False, can_view=True, matches=None):
     seen = {}
 
-    def analytics(employee=None, date_from=None, date_to=None):
-        seen.update(employee=employee, date_from=date_from, date_to=date_to)
-        return DisciplineSummary(in_process=66, overdue=27, completed=137, completed_on_time=110, completed_late=27, on_time_rate=80.3)
+    def employee_discipline(employee, date_from=None, date_to=None):
+        seen.update(employee=employee.id, date_from=date_from, date_to=date_to)
+        return SUMMARY
 
-    services = SimpleNamespace(discipline=SimpleNamespace(get_discipline_analytics=analytics))
+    def organization(employee=None, date_from=None, date_to=None):
+        seen.update(organization=True, employee=employee, date_from=date_from, date_to=date_to)
+        return SUMMARY
+
+    services = SimpleNamespace(
+        admin_access=SimpleNamespace(is_admin=lambda: is_admin),
+        subordination=SimpleNamespace(can_view=lambda employee_id: can_view),
+        action_items=SimpleNamespace(
+            search_employee=lambda query: matches if matches is not None else [ARDO],
+            get_employee=lambda employee_id: ARDO if employee_id == ARDO.id else None,
+        ),
+        discipline=SimpleNamespace(employee_discipline=employee_discipline, get_discipline_analytics=organization),
+    )
+    return services, seen
+
+
+def test_get_discipline_analytics_employee_passes_filters():
+    services, seen = discipline_services(can_view=True)
 
     data = payload(
         call_tool(
@@ -175,8 +196,42 @@ def test_get_discipline_analytics_passes_filters():
         )
     )
 
-    assert seen == {"employee": "Ардо", "date_from": "2026-09-01", "date_to": "2026-09-25"}
+    assert seen == {"employee": 53, "date_from": "2026-09-01", "date_to": "2026-09-25"}
     assert data["on_time_rate"] == 80.3
+
+
+def test_get_discipline_analytics_denies_foreign_employee():
+    services, seen = discipline_services(is_admin=False, can_view=False)
+
+    text = error_text(call_tool(make_server(services), "get_discipline_analytics", {"employee": "Ардо"}))
+
+    assert "Нет доступа" in text
+    assert seen == {}
+
+
+def test_get_discipline_analytics_admin_sees_anyone():
+    services, seen = discipline_services(is_admin=True, can_view=False)
+
+    data = payload(call_tool(make_server(services), "get_discipline_analytics", {"employee": "53"}))
+
+    assert seen["employee"] == 53 and data["in_process"] == 66
+
+
+def test_get_discipline_analytics_ambiguous_name_asks_to_clarify():
+    other = EmployeeSummary(id=54, name="Ардо Олег", status="Active")
+    services, seen = discipline_services(matches=[ARDO, other])
+
+    text = error_text(call_tool(make_server(services), "get_discipline_analytics", {"employee": "Ардо"}))
+
+    assert "несколько" in text and seen == {}
+
+
+def test_get_discipline_analytics_organization_scope_unchanged():
+    services, seen = discipline_services()
+
+    payload(call_tool(make_server(services), "get_discipline_analytics", {"date_from": "2026-09-01"}))
+
+    assert seen["organization"] is True and seen["employee"] is None
 
 
 def test_outgoing_analytics_groups_by_deadline():
