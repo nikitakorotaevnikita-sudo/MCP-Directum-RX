@@ -64,7 +64,7 @@
 - Резолюции и контроль: get_resolution_history (кому руководитель обычно поручает), create_action_items (резолюция
   пакетом).
 - Обращения граждан: get_citizen_request_status (status_text — готовая фраза), list_citizen_requests_due (горящие),
-  get_citizen_requests_analytics (по классификатору), search_citizen_request_classifier (коды),
+  get_citizen_requests_analytics (по классификатору), get_citizen_requests_by_territory (по районам), search_citizen_request_classifier (коды),
   list_citizen_request_answers (ответы за период), classifier_search / classifier_get (классификатор Class OG). Классификатор:
   раздел → тематика → тема → вопрос; в RX поле Topic — тематика, Theme — тема. requests — обращения, questions —
   вопросы, не путай. Сроки по 59-ФЗ уже в deadline, не пересчитывай через add_working_days.

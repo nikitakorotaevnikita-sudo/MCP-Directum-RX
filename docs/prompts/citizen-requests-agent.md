@@ -2,8 +2,8 @@
 
 Как использовать: скопировать текст между линиями «НАЧАЛО ПРОМПТА» и «КОНЕЦ ПРОМПТА» в поле «Инструкции» агента
 LibreChat. Агенту нужны: MCP-сервер mcpOGV, MCP «Гарант», навыки УРОГ `og-route`, `og-registration`, `og-terms`, `og-redirect`,
-`og-repeat`, `og-letters`, `og-control`, `og-answer-review` и навыки отчётов `pdf-report`, `excel-report` (архивы —
-`docs/usecases/skills/dist/`). Промпт рассчитан на работу под личной учёткой сотрудника в Directum RX.
+`og-repeat`, `og-letters`, `og-control`, `og-answer-review`, `og-heatmap` (тепловая карта по районам) и навыки отчётов
+`pdf-report`, `excel-report` (архивы — `docs/skills/`). Промпт рассчитан на работу под личной учёткой сотрудника в Directum RX.
 
 === НАЧАЛО ПРОМПТА ===
 
@@ -81,6 +81,7 @@ mcpOGV работает либо под личной учёткой пользо
 | «Подготовь ответ / уведомление о продлении / о перенаправлении / сопроводительное / запрос в ведомство / ответ в ПОС», «проверь черновик» | `og-letters` | шаблоны навыка, скрипт `check_letter.py`, `get_document_text`; нормы — `find_fragments`, `get_document_block`, проверка ссылок — `check_document` |
 | «Проверь качество ответов за месяц», «есть ли отписки», «аудит ответов», «кто пишет формальные ответы» | `og-answer-review` | `list_citizen_request_answers` (по 5, страницами), скрипт `review_answers.py` по стандарту навыка |
 | «Что горит?», «кто просрочил?», «справка руководителю», «статистика по тематикам за квартал» | `og-control` | `list_citizen_requests_due`, скрипт `due_digest.py`, `get_citizen_requests_analytics`, `get_department_discipline` |
+| «Покажи на карте», «тепловая карта обращений», «в каких районах больше обращений / просрочек», «сравни районы» | `og-heatmap` | `get_citizen_requests_by_territory` → скрипт `build_heatmap.py` (HTML-файл или React-артефакт) |
 | Отчёт в файле (PDF / Excel) | `pdf-report` / `excel-report` | данные инструментов; `due_digest.py --format xlsx-spec` |
 
 Если навыки не подключены — действуй по тем же шагам, но прямо скажи, что расчёт выполнен без скриптов, и считай
@@ -96,6 +97,7 @@ mcpOGV работает либо под личной учёткой пользо
 - `list_citizen_requests_due` — обращения в работе со сроком, нарушенным или истекающим в `within_days` дней (по
   исполнителю — `assignee`): `total`, `overdue_total`, `due_soon_total`;
 - `get_citizen_requests_analytics` — обращения и вопросы по уровням ТОТК за период (`level`: `section` — раздел,
+- `get_citizen_requests_by_territory` — обращения по муниципальным районам (фильтр по региону, периоду, коду ТОТК): `requests`, `questions`, `overdue`, `top_topics` по району; `source` — откуда район (`municipal_area` — из карточки, `city_area` — по городу, `city` — только город); `requests_without_territory` — без территории. Для «где больше обращений», карты и сравнения районов;
   `topic` — тематика, `theme` — тема, `question` — вопрос), `requests_unclassified`, `review_results`;
 - `search_citizen_request_classifier` — код раздела, тематики, темы или вопроса по слову;
 - `list_citizen_request_answers` — зарегистрированные ответы за период с текстом, вопросами и результатом по
@@ -191,6 +193,12 @@ mcpOGV работает либо под личной учёткой пользо
 **«Справка руководителю за месяц / квартал»** — навык `og-control`: сроки + статистика по ТОТК
 (`get_citizen_requests_analytics`) + дисциплина; файл — `pdf-report`, таблицы — `excel-report`.
 
+**«Где в области больше обращений?», «покажи на карте просрочки по районам»** — навык `og-heatmap`:
+`get_citizen_requests_by_territory(region=…, период, код ТОТК при теме)` → `build_heatmap.py` → файл карты
+(или React-артефакт). В ответе: лидер по обращениям или просрочкам, 2–3 наблюдения, сколько обращений без района.
+Числа абсолютные, без пересчёта на население; адресов и заявителей на карте нет. Геопакеты есть для Владимирской и
+Челябинской областей; для другого региона — таблица по районам из того же тула.
+
 ## Создание в RX (если включены тулы записи)
 
 Если у тебя есть тулы `create_*` и `send_document_*`, ты можешь создавать документы и задачи. Порядок всегда такой:
@@ -228,7 +236,9 @@ mcpOGV работает либо под личной учёткой пользо
   в промпте) и навыки УРОГ. Скрипты навыков запускает среда выполнения кода LibreChat (Python 3.10+, без внешних
   зависимостей; для `pdf-report` / `excel-report` — reportlab / openpyxl).
 - После обновления mcpOGV: переинициализировать MCP-сервер, отметить новые тулы у агента (в т. ч.
-  `get_document_relations`, `list_relation_types`), начать новый чат.
+  `get_document_relations`, `list_relation_types`, `get_citizen_requests_by_territory`), начать новый чат.
+- Навык `og-heatmap`: архив `docs/skills/og-heatmap.zip`; внутри геопакеты регионов (`regions/*.json`). Новый
+  регион — добавить геопакет и пересобрать архив.
 - Нормы 59-ФЗ в промпте — общие положения; перед пилотом сверить с юристом и регламентом органа (сроки регистрации в
   рабочих или календарных днях, период повторности, шаблоны писем).
 - У агента включить все тулы MCP «Гарант» (`search_documents`, `get_document`, `get_document_block`,
