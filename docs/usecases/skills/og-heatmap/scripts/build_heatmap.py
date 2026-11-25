@@ -60,26 +60,53 @@ def detect_region(payload: dict) -> str:
     """Регион по region_filter или по полю region у районов: сравниваем с названиями геопакетов."""
     hints = [str(payload.get("region_filter") or "")] + [str(a.get("region") or "") for a in payload.get("areas") or []]
     text = " ".join(hints).lower().replace("ё", "е")
+    if not text.strip():
+        raise InputError("не удалось определить регион по данным — укажите --region")
+    found = []
     for path in sorted(REGIONS_DIR.glob("*.json")):
-        name = json.loads(path.read_text(encoding="utf-8"))["region"].lower().replace("ё", "е")
-        if name.split()[0][:7] in text:
-            return path.stem
+        stem = _region_stem(json.loads(path.read_text(encoding="utf-8"))["region"])
+        if stem and stem in text:
+            found.append((len(stem), path.stem))
+    if found:  # самое длинное совпадение: «Северная Осетия» точнее, чем «Осетия»
+        return max(found)[1]
     known = ", ".join(sorted(p.stem for p in REGIONS_DIR.glob("*.json")))
     raise InputError(f"не удалось определить регион по данным — укажите --region ({known})")
+
+
+REGION_WORDS = re.compile(r"(?<!\w)(область|край|республика|автономный|автономная|округ|город|федерального|значения|"
+                          r"-\s*чувашия|\(якутия\)|\(адыгея\)|алания)(?!\w)")
+
+
+def _region_stem(name: str) -> str:
+    """«Владимирская область» → «владимирск»; «Республика Саха (Якутия)» → «саха»."""
+    text = REGION_WORDS.sub(" ", (name or "").lower().replace("ё", "е"))
+    words = [w for w in re.split(r"[\s()]+", text) if w]
+    if not words:
+        return ""
+    first = words[0]  # главное слово названия, без окончания: «владимирская» → «владимирск»
+    return first[:-2] if len(first) > 6 else first
 
 
 def match(region: dict, areas: list) -> tuple[dict, list]:
     """Район из RX → район карты. Сначала основа + вид (район / город), затем только основа, если она однозначна."""
     exact, by_stem = {}, {}
     for item in region["areas"]:
-        for name in [item["key"], item["name"], *item.get("aliases", [])]:
+        # Вид берём из геопакета: в названии «Гусь-Хрустальный» (город) нет слова «город», и иначе он занял бы ключ района.
+        area_kind = "city" if item.get("kind") == "городской округ" else "district"
+        for i, name in enumerate([item["key"], item["name"], *item.get("aliases", [])]):
             stem, kind = normalize(name)
+            if i < 2:
+                kind = area_kind
             exact.setdefault((stem, kind), item["key"])
             by_stem.setdefault(stem, set()).add(item["key"])
+    by_name = {}
+    for item in region["areas"]:
+        for name in [item["key"], item["name"], *item.get("aliases", [])]:
+            by_name.setdefault(name.strip().lower().replace("ё", "е"), item["key"])
     matched, unmatched = {}, []
     for row in areas:
         stem, kind = normalize(row.get("area", ""))
-        key = exact.get((stem, kind))
+        key = by_name.get(str(row.get("area", "")).strip().lower().replace("ё", "е")) or exact.get((stem, kind))
         if key is None and len(by_stem.get(stem, ())) == 1:
             key = next(iter(by_stem[stem]))
         if key is None:

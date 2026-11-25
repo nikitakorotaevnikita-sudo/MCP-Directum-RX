@@ -157,3 +157,37 @@ def test_bad_input_exit_code_2():
     code, _, err = run_cli("-", stdin=b'{"areas": "not a list"}')
 
     assert code == 2 and "Ошибка входных данных" in err
+
+
+@pytest.mark.parametrize("name, stem", [
+    ("Владимирская область", "владимирск"),
+    ("Республика Башкортостан", "башкортост"),
+    ("Республика Саха (Якутия)", "саха"),
+    ("Ханты-Мансийский автономный округ - Югра", "ханты-мансийск"),
+])
+def test_region_stem(name, stem):
+    assert mod._region_stem(name) == stem
+
+
+def test_republics_are_not_confused(tmp_path, monkeypatch):
+    for code, region in [("bashkortostan", "Республика Башкортостан"), ("tatarstan", "Республика Татарстан")]:
+        (tmp_path / f"{code}.json").write_text(json.dumps({"region": region, "areas": []}, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(mod, "REGIONS_DIR", tmp_path)
+
+    assert mod.detect_region({"region_filter": "Татарстан", "areas": []}) == "tatarstan"
+    assert mod.detect_region({"region_filter": None, "areas": [{"area": "г. Уфа", "region": "Республика Башкортостан"}]}) == "bashkortostan"
+
+
+def test_city_and_district_with_same_name_stay_separate(tmp_path, monkeypatch):
+    pack = {"region": "Владимирская область", "areas": [
+        {"key": "Гусь-Хрустальный", "name": "Гусь-Хрустальный", "kind": "городской округ", "aliases": ["г. Гусь-Хрустальный"]},
+        {"key": "Гусь-Хрустальный район", "name": "Гусь-Хрустальный район", "kind": "муниципальный район", "aliases": []}]}
+    (tmp_path / "v.json").write_text(json.dumps(pack, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(mod, "REGIONS_DIR", tmp_path)
+
+    matched, unmatched = mod.match(mod.load_region("v"), [{"area": "м.р-н. Гусь-Хрустальный", "requests": 5},
+                                                          {"area": "г.о. город Гусь-Хрустальный", "requests": 2}])
+
+    assert unmatched == []
+    assert matched["Гусь-Хрустальный район"]["requests"] == 5
+    assert matched["Гусь-Хрустальный"]["requests"] == 2
