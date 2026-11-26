@@ -27,6 +27,18 @@ REVIEW_RESULT_LABELS = {
     "Obsolete": "Оставлено без ответа",
     "Outdated": "Недействующий",
 }
+# Результат в исходящем письме по обращению (IOutgoingRequestLetters.Result) — свой набор, не равен REVIEW_RESULT_LABELS.
+# Строки письма Requests[].Result — результат рассмотрения вопроса обращения, они по REVIEW_RESULT_LABELS.
+LETTER_RESULT_LABELS = {
+    "Transferred": "Направлено по компетенции",
+    "Explained": "Разъяснено",
+    "ActionsTaken": "Меры приняты",
+    "Supported": "Поддержано",
+    "NotSupported": "Не поддержано",
+    "Denied": "Отказано",
+    "Active": "На рассмотрении",
+    "Answered": "Дан ответ автору",
+}
 PAGE_SIZE = 500
 DEFAULT_MAX_REQUESTS = 5000
 CLASSIFIER_CODE = re.compile(r"^\d{4}(\.\d{4}){0,4}$")

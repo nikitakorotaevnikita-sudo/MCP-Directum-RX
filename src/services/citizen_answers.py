@@ -9,7 +9,7 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
-from src.services.citizen_request_analytics import REVIEW_RESULT_LABELS
+from src.services.citizen_request_analytics import LETTER_RESULT_LABELS, REVIEW_RESULT_LABELS
 from src.services.directum_client import DirectumError
 
 LETTERS = "IOutgoingRequestLetters"
@@ -132,7 +132,7 @@ class CitizenAnswersService:
             "registration_date": letter_day.isoformat() if letter_day else None,
             "subject": row.get("Subject") or row.get("Name") or "",
             "result": row.get("Result"),
-            "result_label": REVIEW_RESULT_LABELS.get(row.get("Result"), row.get("Result")),
+            "result_label": LETTER_RESULT_LABELS.get(row.get("Result"), row.get("Result")),
             "prepared_by": _name(row.get("PreparedBy")),
             "signatory": _name(row.get("OurSignatory")),
             "requests": list(requests.values()),

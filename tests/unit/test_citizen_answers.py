@@ -90,6 +90,19 @@ def test_answer_shape_requests_and_lateness():
     assert second["text"] == "" and "Текст не получен" in second["text_message"]
 
 
+def test_letter_result_uses_letter_labels_and_requests_use_review_labels():
+    rows = [{**ROWS[0], "Result": "Answered",
+             "Requests": [{**ROWS[0]["Requests"][0], "Result": "Obsolete"}]}]
+
+    class LetterClient(Client):
+        def query(self, entity_set, **kw):
+            return rows
+
+    first = svc(LetterClient()).list_answers(limit=1, include_text=False)["answers"][0]
+    assert first["result_label"] == "Дан ответ автору"  # результат письма — свой набор
+    assert first["requests"][0]["questions"][0]["review_result_label"] == "Оставлено без ответа"  # вопрос обращения
+
+
 def test_without_text():
     res = svc().list_answers(limit=1, include_text=False)
     assert "text" not in res["answers"][0]

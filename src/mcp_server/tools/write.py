@@ -258,9 +258,10 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
     @mcp.tool(annotations=WRITE)
     async def create_document(
         document_type: Annotated[
-            Literal["outgoing_letter", "incoming_letter", "memo", "order", "directive", "simple_document", "addendum", "legal_act"],
+            Literal["outgoing_letter", "incoming_letter", "memo", "order", "directive", "simple_document", "addendum", "legal_act",
+                    "outgoing_request_letter"],
             Field(description="Тип: исходящее/входящее письмо, служебная записка, приказ, распоряжение, простой документ, "
-                  "приложение, правовой акт или проект"),
+                  "приложение, правовой акт или проект, исходящее письмо по обращению гражданина (outgoing_request_letter)"),
         ],
         subject: Annotated[str, Field(description="Тема (содержание) документа")],
         ctx: Context,
@@ -273,6 +274,13 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         in_response_to_document_id: Annotated[int | None, Field(description="В ответ на документ (исходящее письмо)", gt=0)] = None,
         leading_document_id: Annotated[int | None, Field(description="Ведущий документ (для приложения)", gt=0)] = None,
         is_normative: Annotated[bool | None, Field(description="Нормативный (для правового акта)")] = None,
+        request_id: Annotated[int | None, Field(description="В ответ на обращение: id документа-обращения "
+                                                "(для outgoing_request_letter)", gt=0)] = None,
+        result: Annotated[str | None, Field(description="Результат рассмотрения (для outgoing_request_letter), код или "
+                                            "подпись: Transferred — Направлено по компетенции, Explained — Разъяснено, "
+                                            "ActionsTaken — Меры приняты, Supported — Поддержано, NotSupported — Не "
+                                            "поддержано, Denied — Отказано, Active — На рассмотрении, Answered — Дан "
+                                            "ответ автору")] = None,
         extra_properties: Annotated[dict[str, str | int | float | bool] | None, Field(
             description="Другие простые свойства карточки по их имени в RX (например PageCount, DocumentDate). "
                         "Ссылки на сотрудников и организации — только параметрами выше")] = None,
@@ -294,7 +302,8 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
                 document_type, subject, _preparer_id(s, on_behalf_of, task_id),
                 document_kind=document_kind, correspondent=correspondent, signatory_id=_person_id(s, signatory),
                 addressee_id=_person_id(s, addressee), in_response_to_id=in_response_to_document_id,
-                leading_document_id=leading_document_id, is_normative=is_normative, extra_properties=extra_properties,
+                leading_document_id=leading_document_id, is_normative=is_normative, request_id=request_id,
+                result=result, extra_properties=extra_properties,
                 body_text=body_text, body_markdown=body_markdown, template=template, note=note,
                 process_task_id=task_id),
             lambda s, plan: s.document_create.create_document(plan, body_text),

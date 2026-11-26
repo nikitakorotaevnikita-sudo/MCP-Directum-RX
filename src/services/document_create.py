@@ -17,11 +17,13 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
+from src.services.citizen_request_analytics import LETTER_RESULT_LABELS
 from src.services.directum_client import DirectumError
 from src.services.docx_builder import build_docx
 
 DOCX_APPLICATION = "docx"
 OUTGOING_LETTER_KIND = "Исходящее письмо"
+REQUEST_LETTER_KIND = "Ответное письмо"
 LEGAL_ACT_KINDS = {"project": "Проект правового акта", "act": "Правовой акт"}
 MAX_SUBJECT = 250
 MAX_TASK_TEXT = 4000
@@ -57,7 +59,12 @@ DOCUMENT_TYPES: dict[str, dict[str, Any]] = {
     # Создавать — только в конкретном наборе: ILegalActsLegalDocumentBases абстрактный (RX отвечает 404 без текста).
     "legal_act": {"set": "ILegalActsLegalActs", "label": "правовой акт или проект",
                   "kind": "Проект правового акта", "fields": {"is_normative"}},
+    # Исходящее письмо по обращению гражданина: обращение — Request (как InResponseTo), результат — Result.
+    "outgoing_request_letter": {"set": "IOutgoingRequestLetters", "label": "исходящее письмо по обращению",
+                                "kind": REQUEST_LETTER_KIND, "fields": {"correspondent", "request", "result"}, "name": True},
 }
+# Допустимые результаты в письме по обращению (поле Result) — общий список с аналитикой ответов.
+REQUEST_LETTER_RESULTS = LETTER_RESULT_LABELS
 # Свойства, которые нельзя задавать через extra_properties: системные, регистрационные, состояния, связи.
 PROTECTED_PROPERTIES = {
     "Id", "Name", "Created", "Modified", "RegistrationNumber", "RegistrationDate", "RegistrationState", "Index",
@@ -65,6 +72,8 @@ PROTECTED_PROPERTIES = {
     "ExchangeState", "VerificationState", "LocationState", "HasRelations", "HasVersions", "HasPublicBody",
     "VersionsLocked", "LastVersionChanged", "LastVersionApproved", "LastVersionSignatureType", "EncryptionType",
     "PlacedToCaseFileDate", "StoredIn", "Subject", "Note",
+    # задаются отдельными параметрами (result, request_id, is_normative) и проверяются там
+    "Result", "Request", "IsNormative",
 }
 FILE_SIGNATURES = {"pdf": b"%PDF", "docx": b"PK\x03\x04", "xlsx": b"PK\x03\x04", "odt": b"PK\x03\x04",
                    "png": b"\x89PNG", "jpg": b"\xff\xd8\xff", "jpeg": b"\xff\xd8\xff", "rtf": b"{\\rtf"}
@@ -485,6 +494,8 @@ class DocumentCreateService:
         in_response_to_id: int | None = None,
         leading_document_id: int | None = None,
         is_normative: bool | None = None,
+        request_id: int | None = None,
+        result: str | None = None,
         extra_properties: dict[str, Any] | None = None,
         body_text: str | None = None,
         body_markdown: bool = False,
@@ -498,16 +509,18 @@ class DocumentCreateService:
         kind_name = (document_kind or spec["kind"] or "").strip()
         if not kind_name:
             raise CreateError(f"Для типа «{spec['label']}» укажите вид документа (document_kind) — как он назван в RX.")
+        result = (result or "").strip() or None  # LLM часто шлёт "" вместо пропуска
         given = {name for name, value in (("correspondent", correspondent), ("addressee", addressee_id),
                  ("in_response_to", in_response_to_id), ("leading_document", leading_document_id),
-                 ("is_normative", is_normative)) if value is not None}
+                 ("is_normative", is_normative), ("request", request_id), ("result", result)) if value is not None}
         wrong = given - spec["fields"]
         if wrong:
             raise CreateError(f"Для типа «{spec['label']}» не подходят поля: {', '.join(sorted(wrong))}.")
         if document_type == "addendum" and leading_document_id is None:
             raise CreateError("Приложению нужен ведущий документ (leading_document_id).")
-        if document_type == "outgoing_letter" and not correspondent:
+        if document_type in ("outgoing_letter", "outgoing_request_letter") and not correspondent:
             raise CreateError("Исходящему письму нужен корреспондент (correspondent).")
+        review_result = _review_result(result) if result is not None else None
         if body_text and template:
             raise CreateError("Укажите либо текст (body_text), либо шаблон (template), не оба.")
         prepared, task = self._preparer(prepared_by_id, process_task_id)
@@ -528,6 +541,9 @@ class DocumentCreateService:
             "in_response_to": self.document(in_response_to_id) if in_response_to_id else None,
             "leading_document": self.document(leading_document_id) if leading_document_id else None,
             "is_normative": is_normative,
+            "request": self.document(request_id) if request_id else None,
+            "result": review_result,
+            "result_label": REQUEST_LETTER_RESULTS.get(review_result) if review_result else None,
             "extra_properties": self._extra_properties(spec["set"], extra_properties),
             "template": self.template(template) if template else None,
             "note": self._note(prepared, note),
@@ -546,12 +562,14 @@ class DocumentCreateService:
             "Note": plan["note"],
         }
         refs = {"correspondent": "Correspondent", "signatory": "OurSignatory", "addressee": "Addressee",
-                "in_response_to": "InResponseTo", "leading_document": "LeadingDocument"}
+                "in_response_to": "InResponseTo", "leading_document": "LeadingDocument", "request": "Request"}
         for key, field in refs.items():
             if plan.get(key):
                 payload[field] = _ref(plan[key])
         if plan.get("is_normative") is not None:
             payload["IsNormative"] = plan["is_normative"]
+        if plan.get("result"):
+            payload["Result"] = plan["result"]
         if plan.get("set_name"):
             payload["Name"] = plan["subject"]  # у этих типов RX не формирует «Имя» сам
         payload.update(plan.get("extra_properties") or {})
@@ -1042,6 +1060,17 @@ def decode_base64(content: str | None) -> bytes:
         return base64.b64decode(text, validate=True)
     except (ValueError, binascii.Error):
         raise CreateError("content_base64 — не base64.") from None
+
+
+def _review_result(value: str) -> str:
+    """Результат рассмотрения: код RX (Explained) или подпись по-русски («Разъяснено»)."""
+    text = (value or "").strip()
+    by_label = {label.casefold(): code for code, label in REQUEST_LETTER_RESULTS.items()}
+    code = text if text in REQUEST_LETTER_RESULTS else by_label.get(text.casefold())
+    if code is None:
+        raise CreateError("Результат рассмотрения — одно из: "
+                          + ", ".join(f"{c} — {l}" for c, l in REQUEST_LETTER_RESULTS.items()) + ".")
+    return code
 
 
 def _id(value: Any) -> int | None:
