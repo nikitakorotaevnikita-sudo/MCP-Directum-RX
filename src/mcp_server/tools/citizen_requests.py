@@ -75,6 +75,37 @@ def register(mcp: MCPServer, runner: ToolRunner) -> None:
         )
 
     @mcp.tool(annotations=READ_ONLY)
+    async def get_citizen_requests_by_territory(
+        ctx: Context,
+        region: Annotated[
+            str | None, Field(description="Регион (часть названия), например «Владимирская»; пусто — все регионы")
+        ] = None,
+        date_from: Annotated[str | None, Field(description="Период регистрации с, YYYY-MM-DD")] = None,
+        date_to: Annotated[str | None, Field(description="Период регистрации по, YYYY-MM-DD")] = None,
+        classifier_code: Annotated[
+            str | None, Field(description="Код ТОТК для сужения, например 0003 или 0003.0008")
+        ] = None,
+        top_topics: Annotated[int, Field(description="Сколько частых тематик дать по району (0–5)", ge=0, le=5)] = 3,
+    ) -> dict:
+        """Обращения граждан по муниципальным районам — для карты «где больше обращений» и сравнения территорий:
+        по каждому району requests (обращения), questions (вопросы), overdue (просрочено), top_topics (частые
+        тематики). Район — из карточки обращения, иначе район города (source=city_area), иначе город (source=city).
+        Без территории — requests_without_territory. Только агрегаты: адресов и заявителей нет."""
+        start, end = parse_period(date_from, date_to)
+        code = (classifier_code or "").strip() or None
+        if code is not None and not CLASSIFIER_CODE.match(code):
+            raise ToolError("Код классификатора — цифры по уровням, например 0003 или 0003.0008. Найти код: search_citizen_request_classifier.")
+        return await runner.run(
+            ctx,
+            "get_citizen_requests_by_territory",
+            lambda s: to_jsonable(
+                s.citizen_request_analytics.by_territory(
+                    region=region, date_from=start, date_to=end, classifier_code=code, top_topics=top_topics
+                )
+            ),
+        )
+
+    @mcp.tool(annotations=READ_ONLY)
     async def search_citizen_request_classifier(
         query: Annotated[str, Field(description="Слово из названия: «дорог», «ЖКХ», «пенси»")],
         ctx: Context,

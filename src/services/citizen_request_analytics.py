@@ -1,7 +1,7 @@
 import re
 from collections import Counter
-from datetime import date, datetime, timedelta, tzinfo
-from typing import Any
+from datetime import date, datetime, timedelta, timezone, tzinfo
+from typing import Any, Callable
 
 from src.models.schemas import CitizenRequestAnalytics, ClassifierMatch
 
@@ -47,6 +47,16 @@ QUESTIONS_EXPAND = (
     "$expand=Section($select=Name),Topic($select=Name),Theme($select=Name)))"
 )
 MATCHES_PER_LEVEL = 5
+# Территория обращения: район из карточки, иначе район города (справочник городов госрешения).
+# Только названия территорий — ни адресов, ни заявителей (ПДн) не запрашиваем.
+TERRITORY_SELECT = "Id,Deadline,ResponseDate,ExecutionState"
+TERRITORY_EXPAND = (
+    "MunicipalArea($select=Id,Name),Region($select=Name),"
+    "City($select=Id,Name;$expand=MunicipalAreaGD($select=Id,Name),Region($select=Name)),"
+    "AnswerLetter($select=Id),TransferredTo($select=Id),"
+    "Questions($select=Id;$expand=Question($select=FullCode;$expand=Topic($select=Name)))"
+)
+CLOSED_STATES = {"Executed", "WithoutExecut", "Aborted"}
 
 
 def _literal(value: str) -> str:
@@ -60,10 +70,17 @@ def _name(value: Any) -> str:
 class CitizenRequestAnalyticsService:
     """Счёт обращений и вопросов по уровням общероссийского тематического классификатора (ТОТК)."""
 
-    def __init__(self, client: Any, tz: tzinfo | None = None, max_requests: int = DEFAULT_MAX_REQUESTS):
+    def __init__(
+        self,
+        client: Any,
+        tz: tzinfo | None = None,
+        max_requests: int = DEFAULT_MAX_REQUESTS,
+        now: Callable[[], datetime] | None = None,
+    ):
         self.client = client
         self.tz = tz or datetime.now().astimezone().tzinfo
         self.max_requests = max_requests
+        self._now = now or (lambda: datetime.now(timezone.utc))
 
     def analytics(
         self,
@@ -162,7 +179,92 @@ class CitizenRequestAnalyticsService:
             )
         return matches
 
-    def _requests(self, date_from: date | None, date_to: date | None, prefix: str | None):
+    def by_territory(
+        self,
+        region: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        classifier_code: str | None = None,
+        top_topics: int = 3,
+    ) -> dict[str, Any]:
+        """Обращения по муниципальным районам: сколько обращений, вопросов, просрочено, частые тематики.
+
+        Район — из карточки (MunicipalArea); если не указан — район города (City.MunicipalAreaGD);
+        если и его нет — сам город (source=city). Без территории — в requests_without_territory.
+        """
+        today = self._now().astimezone(self.tz).date()
+        region_query = (region or "").strip().lower().replace("ё", "е") or None
+        areas: dict[str, dict[str, Any]] = {}
+        total = in_region = without = 0
+        truncated = False
+        for row in self._requests(date_from, date_to, classifier_code, select=TERRITORY_SELECT, expand=TERRITORY_EXPAND):
+            if total >= self.max_requests:
+                truncated = True
+                break
+            total += 1
+            city = row.get("City") or {}
+            region_name = _name(row.get("Region")) or _name(city.get("Region"))
+            if region_query and region_query not in region_name.lower().replace("ё", "е"):
+                continue
+            in_region += 1
+            area, source = _name(row.get("MunicipalArea")), "municipal_area"
+            if not area:
+                area, source = _name(city.get("MunicipalAreaGD")), "city_area"
+            if not area:
+                area, source = _name(city), "city"
+            if not area:
+                without += 1
+                continue
+            item = areas.setdefault(area, {"area": area, "region": region_name or None, "source": source,
+                                           "requests": 0, "questions": 0, "overdue": 0, "_topics": Counter()})
+            item["requests"] += 1
+            questions = row.get("Questions") or []
+            item["questions"] += len(questions)
+            for question in questions:
+                topic = _name((question.get("Question") or {}).get("Topic"))
+                if topic:
+                    item["_topics"][topic] += 1
+            if self._overdue(row, today):
+                item["overdue"] += 1
+        result_areas = []
+        for item in sorted(areas.values(), key=lambda a: (-a["requests"], a["area"])):
+            topics = item.pop("_topics")
+            item["top_topics"] = [{"name": n, "count": c} for n, c in topics.most_common(max(0, int(top_topics)))]
+            result_areas.append(item)
+        return {
+            "region_filter": region,
+            "date_from": date_from.isoformat() if date_from else None,
+            "date_to": date_to.isoformat() if date_to else None,
+            "classifier_code": classifier_code,
+            "requests_total": total,
+            "requests_in_region": in_region,
+            "requests_with_territory": in_region - without,
+            "requests_without_territory": without,
+            "areas_total": len(result_areas),
+            "areas": result_areas,
+            "truncated": truncated,
+        }
+
+    def _overdue(self, row: dict[str, Any], today: date) -> bool:
+        """Просрочено: срок прошёл, ответа нет, не перенаправлено и не закрыто (как list_citizen_requests_due)."""
+        if row.get("ResponseDate") or row.get("AnswerLetter") or row.get("TransferredTo"):
+            return False
+        if row.get("ExecutionState") in CLOSED_STATES:
+            return False
+        deadline = str(row.get("Deadline") or "")[:10]
+        try:
+            return bool(deadline) and date.fromisoformat(deadline) < today
+        except ValueError:
+            return False
+
+    def _requests(
+        self,
+        date_from: date | None,
+        date_to: date | None,
+        prefix: str | None,
+        select: str = "Id",
+        expand: str = QUESTIONS_EXPAND,
+    ):
         """Постранично по возрастанию Id (keyset): «Id gt последний» вместо $skip."""
         last_id = 0
         while True:
@@ -176,8 +278,8 @@ class CitizenRequestAnalyticsService:
             batch = self.client.query(
                 "IRequests",
                 filter_=" and ".join(conditions),
-                select="Id",
-                expand=QUESTIONS_EXPAND,
+                select=select,
+                expand=expand,
                 orderby="Id asc",
                 top=PAGE_SIZE,
             )

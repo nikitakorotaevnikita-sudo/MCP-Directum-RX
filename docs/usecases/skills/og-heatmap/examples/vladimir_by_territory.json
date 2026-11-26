@@ -1,0 +1,128 @@
+{
+ "region_filter": "Владимирская",
+ "date_from": null,
+ "date_to": null,
+ "classifier_code": null,
+ "requests_total": 1848,
+ "requests_in_region": 46,
+ "requests_with_territory": 46,
+ "requests_without_territory": 0,
+ "areas_total": 8,
+ "areas": [
+  {
+   "area": "м.р-н. Александровский",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 18,
+   "questions": 35,
+   "overdue": 4,
+   "top_topics": [
+    {
+     "name": "Конституционный строй",
+     "count": 34
+    },
+    {
+     "name": "Безопасность и охрана правопорядка",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "area": "м.р-н. Муромский",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 18,
+   "questions": 22,
+   "overdue": 12,
+   "top_topics": [
+    {
+     "name": "Конституционный строй",
+     "count": 15
+    },
+    {
+     "name": "Семья",
+     "count": 2
+    },
+    {
+     "name": "Основы государственного управления",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "area": "м.р-н. Ковровский",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 4,
+   "questions": 4,
+   "overdue": 4,
+   "top_topics": [
+    {
+     "name": "Хозяйственная деятельность",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "area": "г.о. город Владимир",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 2,
+   "questions": 1,
+   "overdue": 1,
+   "top_topics": [
+    {
+     "name": "Здравоохранение. Физическая культура и спорт. Туризм",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "area": "г. Радужный",
+   "region": "Владимирская область",
+   "source": "city",
+   "requests": 1,
+   "questions": 0,
+   "overdue": 1,
+   "top_topics": []
+  },
+  {
+   "area": "г.о. город Ковров",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 1,
+   "questions": 1,
+   "overdue": 1,
+   "top_topics": [
+    {
+     "name": "Хозяйственная деятельность",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "area": "м.р-н. Гороховецкий",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 1,
+   "questions": 1,
+   "overdue": 1,
+   "top_topics": [
+    {
+     "name": "Основы государственного управления",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "area": "м.р-н. Юрьев-Польский",
+   "region": "Владимирская область",
+   "source": "municipal_area",
+   "requests": 1,
+   "questions": 0,
+   "overdue": 1,
+   "top_topics": []
+  }
+ ],
+ "truncated": false
+}
