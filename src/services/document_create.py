@@ -188,6 +188,15 @@ class DocumentCreateService:
             raise CreateError(f"Документ с id {document_id} не найден или нет доступа.")
         return {"id": int(rows[0]["Id"]), "name": rows[0].get("Name"), "url": self._doc_url(int(rows[0]["Id"]))}
 
+    def citizen_request(self, request_id: int) -> dict[str, Any]:
+        """Обращение для поля «Обращение» (Request): как document() для InResponseTo, но только тип IRequests."""
+        rows = self.client.query("IRequests", filter_=f"Id eq {int(request_id)}", select="Id,Name", top=1)
+        if rows:
+            return {"id": int(rows[0]["Id"]), "name": rows[0].get("Name"), "url": self._doc_url(int(rows[0]["Id"]))}
+        other = self.document(request_id)  # нет и такого документа — «не найден или нет доступа»
+        raise CreateError(f"Документ {other['id']} «{other['name']}» — не обращение гражданина. В request_id нужен "
+                          "id обращения (реестр обращений).")
+
     def _application_id(self, extension: str) -> int:
         if not re.fullmatch(r"[a-z0-9]{1,10}", extension or ""):
             raise CreateError(f"Недопустимое расширение файла «{extension}».")
@@ -541,7 +550,7 @@ class DocumentCreateService:
             "in_response_to": self.document(in_response_to_id) if in_response_to_id else None,
             "leading_document": self.document(leading_document_id) if leading_document_id else None,
             "is_normative": is_normative,
-            "request": self.document(request_id) if request_id else None,
+            "request": self.citizen_request(request_id) if request_id else None,
             "result": review_result,
             "result_label": REQUEST_LETTER_RESULTS.get(review_result) if review_result else None,
             "extra_properties": self._extra_properties(spec["set"], extra_properties),

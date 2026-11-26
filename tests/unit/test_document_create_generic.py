@@ -53,6 +53,8 @@ class Client(BaseClient):
             if name == "Нет":
                 return []
             return [{"Id": 2, "Name": name}]
+        if entity_set == "IRequests":
+            return [{"Id": 900, "Name": "Обращение № 15-ОГ"}] if f == "Id eq 900" else []
         if entity_set == "IDocumentTemplates":
             return [{"Id": 347, "Name": "Шаблон исходящего письма"}] if "347" in f or "исходящего" in f else []
         if entity_set == "IAssociatedApplications":
@@ -133,36 +135,38 @@ def test_outgoing_request_letter_plan_and_payload():
 
     client.query = recording_query
     s = svc(client)
-    plan = s.plan_document("outgoing_request_letter", "Ответ по обращению", 53, correspondent="Аппарат", request_id=500,
+    plan = s.plan_document("outgoing_request_letter", "Ответ по обращению", 53, correspondent="Аппарат", request_id=900,
                            result="Разъяснено")
     assert plan["entity_set"] == "IOutgoingRequestLetters" and plan["document_kind"]["name"] == "Ответное письмо"
-    assert plan["request"] == {"id": 500, "name": "Вх. письмо", "url": "https://rx/doc/500"} and plan["result"] == "Explained"
+    assert plan["request"] == {"id": 900, "name": "Обращение № 15-ОГ", "url": "https://rx/doc/900"} and plan["result"] == "Explained"
     s.create_document(plan)
     path, payload = client.posts[0]
     assert path == "IOutgoingRequestLetters"
     assert kind_filters == ["Status eq 'Active' and Name eq 'Ответное письмо'"] and payload["DocumentKind"] == {"Id": 2}
-    assert payload["Name"] == "Ответ по обращению" and payload["Request"] == {"Id": 500} and payload["Result"] == "Explained"
+    assert payload["Name"] == "Ответ по обращению" and payload["Request"] == {"Id": 900} and payload["Result"] == "Explained"
     assert payload["Correspondent"] == {"Id": 1464} and "Correspondents" not in payload
     assert payload["PreparedBy"] == {"Id": 53} and payload["Department"] == {"Id": 49} and payload["BusinessUnit"] == {"Id": 52}
 
 
 def test_outgoing_request_letter_validation():
     s = svc()
-    assert s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=500, result="Supported")["result"] == "Supported"
-    assert s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=500)["result"] is None
+    assert s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=900, result="Supported")["result"] == "Supported"
+    assert s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=900)["result"] is None
     client = Client()
     no_request = svc(client).plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат")
     assert no_request["request"] is None
     svc(client).create_document(no_request)
     assert "Request" not in client.posts[0][1]
     with pytest.raises(CreateError, match="корреспондент"):
-        s.plan_document("outgoing_request_letter", "Т", 53, request_id=500)
+        s.plan_document("outgoing_request_letter", "Т", 53, request_id=900)
     with pytest.raises(CreateError, match="Документ с id 901 не найден"):
         s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=901)
+    with pytest.raises(CreateError, match="Документ 500 «Вх. письмо» — не обращение гражданина"):
+        s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=500)
     with pytest.raises(CreateError, match="Результат рассмотрения"):
-        s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=500, result="Хорошо")
+        s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", request_id=900, result="Хорошо")
     answered = s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", result="дан ответ автору")
-    assert answered["result"] == "Answered" and answered["result_label"] == "Дан ответ автору"
+    assert answered["result"] == "Answer" and answered["result_label"] == "Дан ответ автору"
     assert s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", result="Active")["result"] == "Active"
     for key in ("Result", "Request"):
         with pytest.raises(CreateError, match=f"Свойство {key} задавать нельзя"):
@@ -170,7 +174,7 @@ def test_outgoing_request_letter_validation():
                             result="Разъяснено", extra_properties={key: "Obsolete"})
     assert s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", result="  ")["result"] is None
     assert s.plan_document("memo", "Т", 53, result="")["result"] is None
-    for outside in ("Obsolete", "Outdated", "InWorkExtended", "Draft", "Оставлено без ответа"):
+    for outside in ("Answered", "Obsolete", "Outdated", "InWorkExtended", "Draft", "Оставлено без ответа"):
         with pytest.raises(CreateError, match="Результат рассмотрения"):
             s.plan_document("outgoing_request_letter", "Т", 53, correspondent="Аппарат", result=outside)
     with pytest.raises(CreateError, match="не подходят поля: request, result"):

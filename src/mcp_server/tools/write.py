@@ -274,12 +274,12 @@ def register(mcp: MCPServer, runner: ToolRunner, tokens: ConfirmTokens, audit: W
         in_response_to_document_id: Annotated[int | None, Field(description="В ответ на документ (исходящее письмо)", gt=0)] = None,
         leading_document_id: Annotated[int | None, Field(description="Ведущий документ (для приложения)", gt=0)] = None,
         is_normative: Annotated[bool | None, Field(description="Нормативный (для правового акта)")] = None,
-        request_id: Annotated[int | None, Field(description="В ответ на обращение: id документа-обращения "
-                                                "(для outgoing_request_letter)", gt=0)] = None,
+        request_id: Annotated[int | None, Field(description="В ответ на обращение: id обращения гражданина "
+                                                "(для outgoing_request_letter; другой документ не подойдёт)", gt=0)] = None,
         result: Annotated[str | None, Field(description="Результат рассмотрения (для outgoing_request_letter), код или "
                                             "подпись: Transferred — Направлено по компетенции, Explained — Разъяснено, "
                                             "ActionsTaken — Меры приняты, Supported — Поддержано, NotSupported — Не "
-                                            "поддержано, Denied — Отказано, Active — На рассмотрении, Answered — Дан "
+                                            "поддержано, Denied — Отказано, Active — На рассмотрении, Answer — Дан "
                                             "ответ автору")] = None,
         extra_properties: Annotated[dict[str, str | int | float | bool] | None, Field(
             description="Другие простые свойства карточки по их имени в RX (например PageCount, DocumentDate). "

@@ -37,7 +37,7 @@ LETTER_RESULT_LABELS = {
     "NotSupported": "Не поддержано",
     "Denied": "Отказано",
     "Active": "На рассмотрении",
-    "Answered": "Дан ответ автору",
+    "Answer": "Дан ответ автору",
 }
 PAGE_SIZE = 500
 DEFAULT_MAX_REQUESTS = 5000

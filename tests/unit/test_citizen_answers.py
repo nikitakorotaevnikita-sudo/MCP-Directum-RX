@@ -91,7 +91,7 @@ def test_answer_shape_requests_and_lateness():
 
 
 def test_letter_result_uses_letter_labels_and_requests_use_review_labels():
-    rows = [{**ROWS[0], "Result": "Answered",
+    rows = [{**ROWS[0], "Result": "Answer",
              "Requests": [{**ROWS[0]["Requests"][0], "Result": "Obsolete"}]}]
 
     class LetterClient(Client):
